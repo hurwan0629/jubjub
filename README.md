@@ -19,7 +19,7 @@ JetHexa 6족 로봇으로 공원에 떨어진 쓰레기를 **카메라로 인식
 
 ```
 parkkeeper-jupjup/
-├─ .github/    PR / 이슈 템플릿
+├─ .github/    PR / 이슈 템플릿, CODEOWNERS, 개인 폴더 검사(Actions)
 ├─ docs/       기획, 회의록, 설계 문서
 ├─ robot/      JetHexa 제어 코드 (ROS) - 이동, 그리퍼, 수거통
 ├─ vision/     쓰레기 인식 모델 - 학습, 추론
@@ -42,14 +42,21 @@ parkkeeper-jupjup/
 ### 브랜치
 ```
 main      항상 동작하는 안정 버전 (직접 push 금지)
- └─ dev   기능을 합치는 통합 브랜치
+ └─ dev   기능을 합치는 통합 브랜치 (직접 push 금지)
      └─ feature/<영역>-<내용>   예) feature/vision-yolo-train, feature/robot-gripper
+     └─ members/<본인 폴더>     예) members/hur-wan  (개인 폴더 작업용)
 ```
-1. `dev`에서 `feature/...` 브랜치를 만들어 작업합니다.
-2. 작업이 끝나면 `dev`로 PR을 올리고, 팀원 1명 이상이 리뷰한 뒤 머지합니다.
+1. `dev`에서 작업 브랜치를 만들어 작업합니다.
+2. 작업이 끝나면 `dev`로 PR을 올립니다.
+   - 공용 폴더를 바꿨다면 팀원 1명 이상에게 리뷰를 받은 뒤 머지합니다.
+   - 본인 개인 폴더만 바꿨다면 리뷰 없이 바로 머지해도 됩니다.
 3. 발표나 시연 전처럼 안정된 시점에 `dev`를 `main`으로 머지합니다.
 
-개인 폴더(`members/<본인>/`)만 수정할 때는 `dev`에 바로 커밋해도 됩니다.
+### 개인 폴더 보호
+- `members/<이름>/`은 **본인만** 수정할 수 있습니다. 폴더 주인은 [.github/CODEOWNERS](.github/CODEOWNERS)에 적혀 있습니다.
+- PR을 올리면 `member-folder-guard` 검사가 자동으로 돌아갑니다. 남의 개인 폴더를 건드린 PR은 실패하고 머지할 수 없습니다.
+- 공용 폴더(`docs/`, `robot/`, `vision/`, `app/` 등)는 누구나 수정할 수 있습니다.
+- 새 팀원 폴더를 만들 때는 먼저 CODEOWNERS에 한 줄을 추가하는 PR을 머지합니다.
 
 ### 커밋 메시지
 ```

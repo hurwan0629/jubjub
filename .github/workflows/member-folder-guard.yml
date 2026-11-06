@@ -1,0 +1,45 @@
+# PR에서 members/<이름>/ 폴더를 바꿨다면, PR 작성자가 그 폴더의 주인인지 검사합니다.
+# 폴더 주인은 base 브랜치의 .github/CODEOWNERS 에서 읽습니다.
+# 공용 폴더(docs, robot, vision, app ...)와 members/README.md 는 검사하지 않습니다.
+name: member-folder-guard
+
+on:
+  pull_request:
+    branches: [main, dev]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  member-folder-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check member folder ownership
+        env:
+          GH_TOKEN: ${{ github.token }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_REF: ${{ github.head_ref }}
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+        run: |
+          set -euo pipefail
+
+          # dev -> main 통합 PR은 여러 사람의 변경이 섞여 있으므로 건너뜀
+          if [ "$HEAD_REF" = "dev" ] && [ "$BASE_REF" = "main" ] && [ "$HEAD_REPO" = "$GITHUB_REPOSITORY" ]; then
+            echo "dev -> main 통합 PR: 검사 생략"
+            exit 0
+          fi
+
+          # PR 쪽 CODEOWNERS를 고쳐서 우회하지 못하도록 base 브랜치 것을 사용
+          gh api "repos/$GITHUB_REPOSITORY/contents/.github/CODEOWNERS?ref=$BASE_REF" \
+            -H "Accept: application/vnd.github.raw" > CODEOWNERS.base
+
+          # 변경 파일 목록 (이름 변경 시 원래 경로도 포함)
+          gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files" --paginate \
+            --jq '.[] | .filename, (.previous_filename // empty)' > changed.txt
+
+          bash .github/scripts/check-member-folders.sh "$AUTHOR" CODEOWNERS.base changed.txt
