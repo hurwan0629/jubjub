@@ -1,6 +1,6 @@
 # 한혜원 (han-hyewon)
 
 - 담당: TBD
-- GitHub: TBD
+- GitHub: @harwoon
 
 ## 작업 메모

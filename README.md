@@ -9,11 +9,11 @@ JetHexa 6족 로봇으로 공원에 떨어진 쓰레기를 **카메라로 인식
 
 | 이름 | 개인 폴더 | GitHub ID | 담당 |
 |------|-----------|-----------|------|
-| 한혜원 | [members/han-hyewon](members/han-hyewon) | TBD | TBD |
-| 이희승 | [members/lee-heeseung](members/lee-heeseung) | TBD | TBD |
-| 권민이 | [members/kwon-minyi](members/kwon-minyi) | TBD | TBD |
-| 배성욱 | [members/bae-seonguk](members/bae-seonguk) | TBD | TBD |
-| 허완 | [members/hur-wan](members/hur-wan) | TBD | TBD |
+| 한혜원 | [members/han-hyewon](members/han-hyewon) | @harwoon | TBD |
+| 이희승 | [members/lee-heeseung](members/lee-heeseung) | @heeseung0517, @kjalh | TBD |
+| 권민이 | [members/kwon-minyi](members/kwon-minyi) | @KwonMinee | TBD |
+| 배성욱 | [members/bae-seonguk](members/bae-seonguk) | @BaeSungUk | TBD |
+| 허완 | [members/hur-wan](members/hur-wan) | @hurwan0629 | TBD |
 
 ## 폴더 구조
 
@@ -71,9 +71,8 @@ git checkout dev
 ```
 
 ## TODO
-- [ ] 팀원 GitHub ID와 담당 기입
+- [ ] 팀원 담당 기입
 - [ ] GitHub 레포 생성 후 `main` 브랜치 보호 설정
 - [ ] 탐색/경로 알고리즘 결정
 - [ ] 쓰레기 분류 클래스 결정 (`vision/README.md`)
 - [ ] 앱 프레임워크 결정
-- [ ] (GitHub ID 확정 후) `.github/CODEOWNERS` 추가

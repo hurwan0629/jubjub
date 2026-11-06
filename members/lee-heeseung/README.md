@@ -1,6 +1,6 @@
 # 이희승 (lee-heeseung)
 
 - 담당: TBD
-- GitHub: TBD
+- GitHub: @heeseung0517, @kjalh
 
 ## 작업 메모
