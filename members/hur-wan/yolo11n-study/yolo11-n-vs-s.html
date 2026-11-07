@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YOLO11n과 YOLO11s 비교</title>
+<style>
+  :root {
+    --bg: #fbfbfa;
+    --surface: #ffffff;
+    --fg: #1d1f21;
+    --muted: #61666d;
+    --line: #dcdfe3;
+    --accent: #0b63c4;
+    --accent-soft: #e6f0fb;
+    --code-bg: #f1f3f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #15171a;
+      --surface: #1d2024;
+      --fg: #e6e8eb;
+      --muted: #9aa1a9;
+      --line: #33383e;
+      --accent: #6cb2ff;
+      --accent-soft: #1b2b3f;
+      --code-bg: #23272c;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #15171a;
+    --surface: #1d2024;
+    --fg: #e6e8eb;
+    --muted: #9aa1a9;
+    --line: #33383e;
+    --accent: #6cb2ff;
+    --accent-soft: #1b2b3f;
+    --code-bg: #23272c;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    font-size: 16px;
+    line-height: 1.65;
+  }
+  main { max-width: 980px; margin: 0 auto; padding: 40px 16px 80px; }
+  h1 { font-size: 1.75rem; margin: 0 0 8px; letter-spacing: -0.01em; }
+  h2 { font-size: 1.25rem; margin: 48px 0 12px; padding-top: 8px; border-top: 1px solid var(--line); }
+  h3 { font-size: 1.05rem; margin: 28px 0 8px; }
+  p { margin: 0 0 12px; }
+  .lead { color: var(--muted); margin-bottom: 24px; }
+  code, pre { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 0.9em; }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+  pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; line-height: 1.5; }
+  pre code { background: none; padding: 0; }
+
+  .table-wrap { overflow-x: auto; margin: 12px 0 8px; }
+  table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 0.94rem; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; white-space: nowrap; }
+  td.num { text-align: right; white-space: nowrap; }
+  th.num { text-align: right; }
+  .note { color: var(--muted); font-size: 0.88rem; }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 20px 0 8px; }
+  .stat { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; }
+  .stat .k { color: var(--muted); font-size: 0.85rem; }
+  .stat .v { font-size: 1.3rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .stat .v span { color: var(--muted); font-weight: 400; font-size: 0.95rem; }
+
+  figure { margin: 16px 0 8px; }
+  .scroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+  figcaption { color: var(--muted); font-size: 0.9rem; margin-top: 8px; }
+  svg.dg { display: block; width: 100%; height: auto; color: var(--fg); }
+  svg.dg.wide { min-width: 760px; }
+  svg.dg.narrow { max-width: 600px; margin: 0 auto; }
+  .dg text { fill: currentColor; font-size: 12px; font-family: inherit; }
+  .dg .t-strong { font-weight: 600; }
+  .dg .t-muted { fill: var(--muted); }
+  .dg .t-small { font-size: 10.5px; fill: var(--muted); }
+  .dg .t-head { font-size: 12.5px; font-weight: 600; }
+  .dg .band { fill: currentColor; fill-opacity: 0.045; }
+  .dg .box { fill: var(--surface); stroke: currentColor; stroke-width: 1; }
+  .dg .box-head { fill: var(--surface); stroke: var(--accent); stroke-width: 1.6; }
+  .dg .box-out { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.6; }
+  .dg .edge { fill: none; stroke: currentColor; stroke-width: 1.2; }
+  .dg .pad { fill: currentColor; fill-opacity: 0.16; }
+  .dg .img { fill: var(--accent-soft); stroke: currentColor; stroke-width: 1; }
+  .dg .arrowhead { fill: currentColor; }
+
+  dl.blocks { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 12px 0; }
+  dl.blocks dt { font-family: ui-monospace, Consolas, monospace; font-weight: 600; }
+  dl.blocks dd { margin: 0; }
+  @media (max-width: 560px) {
+    dl.blocks { grid-template-columns: 1fr; }
+    dl.blocks dd { margin-bottom: 8px; }
+  }
+  details { margin: 12px 0; }
+  summary { cursor: pointer; color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+
+<h1>YOLO11n과 YOLO11s 비교</h1>
+<p class="lead">두 모델은 층 구조가 완전히 같고, 층마다 채널 수만 s가 n의 2배입니다. 이 페이지의 숫자는 2026-11-07에 이 노트북에서 직접 잰 값이고, COCO 정확도만 Ultralytics 공식 문서 값입니다.</p>
+
+<div class="stats">
+  <div class="stat"><div class="k">파라미터</div><div class="v">2.6M <span>/ 9.5M</span></div></div>
+  <div class="stat"><div class="k">연산량 (640×640 한 장)</div><div class="v">6.7 <span>/ 21.8 GFLOPs</span></div></div>
+  <div class="stat"><div class="k">.pt 파일</div><div class="v">5.4 <span>/ 18.4 MB</span></div></div>
+  <div class="stat"><div class="k">CPU 추론 (실측)</div><div class="v">30 <span>/ 54 ms</span></div></div>
+</div>
+<p class="note">앞이 YOLO11n, 뒤가 YOLO11s입니다.</p>
+
+<h2>한눈에 비교</h2>
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr><th>항목</th><th class="num">YOLO11n</th><th class="num">YOLO11s</th><th>설명</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>파라미터 수</td><td class="num">2,624,080</td><td class="num">9,458,752</td><td>s가 3.6배</td></tr>
+    <tr><td>연산량 (640×640)</td><td class="num">6.7 GFLOPs</td><td class="num">21.8 GFLOPs</td><td>s가 3.3배. Conv와 BN을 합친(fuse) 뒤에는 6.5와 21.5</td></tr>
+    <tr><td>.pt 파일 용량</td><td class="num">5.4 MB</td><td class="num">18.4 MB</td><td>파일 안에는 float16으로 저장되어 있음</td></tr>
+    <tr><td>가중치 메모리 (float32)</td><td class="num">10.0 MB</td><td class="num">36.1 MB</td><td>파라미터 수 × 4바이트</td></tr>
+    <tr><td>추론 기본 타입</td><td class="num">float32</td><td class="num">float32</td><td>불러올 때 float32로 바꿔서 계산함</td></tr>
+    <tr><td>층(블록) 수</td><td class="num">24</td><td class="num">24</td><td>번호 0~23, 구조 동일</td></tr>
+    <tr><td>채널 배율 (width)</td><td class="num">0.25</td><td class="num">0.50</td><td>설계도의 채널 수에 곱하는 값</td></tr>
+    <tr><td>깊이 배율 (depth)</td><td class="num">0.50</td><td class="num">0.50</td><td>블록 반복 횟수에 곱하는 값</td></tr>
+    <tr><td>COCO mAP@50-95</td><td class="num">39.5</td><td class="num">47.0</td><td>Ultralytics 공식 문서 값</td></tr>
+    <tr><td>추론 시간, CPU</td><td class="num">30 ms</td><td class="num">54 ms</td><td>이 노트북 CPU, float32</td></tr>
+    <tr><td>추론 시간, GPU</td><td class="num">14 ms</td><td class="num">13 ms</td><td>RTX 5070 Ti Laptop, float32</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="note">추론 시간은 <code>bus.jpg</code>를 <code>predict()</code>로 반복 실행한 중앙값이고, 전처리와 후처리는 뺀 순수 추론 시간입니다 (GPU 55회, CPU 10회).</p>
+
+<h3>파라미터가 4배가 아니라 3.6배인 이유</h3>
+<p>Conv 가중치 개수는 입력 채널 수 × 출력 채널 수 × 커널 크기에 비례합니다. 그래서 채널이 2배가 되면 가중치는 대략 4배가 됩니다. 예를 들어 1번 Conv는 n이 4,672개, s가 18,560개로 4.0배입니다.</p>
+<p>예외가 두 군데 있습니다. 0번 층은 입력이 RGB 3채널로 고정이라 2배만 늘어납니다. 23번 Detect 헤드는 클래스 수(80)와 박스 표현(64)에 맞춘 고정 채널이 있어서 464,912개에서 850,368개로 1.8배만 늘어납니다. 이 둘 때문에 전체로는 3.6배가 됩니다.</p>
+
+<h3>GPU에서 n과 s 속도가 같게 나온 이유</h3>
+<p>이 노트북 GPU는 YOLO11s의 21.8 GFLOPs도 금방 계산합니다. 그래서 측정 시간의 대부분이 계산이 아니라 파이썬 코드 실행과 GPU에 작업을 넘기는 고정 비용입니다. CPU에서는 계산량이 시간에 그대로 드러나서 s가 1.8배 느립니다. Jetson처럼 연산 능력이 작은 장치에서는 GFLOPs 차이가 시간 차이로 나타날 가능성이 크니, 장비가 오면 직접 재 봐야 합니다.</p>
+<p>같은 GPU에서 float16(<code>half=True</code>)으로 바꿔도 n은 13.9ms에서 13.6ms, s는 12.8ms에서 13.3ms로 차이가 없었습니다. 이유는 위와 같습니다. 그리고 ultralytics 8.4에서는 <code>half</code>를 쓰면 앞으로 없어질 인자이니 <code>quantize</code>를 쓰라는 경고가 나옵니다.</p>
+
+<h2>구조</h2>
+<figure>
+<div class="scroll">
+<svg class="dg wide" viewBox="0 0 985 790" role="img" aria-label="YOLO11 구조. 백본이 640 입력을 20×20까지 다섯 번 절반으로 줄이고, 넥이 다시 80×80까지 키웠다가 줄이면서 백본의 4번, 6번, 10번 출력을 합친다. 헤드는 80×80, 40×40, 20×20 세 크기에서 예측해 8400칸을 이어 붙인 (1, 84, 8400)을 내고, NMS 후 (N, 6)이 된다. n과 s는 구조가 같고 채널 수만 2배 차이.">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path class="arrowhead" d="M0,0 L10,5 L0,10 z"/>
+    </marker>
+  </defs>
+
+  <!-- column headers -->
+  <text x="80" y="20" class="t-head">백본</text>
+  <text x="270" y="20" text-anchor="end" class="t-small">채널 n / s</text>
+  <text x="375" y="20" class="t-head">넥 (크게 키우며 합치기)</text>
+  <text x="605" y="20" class="t-head">넥 (다시 줄이며 합치기)</text>
+  <text x="800" y="20" class="t-head">헤드 (23 Detect)</text>
+
+  <g transform="translate(0,30)">
+    <!-- resolution bands -->
+    <rect class="band" x="0" y="15" width="985" height="52"/>
+    <rect class="band" x="0" y="120" width="985" height="99"/>
+    <rect class="band" x="0" y="316" width="985" height="97"/>
+    <text x="8" y="31" class="t-small">640×640</text>
+    <text x="8" y="83" class="t-small">320×320</text>
+    <text x="8" y="136" class="t-small">160×160</text>
+    <text x="8" y="235" class="t-small">80×80</text>
+    <text x="8" y="332" class="t-small">40×40</text>
+    <text x="8" y="429" class="t-small">20×20</text>
+
+    <!-- backbone boxes -->
+    <rect class="box" x="80" y="25" width="190" height="30" rx="4"/>
+    <text x="92" y="44">입력 이미지 (RGB)</text><text x="258" y="44" text-anchor="end" class="t-muted">3 / 3</text>
+    <rect class="box" x="80" y="80" width="190" height="30" rx="4"/>
+    <text x="92" y="99">0 Conv</text><text x="258" y="99" text-anchor="end" class="t-muted">16 / 32</text>
+    <rect class="box" x="80" y="135" width="190" height="30" rx="4"/>
+    <text x="92" y="154">1 Conv</text><text x="258" y="154" text-anchor="end" class="t-muted">32 / 64</text>
+    <rect class="box" x="80" y="177" width="190" height="30" rx="4"/>
+    <text x="92" y="196">2 C3k2</text><text x="258" y="196" text-anchor="end" class="t-muted">64 / 128</text>
+    <rect class="box" x="80" y="232" width="190" height="30" rx="4"/>
+    <text x="92" y="251">3 Conv</text><text x="258" y="251" text-anchor="end" class="t-muted">64 / 128</text>
+    <rect class="box" x="80" y="274" width="190" height="30" rx="4"/>
+    <text x="92" y="293">4 C3k2</text><text x="258" y="293" text-anchor="end" class="t-muted">128 / 256</text>
+    <rect class="box" x="80" y="329" width="190" height="30" rx="4"/>
+    <text x="92" y="348">5 Conv</text><text x="258" y="348" text-anchor="end" class="t-muted">128 / 256</text>
+    <rect class="box" x="80" y="371" width="190" height="30" rx="4"/>
+    <text x="92" y="390">6 C3k2</text><text x="258" y="390" text-anchor="end" class="t-muted">128 / 256</text>
+    <rect class="box" x="80" y="426" width="190" height="30" rx="4"/>
+    <text x="92" y="445">7 Conv</text><text x="258" y="445" text-anchor="end" class="t-muted">256 / 512</text>
+    <rect class="box" x="80" y="468" width="190" height="30" rx="4"/>
+    <text x="92" y="487">8 C3k2</text><text x="258" y="487" text-anchor="end" class="t-muted">256 / 512</text>
+    <rect class="box" x="80" y="510" width="190" height="30" rx="4"/>
+    <text x="92" y="529">9 SPPF</text><text x="258" y="529" text-anchor="end" class="t-muted">256 / 512</text>
+    <rect class="box" x="80" y="552" width="190" height="30" rx="4"/>
+    <text x="92" y="571">10 C2PSA</text><text x="258" y="571" text-anchor="end" class="t-muted">256 / 512</text>
+
+    <!-- backbone flow -->
+    <path class="edge" marker-end="url(#ah)" d="M175,55 V80"/>
+    <path class="edge" marker-end="url(#ah)" d="M175,110 V135"/>
+    <path class="edge" marker-end="url(#ah)" d="M175,165 V177"/>
+    <path class="edge" marker-end="url(#ah)" d="M175,207 V232"/>
+    <path class="edge" marker-end="url(#ah)" d="M175,262 V274"/>
+    <path class="edge" marker-end="url(#ah)" d="M175,304 V329"/>
+    <path class="edge" marker-end="url(#ah)" d="M175,359 V371"/>
+    <path class="edge" marker-end="url(#ah)" d="M175,401 V426"/>
+    <path class="edge" marker-end="url(#ah)" d="M175,456 V468"/>
+    <path class="edge" marker-end="url(#ah)" d="M175,498 V510"/>
+    <path class="edge" marker-end="url(#ah)" d="M175,540 V552"/>
+
+    <!-- neck boxes -->
+    <rect class="box" x="375" y="240" width="190" height="56" rx="4"/>
+    <text x="387" y="257" class="t-strong">층 14~16</text>
+    <text x="387" y="273">업샘플 · 합치기 · C3k2</text>
+    <text x="387" y="289" class="t-muted">80×80 · 64 / 128</text>
+
+    <rect class="box" x="375" y="337" width="190" height="56" rx="4"/>
+    <text x="387" y="354" class="t-strong">층 11~13</text>
+    <text x="387" y="370">업샘플 · 합치기 · C3k2</text>
+    <text x="387" y="386" class="t-muted">40×40 · 128 / 256</text>
+
+    <rect class="box" x="605" y="337" width="170" height="56" rx="4"/>
+    <text x="617" y="354" class="t-strong">층 17~19</text>
+    <text x="617" y="370">Conv · 합치기 · C3k2</text>
+    <text x="617" y="386" class="t-muted">40×40 · 128 / 256</text>
+
+    <rect class="box" x="605" y="476" width="170" height="56" rx="4"/>
+    <text x="617" y="493" class="t-strong">층 20~22</text>
+    <text x="617" y="509">Conv · 합치기 · C3k2</text>
+    <text x="617" y="525" class="t-muted">20×20 · 256 / 512</text>
+
+    <!-- head boxes -->
+    <rect class="box-head" x="800" y="240" width="150" height="56" rx="4"/>
+    <text x="812" y="257" class="t-strong">P3 · 80×80</text>
+    <text x="812" y="273">6,400칸</text>
+    <text x="812" y="289" class="t-muted">작은 물체 담당</text>
+
+    <rect class="box-head" x="800" y="337" width="150" height="56" rx="4"/>
+    <text x="812" y="354" class="t-strong">P4 · 40×40</text>
+    <text x="812" y="370">1,600칸</text>
+    <text x="812" y="386" class="t-muted">중간 물체 담당</text>
+
+    <rect class="box-head" x="800" y="476" width="150" height="56" rx="4"/>
+    <text x="812" y="493" class="t-strong">P5 · 20×20</text>
+    <text x="812" y="509">400칸</text>
+    <text x="812" y="525" class="t-muted">큰 물체 담당</text>
+
+    <!-- skip connections from backbone -->
+    <path class="edge" marker-end="url(#ah)" d="M270,289 H375"/>
+    <text x="322" y="283" text-anchor="middle" class="t-small">4번 출력</text>
+    <path class="edge" marker-end="url(#ah)" d="M270,386 H375"/>
+    <text x="322" y="380" text-anchor="middle" class="t-small">6번 출력</text>
+
+    <!-- layer 10 output feeds two places -->
+    <path class="edge" marker-end="url(#ah)" d="M270,567 H690 V532"/>
+    <path class="edge" marker-end="url(#ah)" d="M470,567 V393"/>
+    <text x="300" y="561" class="t-small">10번 출력 (20×20)</text>
+    <text x="478" y="470" class="t-small">2배로 키움</text>
+    <text x="698" y="556" class="t-small">합치기</text>
+
+    <!-- top-down -->
+    <path class="edge" marker-end="url(#ah)" d="M470,337 V296"/>
+    <text x="478" y="321" class="t-small">2배로 키움</text>
+
+    <!-- bottom-up and outputs -->
+    <path class="edge" marker-end="url(#ah)" d="M565,268 H800"/>
+    <path class="edge" marker-end="url(#ah)" d="M690,268 V337"/>
+    <text x="698" y="307" class="t-small">Conv 보폭 2로 절반</text>
+    <path class="edge" marker-end="url(#ah)" d="M565,365 H605"/>
+    <path class="edge" marker-end="url(#ah)" d="M775,365 H800"/>
+    <path class="edge" marker-end="url(#ah)" d="M690,393 V476"/>
+    <text x="698" y="440" class="t-small">Conv 보폭 2로 절반</text>
+    <path class="edge" marker-end="url(#ah)" d="M775,504 H800"/>
+
+    <!-- head merge -->
+    <path class="edge" d="M950,268 H966 M950,365 H966 M950,504 H966"/>
+    <path class="edge" marker-end="url(#ah)" d="M966,268 V640 H950"/>
+    <text x="875" y="603" text-anchor="middle" class="t-small">6,400 + 1,600 + 400칸 이어 붙이기</text>
+
+    <rect class="box-out" x="800" y="615" width="150" height="50" rx="4"/>
+    <text x="875" y="636" text-anchor="middle" class="t-strong">(1, 84, 8400)</text>
+    <text x="875" y="653" text-anchor="middle" class="t-muted">칸마다 박스 4 + 클래스 80</text>
+
+    <path class="edge" marker-end="url(#ah)" d="M875,665 V700"/>
+    <text x="865" y="687" text-anchor="end" class="t-small">NMS로 겹친 박스 정리</text>
+
+    <rect class="box-out" x="800" y="700" width="150" height="50" rx="4"/>
+    <text x="875" y="721" text-anchor="middle" class="t-strong">(N, 6)</text>
+    <text x="875" y="738" text-anchor="middle" class="t-muted">x1 y1 x2 y2 conf cls</text>
+  </g>
+</svg>
+</div>
+<figcaption>가로 띠는 특징맵의 해상도(640×640 입력 기준)입니다. 백본이 이미지를 20×20까지 줄이고, 넥이 다시 키우면서 백본 중간 결과(4번, 6번, 10번)를 합칩니다. 헤드는 세 해상도에서 따로 예측한 뒤 결과를 이어 붙입니다. 상자 안 "n / s" 숫자가 두 모델의 유일한 차이인 채널 수입니다.</figcaption>
+</figure>
+
+<h3>블록 설명</h3>
+<dl class="blocks">
+  <dt>Conv</dt><dd>3×3 합성곱, BatchNorm, SiLU 활성화를 묶은 것. 보폭(stride) 2면 가로세로가 절반이 됩니다. 백본의 0, 1, 3, 5, 7번이 모두 보폭 2라서 640이 다섯 번 절반이 되어 20이 됩니다.</dd>
+  <dt>C3k2</dt><dd>입력을 두 갈래로 나눠 한쪽만 작은 합성곱 여러 개를 거친 뒤 다시 합치는 블록. 해상도는 그대로 두고 특징을 다듬습니다.</dd>
+  <dt>SPPF</dt><dd>5×5 맥스풀링을 세 번 연달아 적용하고 결과를 모두 이어 붙입니다. 한 칸이 더 넓은 주변을 보게 됩니다.</dd>
+  <dt>C2PSA</dt><dd>어텐션 블록. 특징맵에서 중요한 위치에 더 큰 가중치를 줍니다. YOLO11에서 새로 들어간 부분입니다.</dd>
+  <dt>Upsample</dt><dd>가로세로를 2배로 키웁니다. 가장 가까운 값을 복사하는 방식이라 파라미터가 0개입니다.</dd>
+  <dt>Concat</dt><dd>두 특징맵을 채널 방향으로 이어 붙입니다. 해상도가 같아야 합니다. 파라미터 0개.</dd>
+  <dt>Detect</dt><dd>세 해상도의 칸마다 박스 위치와 80개 클래스 점수를 냅니다. 박스는 16단계 분포로 예측한 뒤 좌표 4개로 바꿉니다 (DFL, 그래서 내부 채널이 4×16=64).</dd>
+</dl>
+
+<details>
+<summary>층별 파라미터 수 전체 보기</summary>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>번호</th><th>블록</th><th>입력</th><th>출력 크기 (n)</th><th class="num">n 파라미터</th><th class="num">s 파라미터</th><th class="num">배수</th></tr></thead>
+  <tbody>
+    <tr><td>0</td><td>Conv</td><td>이미지</td><td>16×320×320</td><td class="num">464</td><td class="num">928</td><td class="num">2.0</td></tr>
+    <tr><td>1</td><td>Conv</td><td>0</td><td>32×160×160</td><td class="num">4,672</td><td class="num">18,560</td><td class="num">4.0</td></tr>
+    <tr><td>2</td><td>C3k2</td><td>1</td><td>64×160×160</td><td class="num">6,640</td><td class="num">26,080</td><td class="num">3.9</td></tr>
+    <tr><td>3</td><td>Conv</td><td>2</td><td>64×80×80</td><td class="num">36,992</td><td class="num">147,712</td><td class="num">4.0</td></tr>
+    <tr><td>4</td><td>C3k2</td><td>3</td><td>128×80×80</td><td class="num">26,080</td><td class="num">103,360</td><td class="num">4.0</td></tr>
+    <tr><td>5</td><td>Conv</td><td>4</td><td>128×40×40</td><td class="num">147,712</td><td class="num">590,336</td><td class="num">4.0</td></tr>
+    <tr><td>6</td><td>C3k2</td><td>5</td><td>128×40×40</td><td class="num">87,040</td><td class="num">346,112</td><td class="num">4.0</td></tr>
+    <tr><td>7</td><td>Conv</td><td>6</td><td>256×20×20</td><td class="num">295,424</td><td class="num">1,180,672</td><td class="num">4.0</td></tr>
+    <tr><td>8</td><td>C3k2</td><td>7</td><td>256×20×20</td><td class="num">346,112</td><td class="num">1,380,352</td><td class="num">4.0</td></tr>
+    <tr><td>9</td><td>SPPF</td><td>8</td><td>256×20×20</td><td class="num">164,608</td><td class="num">656,896</td><td class="num">4.0</td></tr>
+    <tr><td>10</td><td>C2PSA</td><td>9</td><td>256×20×20</td><td class="num">249,728</td><td class="num">990,976</td><td class="num">4.0</td></tr>
+    <tr><td>11</td><td>Upsample</td><td>10</td><td>256×40×40</td><td class="num">0</td><td class="num">0</td><td class="num"></td></tr>
+    <tr><td>12</td><td>Concat</td><td>11, 6</td><td>384×40×40</td><td class="num">0</td><td class="num">0</td><td class="num"></td></tr>
+    <tr><td>13</td><td>C3k2</td><td>12</td><td>128×40×40</td><td class="num">111,296</td><td class="num">443,776</td><td class="num">4.0</td></tr>
+    <tr><td>14</td><td>Upsample</td><td>13</td><td>128×80×80</td><td class="num">0</td><td class="num">0</td><td class="num"></td></tr>
+    <tr><td>15</td><td>Concat</td><td>14, 4</td><td>256×80×80</td><td class="num">0</td><td class="num">0</td><td class="num"></td></tr>
+    <tr><td>16</td><td>C3k2</td><td>15</td><td>64×80×80</td><td class="num">32,096</td><td class="num">127,680</td><td class="num">4.0</td></tr>
+    <tr><td>17</td><td>Conv</td><td>16</td><td>64×40×40</td><td class="num">36,992</td><td class="num">147,712</td><td class="num">4.0</td></tr>
+    <tr><td>18</td><td>Concat</td><td>17, 13</td><td>192×40×40</td><td class="num">0</td><td class="num">0</td><td class="num"></td></tr>
+    <tr><td>19</td><td>C3k2</td><td>18</td><td>128×40×40</td><td class="num">86,720</td><td class="num">345,472</td><td class="num">4.0</td></tr>
+    <tr><td>20</td><td>Conv</td><td>19</td><td>128×20×20</td><td class="num">147,712</td><td class="num">590,336</td><td class="num">4.0</td></tr>
+    <tr><td>21</td><td>Concat</td><td>20, 10</td><td>384×20×20</td><td class="num">0</td><td class="num">0</td><td class="num"></td></tr>
+    <tr><td>22</td><td>C3k2</td><td>21</td><td>256×20×20</td><td class="num">378,880</td><td class="num">1,511,424</td><td class="num">4.0</td></tr>
+    <tr><td>23</td><td>Detect</td><td>16, 19, 22</td><td>84×8400</td><td class="num">464,912</td><td class="num">850,368</td><td class="num">1.8</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="note">s의 출력 크기는 채널만 2배이고 해상도는 n과 같습니다. 출력 크기는 1×3×640×640 입력을 실제로 넣어서 각 층에서 잰 값입니다.</p>
+</details>
+
+<h2>입력 이미지 해상도</h2>
+<p>기본 입력 크기는 <code>imgsz=640</code>입니다. 모델은 사진을 그대로 받지 않고, 긴 변을 640에 맞춰 비율을 유지한 채 줄입니다. 이 과정을 letterbox라고 부릅니다.</p>
+<figure>
+<div class="scroll">
+<svg class="dg narrow" viewBox="0 0 600 260" role="img" aria-label="810×1080 원본 사진은 predict와 val에서 480×640으로 줄어들고, train에서는 640×640 정사각형이 되도록 양옆을 회색으로 채운다.">
+  <defs>
+    <marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path class="arrowhead" d="M0,0 L10,5 L0,10 z"/>
+    </marker>
+  </defs>
+  <rect class="img" x="20" y="49" width="122" height="162"/>
+  <text x="81" y="232" text-anchor="middle" class="t-strong">원본 810×1080</text>
+  <text x="81" y="248" text-anchor="middle" class="t-small">bus.jpg (가로×세로)</text>
+
+  <path class="edge" marker-end="url(#ah2)" d="M150,120 L292,72"/>
+  <text x="215" y="80" text-anchor="middle" class="t-small">predict(), val()</text>
+  <path class="edge" marker-end="url(#ah2)" d="M150,140 L292,188"/>
+  <text x="215" y="190" text-anchor="middle" class="t-small">train()</text>
+
+  <rect class="img" x="300" y="22" width="72" height="96"/>
+  <text x="388" y="58" class="t-strong">480×640</text>
+  <text x="388" y="75" class="t-small">긴 변만 640으로 맞춤</text>
+  <text x="388" y="90" class="t-small">32의 배수라 채움 없음</text>
+
+  <rect class="pad" x="300" y="142" width="12" height="96"/>
+  <rect class="pad" x="384" y="142" width="12" height="96"/>
+  <rect class="img" x="312" y="142" width="72" height="96"/>
+  <rect class="edge" x="300" y="142" width="96" height="96"/>
+  <text x="412" y="178" class="t-strong">640×640</text>
+  <text x="412" y="195" class="t-small">정사각형으로 만들려고</text>
+  <text x="412" y="210" class="t-small">양옆을 회색(114)으로 채움</text>
+</svg>
+</div>
+<figcaption>모든 그림을 같은 비율(0.15배)로 그렸습니다. 사진 내용은 늘이거나 찌그러뜨리지 않고 크기만 줄입니다. val()은 배치 안 사진들의 비율에 맞춘 직사각형을 쓰고, train()은 여러 사진을 섞는 증강(모자이크) 때문에 정사각형을 씁니다.</figcaption>
+</figure>
+
+<ul>
+  <li>입력 텐서 모양은 <code>(1, 3, H, W)</code>입니다. 1은 사진 장수, 3은 RGB 채널이고, 값은 0~255를 255로 나눈 0~1 사이 float32입니다.</li>
+  <li>H와 W는 32의 배수여야 합니다. 보폭 2인 Conv가 다섯 번 있어서 2를 다섯 번 곱하면 32이기 때문입니다. 640 ÷ 32 = 20이 가장 작은 특징맵 크기입니다.</li>
+  <li><code>predict()</code>는 기본으로 정사각형을 고집하지 않아서 bus.jpg는 480×640으로 들어갑니다. 이때 출력 칸 수는 8400이 아니라 60×80 + 30×40 + 15×20 = 6300입니다.</li>
+  <li><code>imgsz</code>를 줄이면(예: 320) 칸 수와 계산량이 약 4분의 1로 줄어 빨라지지만, 작은 물체를 놓치기 쉬워집니다.</li>
+</ul>
+
+<h2>결과 형태</h2>
+<h3>모델이 바로 내는 값 (NMS 전)</h3>
+<p>640×640 입력이면 모양이 <code>(1, 84, 8400)</code>입니다. 8400은 세 해상도의 칸을 모두 합친 수(6,400 + 1,600 + 400)이고, 칸 하나가 물체 후보 하나입니다. 84는 칸마다 나오는 값의 개수입니다.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>위치</th><th>값</th><th>뜻</th></tr></thead>
+  <tbody>
+    <tr><td>0~3</td><td>cx, cy, w, h</td><td>박스 중심 좌표와 너비, 높이 (입력 이미지 픽셀 단위)</td></tr>
+    <tr><td>4~83</td><td>클래스 점수 80개</td><td>각 클래스일 확률 (0~1). 가장 큰 값이 그 칸의 클래스와 confidence가 됨</td></tr>
+  </tbody>
+</table>
+</div>
+<p>YOLO11은 "물체가 있을 확률"을 따로 내지 않습니다. 클래스 점수 중 가장 큰 값을 그대로 confidence로 씁니다.</p>
+
+<h3>사용자가 받는 값 (NMS 후)</h3>
+<p>8400개 후보 중 confidence가 <code>conf</code>(기본 0.25)보다 낮은 것을 버리고, 같은 물체에 겹쳐 있는 박스는 NMS로 하나만 남깁니다. 남은 N개가 <code>Results.boxes</code>에 들어갑니다. 좌표는 원본 사진 기준 픽셀로 되돌려져 있습니다.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>속성</th><th>모양</th><th>내용</th></tr></thead>
+  <tbody>
+    <tr><td><code>boxes.xyxy</code></td><td>(N, 4)</td><td>왼쪽 위 x, y와 오른쪽 아래 x, y (원본 픽셀)</td></tr>
+    <tr><td><code>boxes.xywhn</code></td><td>(N, 4)</td><td>중심 x, y와 너비, 높이를 0~1로 나눈 값</td></tr>
+    <tr><td><code>boxes.conf</code></td><td>(N,)</td><td>confidence</td></tr>
+    <tr><td><code>boxes.cls</code></td><td>(N,)</td><td>클래스 번호. <code>model.names[번호]</code>로 이름 확인</td></tr>
+    <tr><td><code>boxes.data</code></td><td>(N, 6)</td><td>위 값을 한 줄로 합친 것. x1, y1, x2, y2, conf, cls</td></tr>
+  </tbody>
+</table>
+</div>
+<pre><code>r = model("bus.jpg")[0]
+print(r.boxes.data.shape)   # torch.Size([5, 6])  bus 1개 + person 4개
+print(r.orig_shape)         # (1080, 810)  원본 세로, 가로</code></pre>
+
+<h2>우리 프로젝트에서 볼 점</h2>
+<ul>
+  <li>COCO 정확도는 s가 7.5점 높고(39.5와 47.0), 대신 파라미터는 3.6배, 계산량은 3.3배입니다.</li>
+  <li>Jetson에서 돌릴 거라면 n으로 시작해서 실제 FPS를 재고, 정확도가 모자랄 때 s를 비교하는 순서가 안전합니다.</li>
+  <li>노트북 GPU에서 잰 속도는 Jetson 속도를 알려 주지 않습니다. CPU 결과(30ms와 54ms)가 차이를 더 잘 보여 줍니다.</li>
+  <li>쓰레기 클래스로 다시 학습하면 클래스 수가 80에서 4개 정도로 줄어서 출력이 (1, 8, 8400)이 되고, Detect 층 파라미터도 줄어듭니다.</li>
+</ul>
+
+<h2>측정 조건</h2>
+<p class="note">ultralytics 8.4.143, torch 2.14.0 (CUDA 13.0), Python 3.12, Windows 11, RTX 5070 Ti Laptop GPU. 파라미터 수와 층별 출력 크기는 <code>torch.zeros(1, 3, 640, 640)</code>을 넣어 측정했습니다. 연산량은 ultralytics의 <code>get_flops</code> 값입니다. COCO mAP는 Ultralytics YOLO11 공식 문서 표의 값이고 직접 재지 않았습니다.</p>
+
+</main>
+</body>
+</html>

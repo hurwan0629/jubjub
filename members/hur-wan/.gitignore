@@ -1,0 +1,39 @@
+# hur-wan 개인 폴더 전용 ignore
+# (*.pt 가중치, runs/, __pycache__/, .ipynb_checkpoints/, .env 등은 루트 .gitignore 에서 이미 제외됨)
+
+# ===== 데이터셋 =====
+# TACO(17GB, 자체 .git 포함), AIHub 샘플 등 — 용량이 크고 라이선스상 재배포 불가
+datasets/
+
+# YOLO 학습 시 자동 생성되는 라벨 캐시
+*.cache
+
+# ===== 이미지 =====
+# 데이터셋 원천 이미지, 추론 결과, 캡처 등 — 어느 폴더에 있든 올리지 않음
+*.png
+*.PNG
+*.jpg
+*.JPG
+*.jpeg
+*.JPEG
+*.bmp
+*.BMP
+*.webp
+*.gif
+*.tif
+*.tiff
+*.heic
+*.svg
+
+# ===== 압축 파일 / 대용량 미디어 =====
+# 데이터셋·가중치 다운로드 원본
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+*.rar
+# 테스트용 영상
+*.mp4
+*.avi
+*.mov
