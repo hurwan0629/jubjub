@@ -44,3 +44,6 @@ datasets/recycle_aihub/sample_data/01.원천데이터
 *.mp4
 *.avi
 *.mov
+
+# ===== 프로그램 빌드 파일 =====
+tools/jupjup-labeler/jupjup-labeler.exe

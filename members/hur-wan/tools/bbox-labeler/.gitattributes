@@ -1,0 +1,4 @@
+# Windows 배치 파일은 CRLF, mac/linux 실행기는 LF 로 유지
+*.bat      text eol=crlf
+*.command  text eol=lf
+*.sh       text eol=lf

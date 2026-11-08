@@ -1,0 +1,4 @@
+# 개인 설정과 오류 기록은 사람마다 달라서 올리지 않음
+settings.json
+error.log
+*.tmp
