@@ -3,10 +3,17 @@
 
 # ===== 데이터셋 =====
 # TACO(17GB, 자체 .git 포함), AIHub 샘플 등 — 용량이 크고 라이선스상 재배포 불가
-datasets/
+datasets/TACO/data/batch*/
+datasets/TACO/data/taco_yolo/images/
+datasets/TACO/data/unofficial/
+datasets/aihub_living_trash/sample_data/01.원천데이터
+datasets/recycle_aihub/sample_data/01.원천데이터
 
 # YOLO 학습 시 자동 생성되는 라벨 캐시
 *.cache
+
+# ===== 스크립트 =====
+!datasets/TACO/data/data_to_yolo.ipynb
 
 # ===== 이미지 =====
 # 데이터셋 원천 이미지, 추론 결과, 캡처 등 — 어느 폴더에 있든 올리지 않음

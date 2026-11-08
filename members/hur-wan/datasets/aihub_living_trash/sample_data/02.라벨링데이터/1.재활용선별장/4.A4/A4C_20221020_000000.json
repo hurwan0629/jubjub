@@ -1,0 +1,45 @@
+{
+	"objects": [
+		{
+			"id": "3da27b87-ad68-4d0d-b75d-004ff1bcfa42",
+			"class_id": "85cc57ee-fe38-4955-b797-40cab1f2e7d7",
+			"tracking_id": 1,
+			"class_name": "c_6_01",
+			"annotation_type": "box",
+			"annotation": {
+				"coord": {
+					"x": 1595.0606514056187,
+					"y": 34.97506585298617,
+					"width": 97.04572448651516,
+					"height": 101.14021591673693
+				},
+				"meta": {
+					"z_index": 1,
+					"visible": true,
+					"alpha": 1,
+					"color": "#EE0A00"
+				}
+			},
+			"properties": []
+		}
+	],
+	"categories": {
+		"properties": []
+	},
+	"Image": "A4C_20221020_000000.jpg",
+	"Info": {
+		"PLACE": "실내",
+		"GPS": "34.83633851/127.90984",
+		"ADDRESS": "생활폐기물처리장, 에코파크길, 남변리, 남해군, 52420, 대한민국",
+		"METHOD": "A4C",
+		"DATE": "2022-10-20",
+		"DAY/NIGHT": "주간",
+		"DEVICE": "HU205",
+		"BRAND": "HUENTEK",
+		"RESOLUTION": "1847/883",
+		"COLOR": 1,
+		"ROTATE": 0,
+		"EXPOSURE": "0.002",
+		"ISO": 0
+	}
+}

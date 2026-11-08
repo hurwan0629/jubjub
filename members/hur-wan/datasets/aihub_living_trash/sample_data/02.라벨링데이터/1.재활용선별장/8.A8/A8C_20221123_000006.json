@@ -1,0 +1,67 @@
+{
+	"objects": [
+		{
+			"id": "55d26073-02c1-4dd9-ab07-d53af71fdbcc",
+			"class_id": "3cb81173-41f1-4cc4-8415-dc3b33dc14b4",
+			"tracking_id": 1,
+			"class_name": "c_5_01",
+			"annotation_type": "box",
+			"annotation": {
+				"coord": {
+					"x": 625.5015306158006,
+					"y": 0,
+					"width": 282.6097827140062,
+					"height": 226.92919529856158
+				},
+				"meta": {
+					"z_index": 1,
+					"visible": true,
+					"alpha": 1,
+					"color": "#76C923"
+				}
+			},
+			"properties": []
+		},
+		{
+			"id": "4d0d1344-7b3d-4903-b7ab-a925042445ed",
+			"class_id": "e92309a9-1d10-407f-b459-32b664bd0d0f",
+			"tracking_id": 2,
+			"class_name": "c_5_01_01",
+			"annotation_type": "box",
+			"annotation": {
+				"coord": {
+					"x": 342.4590217087066,
+					"y": 321.00052443409913,
+					"width": 638.4347063382381,
+					"height": 214.22486549397854
+				},
+				"meta": {
+					"z_index": 2,
+					"visible": true,
+					"alpha": 1,
+					"color": "#FFC8D9"
+				}
+			},
+			"properties": []
+		}
+	],
+	"categories": {
+		"properties": []
+	},
+	"Image": "A8C_20221123_000006.jpg",
+	"Info": {
+		"PLACE": "실내",
+		"GPS": "35.8186096/129.2705731",
+		"ADDRESS": "보덕동, 경주시, 경상북도, 38174, 대한민국",
+		"METHOD": "A8C",
+		"DATE": "2022-11-23",
+		"DAY/NIGHT": "주간",
+		"DEVICE": "HU205",
+		"BRAND": "HUENTEK",
+		"RESOLUTION": "1847/883",
+		"COLOR": 1,
+		"ROTATE": 0,
+		"EXPOSURE": "0.002",
+		"ISO": 0
+	}
+}

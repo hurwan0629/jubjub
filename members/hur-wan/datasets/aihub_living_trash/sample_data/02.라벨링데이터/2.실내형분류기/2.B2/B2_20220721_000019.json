@@ -1,0 +1,45 @@
+{
+	"objects": [
+		{
+			"id": "db6d0284-4e62-426a-8678-1d5293b8846b",
+			"class_id": "85cc57ee-fe38-4955-b797-40cab1f2e7d7",
+			"tracking_id": 1,
+			"class_name": "c_6_01",
+			"annotation_type": "box",
+			"annotation": {
+				"coord": {
+					"x": 498.72526811207126,
+					"y": 125.75301271174638,
+					"width": 323.2348570899635,
+					"height": 325.30025553782275
+				},
+				"meta": {
+					"z_index": 1,
+					"visible": true,
+					"alpha": 1,
+					"color": "#EE0A00"
+				}
+			},
+			"properties": []
+		}
+	],
+	"categories": {
+		"properties": []
+	},
+	"Image": "B2_20220721_000019.jpg",
+	"Info": {
+		"PLACE": "실내",
+		"GPS": "36.18211179982212/128.47765279972222",
+		"ADDRESS": "송백로, 구미시, 경상북도, 39159, 대한민국",
+		"METHOD": "B2",
+		"DATE": "S_2022-07-21 09_44_23",
+		"DAY/NIGHT": "주간",
+		"DEVICE": "HU205",
+		"BRAND": "HUENTEK",
+		"RESOLUTION": "1280/960",
+		"COLOR": 1,
+		"ROTATE": 0,
+		"EXPOSURE": "2",
+		"ISO": 0
+	}
+}

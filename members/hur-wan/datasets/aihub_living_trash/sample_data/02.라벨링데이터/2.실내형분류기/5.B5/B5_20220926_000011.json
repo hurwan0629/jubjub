@@ -1,0 +1,45 @@
+{
+	"objects": [
+		{
+			"id": "4aeeb3f3-62b4-40ca-b356-1cd7b82c618a",
+			"class_id": "292c5b9c-e203-4ec1-9ca8-7579273fc70c",
+			"tracking_id": 1,
+			"class_name": "c_6",
+			"annotation_type": "box",
+			"annotation": {
+				"coord": {
+					"x": 323.32,
+					"y": 165.87,
+					"width": 461.07,
+					"height": 604.5120371112732
+				},
+				"meta": {
+					"z_index": 0,
+					"visible": true,
+					"alpha": 1,
+					"color": "#C9F6EA"
+				}
+			},
+			"properties": []
+		}
+	],
+	"categories": {
+		"properties": []
+	},
+	"Image": "B5_20220926_000011.jpg",
+	"Info": {
+		"PLACE": "실내",
+		"GPS": "35.31755924/129.0098741",
+		"ADDRESS": "부산대학로, 물금읍, 양산시, 경상남도, 50612, 대한민국",
+		"METHOD": "B5",
+		"DATE": "2022-09-26 09:11:14",
+		"DAY/NIGHT": "주간",
+		"DEVICE": "HU205",
+		"BRAND": "HUENTEK",
+		"RESOLUTION": "1185/891",
+		"COLOR": 1,
+		"ROTATE": 0,
+		"EXPOSURE": "0.002",
+		"ISO": 0
+	}
+}

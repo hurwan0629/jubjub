@@ -1,0 +1,67 @@
+{
+	"objects": [
+		{
+			"id": "07b50902-4d01-494a-b7b8-586b49372a83",
+			"class_id": "a3573c52-ceb9-4f8d-acfe-d556aa018936",
+			"tracking_id": 1,
+			"class_name": "c_5_02",
+			"annotation_type": "box",
+			"annotation": {
+				"coord": {
+					"x": 1495.7945683078872,
+					"y": 808.6730977248839,
+					"width": 152.1623897618481,
+					"height": 74.32690227511614
+				},
+				"meta": {
+					"z_index": 1,
+					"visible": true,
+					"alpha": 1,
+					"color": "#B8FFD0"
+				}
+			},
+			"properties": []
+		},
+		{
+			"id": "acd1a425-4503-4ca5-ba78-5693d1daa645",
+			"class_id": "a3573c52-ceb9-4f8d-acfe-d556aa018936",
+			"tracking_id": 2,
+			"class_name": "c_5_02",
+			"annotation_type": "box",
+			"annotation": {
+				"coord": {
+					"x": 1511.4190163972994,
+					"y": 0,
+					"width": 148.37126859622526,
+					"height": 89.56890613550098
+				},
+				"meta": {
+					"z_index": 2,
+					"visible": true,
+					"alpha": 1,
+					"color": "#B8FFD0"
+				}
+			},
+			"properties": []
+		}
+	],
+	"categories": {
+		"properties": []
+	},
+	"Image": "A4C_20221020_000012.jpg",
+	"Info": {
+		"PLACE": "실내",
+		"GPS": "34.83633851/127.90984",
+		"ADDRESS": "생활폐기물처리장, 에코파크길, 남변리, 남해군, 52420, 대한민국",
+		"METHOD": "A4C",
+		"DATE": "2022-10-20",
+		"DAY/NIGHT": "주간",
+		"DEVICE": "HU205",
+		"BRAND": "HUENTEK",
+		"RESOLUTION": "1847/883",
+		"COLOR": 1,
+		"ROTATE": 0,
+		"EXPOSURE": "0.002",
+		"ISO": 0
+	}
+}

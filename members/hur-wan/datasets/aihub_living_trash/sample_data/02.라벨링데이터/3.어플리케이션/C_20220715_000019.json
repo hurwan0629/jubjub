@@ -1,0 +1,111 @@
+{
+    "objects": [
+        {
+            "id": "2c271073-4645-4a2a-9538-bfbf70a0239c",
+            "class_id": "010c9f1d-3875-4f74-b8c7-96d95fef3b8b",
+            "tracking_id": 1,
+            "class_name": "c_2_02",
+            "annotation_type": "box",
+            "annotation": {
+                "coord": {
+                    "x": 634.775638897245,
+                    "y": 896.1667361479905,
+                    "width": 617.2604399114055,
+                    "height": 675.004158483763
+                },
+                "meta": {
+                    "z_index": 1,
+                    "visible": true,
+                    "alpha": 1,
+                    "color": "#FFD0CE"
+                }
+            },
+            "properties": []
+        },
+        {
+            "id": "f99a8c0e-dd5d-4173-9686-89a26371cb91",
+            "class_id": "e92309a9-1d10-407f-b459-32b664bd0d0f",
+            "tracking_id": 2,
+            "class_name": "c_5_01_01",
+            "annotation_type": "box",
+            "annotation": {
+                "coord": {
+                    "x": 911.5472555026817,
+                    "y": 981.7867326518307,
+                    "width": 1154.8743714471457,
+                    "height": 826.332524397527
+                },
+                "meta": {
+                    "z_index": 2,
+                    "visible": true,
+                    "alpha": 1,
+                    "color": "#FFC8D9"
+                }
+            },
+            "properties": []
+        },
+        {
+            "id": "d8ef779d-29e5-43fd-a110-1409fd2d6812",
+            "class_id": "931b64ac-591e-4c5b-b88b-09e146d7c254",
+            "tracking_id": 3,
+            "class_name": "c_7",
+            "annotation_type": "box",
+            "annotation": {
+                "coord": {
+                    "x": 208.6668190874359,
+                    "y": 1553.250430247229,
+                    "width": 1047.351585139998,
+                    "height": 1405.0826313528478
+                },
+                "meta": {
+                    "z_index": 3,
+                    "visible": true,
+                    "alpha": 1,
+                    "color": "#AFFFFF"
+                }
+            },
+            "properties": []
+        },
+        {
+            "id": "ce10ee20-c69a-430b-bad6-edc1c5b39f47",
+            "class_id": "931b64ac-591e-4c5b-b88b-09e146d7c254",
+            "tracking_id": 4,
+            "class_name": "c_7",
+            "annotation_type": "box",
+            "annotation": {
+                "coord": {
+                    "x": 1095.957018122153,
+                    "y": 1555.8606518770257,
+                    "width": 1513.3229686968753,
+                    "height": 1644.7299327784758
+                },
+                "meta": {
+                    "z_index": 4,
+                    "visible": true,
+                    "alpha": 1,
+                    "color": "#AFFFFF"
+                }
+            },
+            "properties": []
+        }
+    ],
+    "categories": {
+        "properties": []
+    },
+    "Image": "C_20220715_000019.jpg",
+    "Info": {
+        "PLACE": "실외",
+        "GPS": "35.14143888888889/129.0562138888889",
+        "ADDRESS": "중앙대로, 범일1동, 범일동, 동구, 부산, 47360, 대한민국",
+        "METHOD": "C",
+        "DATE": "2022:07:14 18:33:18",
+        "DAY/NIGHT": "주간",
+        "DEVICE": "iPhone 11",
+        "BRAND": "Apple",
+        "RESOLUTION": "4032/3024",
+        "COLOR": 65535,
+        "ROTATE": 6,
+        "EXPOSURE": "0.006896551724137931",
+        "ISO": 32
+    }
+}
