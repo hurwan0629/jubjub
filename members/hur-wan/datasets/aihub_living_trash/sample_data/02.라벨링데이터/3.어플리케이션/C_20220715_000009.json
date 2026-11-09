@@ -1,0 +1,133 @@
+{
+    "objects": [
+        {
+            "id": "3800ec98-7b6e-4742-b1eb-e73530e4a041",
+            "class_id": "916ce2cb-6bee-423f-98a5-61dc70f57c53",
+            "tracking_id": 1,
+            "class_name": "c_3",
+            "annotation_type": "box",
+            "annotation": {
+                "coord": {
+                    "x": 575.4152169578974,
+                    "y": 1844.664801310043,
+                    "width": 762.5966112687631,
+                    "height": 575.7757602032016
+                },
+                "meta": {
+                    "z_index": 1,
+                    "visible": true,
+                    "alpha": 1,
+                    "color": "#FFDFD5"
+                }
+            },
+            "properties": []
+        },
+        {
+            "id": "5f272748-e05b-4a02-a5c4-47d0d27c3e00",
+            "class_id": "80aee1fe-f6ff-4e3b-987f-b7105eccd708",
+            "tracking_id": 2,
+            "class_name": "c_1",
+            "annotation_type": "box",
+            "annotation": {
+                "coord": {
+                    "x": 765.2987572589584,
+                    "y": 1296.4527403775464,
+                    "width": 970.8559735281071,
+                    "height": 664.5922491389413
+                },
+                "meta": {
+                    "z_index": 2,
+                    "visible": true,
+                    "alpha": 1,
+                    "color": "#FF4881"
+                }
+            },
+            "properties": []
+        },
+        {
+            "id": "8f113be6-cb9e-4600-acb7-71559e3b5717",
+            "class_id": "3cb81173-41f1-4cc4-8415-dc3b33dc14b4",
+            "tracking_id": 3,
+            "class_name": "c_5_01",
+            "annotation_type": "box",
+            "annotation": {
+                "coord": {
+                    "x": 1742.2799113088965,
+                    "y": 984.0637514197517,
+                    "width": 885.1021844549161,
+                    "height": 927.9790904825495
+                },
+                "meta": {
+                    "z_index": 3,
+                    "visible": true,
+                    "alpha": 1,
+                    "color": "#76C923"
+                }
+            },
+            "properties": []
+        },
+        {
+            "id": "06056c85-9e47-45b7-a154-ddb4e8aa777c",
+            "class_id": "292c5b9c-e203-4ec1-9ca8-7579273fc70c",
+            "tracking_id": 4,
+            "class_name": "c_6",
+            "annotation_type": "box",
+            "annotation": {
+                "coord": {
+                    "x": 1004.7460594839406,
+                    "y": 1981.9741229744118,
+                    "width": 733.7121783160544,
+                    "height": 988.8182155177988
+                },
+                "meta": {
+                    "z_index": 4,
+                    "visible": true,
+                    "alpha": 1,
+                    "color": "#C9F6EA"
+                }
+            },
+            "properties": []
+        },
+        {
+            "id": "27be3e72-4ce6-4c59-9d2e-be83d5337b41",
+            "class_id": "80aee1fe-f6ff-4e3b-987f-b7105eccd708",
+            "tracking_id": 5,
+            "class_name": "c_1",
+            "annotation_type": "box",
+            "annotation": {
+                "coord": {
+                    "x": 1707.0391056374322,
+                    "y": 1741.5441357928264,
+                    "width": 552.4935743993831,
+                    "height": 930.2527898935971
+                },
+                "meta": {
+                    "z_index": 5,
+                    "visible": true,
+                    "alpha": 1,
+                    "color": "#FF4881"
+                }
+            },
+            "properties": []
+        }
+    ],
+    "categories": {
+        "properties": []
+    },
+    "Image": "C_20220715_000009.jpg",
+    "Info": {
+        "PLACE": "실외",
+        "GPS": "35.14149444444445/129.0562138888889",
+        "ADDRESS": "중앙대로, 범일1동, 범일동, 동구, 부산, 47360, 대한민국",
+        "METHOD": "C",
+        "DATE": "2022:07:14 18:23:49",
+        "DAY/NIGHT": "주간",
+        "DEVICE": "iPhone 11",
+        "BRAND": "Apple",
+        "RESOLUTION": "4032/3024",
+        "COLOR": 65535,
+        "ROTATE": 6,
+        "EXPOSURE": "0.007874015748031496",
+        "ISO": 32
+    }
+}

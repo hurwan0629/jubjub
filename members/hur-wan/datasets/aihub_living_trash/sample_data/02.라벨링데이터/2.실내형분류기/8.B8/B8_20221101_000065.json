@@ -1,0 +1,45 @@
+{
+	"objects": [
+		{
+			"id": "d4bfb8bc-0ee3-4c30-9511-017e16f6a47a",
+			"class_id": "292c5b9c-e203-4ec1-9ca8-7579273fc70c",
+			"tracking_id": 1,
+			"class_name": "c_6",
+			"annotation_type": "box",
+			"annotation": {
+				"coord": {
+					"x": 494.03512169774683,
+					"y": 521.0842378910882,
+					"width": 144.63831394942997,
+					"height": 151.16847578217642
+				},
+				"meta": {
+					"z_index": 1,
+					"visible": true,
+					"alpha": 1,
+					"color": "#C9F6EA"
+				}
+			},
+			"properties": []
+		}
+	],
+	"categories": {
+		"properties": []
+	},
+	"Image": "B8_20221101_000065.jpg",
+	"Info": {
+		"PLACE": "실내",
+		"GPS": "35.2322991/129.0849897",
+		"ADDRESS": "금강로, 부산대학교 젊음의 거리, 장전동, 금정구, 부산, 46285, 대한민국",
+		"METHOD": "B8",
+		"DATE": "2022-11-01 08:36:25",
+		"DAY/NIGHT": "주간",
+		"DEVICE": "HU205",
+		"BRAND": "HUENTEK",
+		"RESOLUTION": "1185/891",
+		"COLOR": 1,
+		"ROTATE": 0,
+		"EXPOSURE": "0.002",
+		"ISO": 0
+	}
+}

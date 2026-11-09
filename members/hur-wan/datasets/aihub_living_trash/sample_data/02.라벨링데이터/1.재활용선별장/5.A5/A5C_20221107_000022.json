@@ -1,0 +1,67 @@
+{
+	"objects": [
+		{
+			"id": "f697fb33-d804-4cdd-813a-484d1af74417",
+			"class_id": "a3573c52-ceb9-4f8d-acfe-d556aa018936",
+			"tracking_id": 1,
+			"class_name": "c_5_02",
+			"annotation_type": "box",
+			"annotation": {
+				"coord": {
+					"x": 1281.6041083553866,
+					"y": 0,
+					"width": 232.4834718516297,
+					"height": 63.2323218641361
+				},
+				"meta": {
+					"z_index": 1,
+					"visible": true,
+					"alpha": 1,
+					"color": "#B8FFD0"
+				}
+			},
+			"properties": []
+		},
+		{
+			"id": "505a51a1-3b3b-4023-a217-4a2106e542d3",
+			"class_id": "3cb81173-41f1-4cc4-8415-dc3b33dc14b4",
+			"tracking_id": 2,
+			"class_name": "c_5_01",
+			"annotation_type": "box",
+			"annotation": {
+				"coord": {
+					"x": 1214.1738372988534,
+					"y": 0,
+					"width": 237.51558163196796,
+					"height": 414.47358453174985
+				},
+				"meta": {
+					"z_index": 2,
+					"visible": true,
+					"alpha": 1,
+					"color": "#76C923"
+				}
+			},
+			"properties": []
+		}
+	],
+	"categories": {
+		"properties": []
+	},
+	"Image": "A5C_20221107_000022.jpg",
+	"Info": {
+		"PLACE": "실내",
+		"GPS": "35.1524078/129.0167277",
+		"ADDRESS": "주감로, 주례2동, 주례동, 사상구, 부산, 47007, 대한민국",
+		"METHOD": "A5C",
+		"DATE": "2022-11-07",
+		"DAY/NIGHT": "주간",
+		"DEVICE": "HU205",
+		"BRAND": "HUENTEK",
+		"RESOLUTION": "1847/883",
+		"COLOR": 1,
+		"ROTATE": 0,
+		"EXPOSURE": "0.002",
+		"ISO": 0
+	}
+}

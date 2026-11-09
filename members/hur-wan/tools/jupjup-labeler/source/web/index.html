@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ko" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>줍줍 라벨러</title>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="topbar">
+      <div class="brand"><img src="img/logo.svg" alt=""><b>줍줍 라벨러</b></div>
+      <div class="sep"></div>
+      <button class="ds-chip" id="dsChip" data-tip="데이터 폴더 메뉴">
+        <span id="dsIcon"></span><span class="name" id="dsName">데이터 폴더</span><span id="dsCaret"></span>
+      </button>
+      <div class="nav-cluster">
+        <button class="icon-btn" id="btnPrev" data-tip="이전 이미지" data-key="A"></button>
+        <div class="nav-pos"><span class="pos" id="navPos">0 <small>/ 0</small></span><span class="fname" id="navName"></span></div>
+        <button class="icon-btn" id="btnNext" data-tip="다음 이미지" data-key="D"></button>
+      </div>
+      <div class="spacer"></div>
+      <div class="progress-pill" id="progressPill" data-tip="사람이 확인(✔)한 이미지">
+        <svg viewBox="0 0 24 24"><circle class="track" cx="12" cy="12" r="9.5" fill="none" stroke-width="3"/><circle class="val" id="progressRing" cx="12" cy="12" r="9.5" fill="none" stroke-width="3" stroke-linecap="round" stroke-dasharray="59.7" stroke-dashoffset="59.7"/></svg>
+        <span id="progressText">0%</span>
+      </div>
+      <div class="save-state" id="saveState" data-tip="고칠 때마다 labels/ 폴더에 자동 저장돼요"><span class="dot"></span><span id="saveText">자동 저장</span></div>
+      <button class="icon-btn" id="btnUndo" data-tip="되돌리기" data-key="Ctrl+Z"></button>
+      <button class="icon-btn" id="btnRedo" data-tip="다시 실행" data-key="Ctrl+Y"></button>
+      <div class="sep"></div>
+      <button class="icon-btn" id="btnGuide" data-tip="사용 가이드" data-key="F1"></button>
+      <button class="icon-btn" id="btnSettings" data-tip="설정"></button>
+      <button class="btn primary" id="btnExport" data-tip="YOLO · COCO로 내보내기" data-key="Ctrl+E"></button>
+    </header>
+
+    <div class="workspace">
+      <aside class="panel left" id="leftPanel">
+        <div class="panel-head"><h3>이미지</h3><span class="count num" id="imgCount">0</span><span class="grow"></span>
+          <button class="icon-btn sm" id="btnAddImages" data-tip="이미지 추가"></button></div>
+        <div class="panel-pad"><label class="search"><span id="searchIcon"></span><input id="imgSearch" placeholder="파일 이름 검색" spellcheck="false"></label></div>
+        <div class="chips" id="filterChips"></div>
+        <div class="vlist" id="imgList" tabindex="-1"><div class="vlist-inner" id="imgListInner"></div></div>
+        <div class="panel-foot">
+          <div class="bar"><i id="reviewBar"></i></div>
+          <div class="foot-text"><span id="footLeft">확인 0 / 0</span><span id="footRight"></span></div>
+        </div>
+      </aside>
+
+      <main class="stage" id="stage">
+        <canvas id="canvas" tabindex="0"></canvas>
+        <div class="stage-top">
+          <div class="image-chip float" id="imageChip" hidden>
+            <span class="t" id="imgTitle"></span>
+            <button class="status-pill" id="statusPill"></button>
+            <span class="src-pill" id="srcPill"></span>
+          </div>
+        </div>
+        <div class="banner" id="polyBanner" hidden>
+          <span id="polyIcon"></span><span>이 라벨에는 <b>폴리곤(세그멘테이션)</b>이 있어요. 고치면 박스로 바뀌어 저장돼요.</span>
+          <button class="btn sm" id="polyAllow">박스로 바꾸고 편집</button>
+        </div>
+        <div class="stage-bottom">
+          <div class="hint-pill float" id="hintPill"></div>
+          <div class="coord-pill float" id="coordPill" hidden></div>
+          <div class="dock float" id="dock">
+            <button class="icon-btn" id="zoomOut" data-tip="축소" data-key="-"></button>
+            <button class="zoom" id="zoomLabel" data-tip="100%로 보기">100%</button>
+            <button class="icon-btn" id="zoomIn" data-tip="확대" data-key="+"></button>
+            <span class="dsep"></span>
+            <button class="icon-btn" id="btnFit" data-tip="화면에 맞추기" data-key="F"></button>
+            <button class="icon-btn" id="btnHide" data-tip="박스 숨기기" data-key="H"></button>
+            <button class="icon-btn" id="btnKeys" data-tip="단축키" data-key="?"></button>
+          </div>
+        </div>
+        <div class="stage-msg" id="stageMsg" hidden></div>
+        <div class="loader" id="loader" hidden></div>
+      </main>
+
+      <aside class="panel right" id="rightPanel">
+        <div class="cur-card" id="curCard">
+          <div class="lab" id="curLab">현재 클래스</div>
+          <div class="val"><span class="sw"></span><span class="nm" id="curName">-</span><kbd id="curKey">1</kbd></div>
+        </div>
+        <div class="panel-head"><h3>클래스</h3><span class="count num" id="clsCount">0</span><span class="src-note" id="clsSource"></span></div>
+        <div class="panel-pad" id="clsSearchWrap" hidden><label class="search"><span id="clsSearchIcon"></span><input id="clsSearch" placeholder="클래스 검색" spellcheck="false"></label></div>
+        <div class="class-list" id="classList"></div>
+        <div class="panel-head"><h3>이 이미지의 박스</h3><span class="count num" id="boxCount">0</span><span class="grow"></span>
+          <button class="icon-btn sm" id="btnClearBoxes" data-tip="박스 모두 지우기"></button></div>
+        <div class="box-list" id="boxList"></div>
+      </aside>
+    </div>
+
+    <section class="welcome" id="welcome"></section>
+  </div>
+  <div id="layer"></div>
+  <div class="toasts" id="toasts"></div>
+
+  <script src="js/icons.js"></script>
+  <script src="js/guide.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

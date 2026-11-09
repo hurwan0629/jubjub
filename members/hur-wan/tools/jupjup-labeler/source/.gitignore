@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+build/
+dist/
+*.spec
+
+# 상위(.gitignore)에서 이미지를 제외하지만, 프로그램에 들어가는 로고·화면 이미지는 소스라서 포함
+!*.png
+!*.svg
+!*.webp

@@ -1,0 +1,7 @@
+# 공부하면서 생기는 다운로드/생성 파일은 올리지 않음
+# (*.pt 가중치와 runs/ 는 루트 .gitignore 에서 이미 제외됨)
+*.jpg
+*.jpeg
+*.png
+samples/
+datasets/

@@ -1,0 +1,67 @@
+{
+    "objects": [
+        {
+            "id": "af4d811f-ebc9-4dd9-ad4d-0f7d5f81a9a3",
+            "class_id": "3cb81173-41f1-4cc4-8415-dc3b33dc14b4",
+            "tracking_id": 1,
+            "class_name": "c_5_01",
+            "annotation_type": "box",
+            "annotation": {
+                "coord": {
+                    "x": 759.8975988494902,
+                    "y": 1979.8910741662833,
+                    "width": 970.9649537735864,
+                    "height": 838.7073225647885
+                },
+                "meta": {
+                    "z_index": 1,
+                    "visible": true,
+                    "alpha": 1,
+                    "color": "#76C923"
+                }
+            },
+            "properties": []
+        },
+        {
+            "id": "371ea605-2025-4342-995a-4876aea48c47",
+            "class_id": "292c5b9c-e203-4ec1-9ca8-7579273fc70c",
+            "tracking_id": 2,
+            "class_name": "c_6",
+            "annotation_type": "box",
+            "annotation": {
+                "coord": {
+                    "x": 1450.1658371338788,
+                    "y": 1611.9391696847213,
+                    "width": 899.1828884706554,
+                    "height": 772.9818322751264
+                },
+                "meta": {
+                    "z_index": 2,
+                    "visible": true,
+                    "alpha": 1,
+                    "color": "#C9F6EA"
+                }
+            },
+            "properties": []
+        }
+    ],
+    "categories": {
+        "properties": []
+    },
+    "Image": "C_20220715_000011.jpg",
+    "Info": {
+        "PLACE": "실외",
+        "GPS": "35.14149166666667/129.0562138888889",
+        "ADDRESS": "중앙대로, 범일1동, 범일동, 동구, 부산, 47360, 대한민국",
+        "METHOD": "C",
+        "DATE": "2022:07:14 18:15:49",
+        "DAY/NIGHT": "주간",
+        "DEVICE": "iPhone 11",
+        "BRAND": "Apple",
+        "RESOLUTION": "4032/3024",
+        "COLOR": 65535,
+        "ROTATE": 6,
+        "EXPOSURE": "0.00819672131147541",
+        "ISO": 32
+    }
+}

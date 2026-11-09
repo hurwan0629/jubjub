@@ -1,0 +1,89 @@
+{
+	"objects": [
+		{
+			"id": "0bff4eb5-d72f-4da9-9b72-cc976b078cf6",
+			"class_id": "292c5b9c-e203-4ec1-9ca8-7579273fc70c",
+			"tracking_id": 4,
+			"class_name": "c_6",
+			"annotation_type": "box",
+			"annotation": {
+				"coord": {
+					"x": 389.65,
+					"y": 486.57,
+					"width": 272.84000000000003,
+					"height": 255.37000000000006
+				},
+				"meta": {
+					"z_index": 0,
+					"visible": false,
+					"alpha": 1,
+					"color": "#C9F6EA"
+				}
+			},
+			"properties": []
+		},
+		{
+			"id": "80103ba9-2c43-4b19-9b3a-69294ce92201",
+			"class_id": "292c5b9c-e203-4ec1-9ca8-7579273fc70c",
+			"tracking_id": 5,
+			"class_name": "c_6",
+			"annotation_type": "box",
+			"annotation": {
+				"coord": {
+					"x": 710.1123876997437,
+					"y": 563.3529197073867,
+					"width": 170.92194279895887,
+					"height": 135.41995468011737
+				},
+				"meta": {
+					"z_index": 0,
+					"visible": false,
+					"alpha": 1,
+					"color": "#C9F6EA"
+				}
+			},
+			"properties": []
+		},
+		{
+			"id": "39c95355-7b87-4715-aae3-3b7cbe18173e",
+			"class_id": "e92309a9-1d10-407f-b459-32b664bd0d0f",
+			"tracking_id": 12,
+			"class_name": "c_5_01_01",
+			"annotation_type": "box",
+			"annotation": {
+				"coord": {
+					"x": 439.6,
+					"y": 240.38,
+					"width": 275.41999999999996,
+					"height": 120.18
+				},
+				"meta": {
+					"z_index": 0,
+					"visible": false,
+					"alpha": 1,
+					"color": "#FFC8D9"
+				}
+			},
+			"properties": []
+		}
+	],
+	"categories": {
+		"properties": []
+	},
+	"Image": "B4_20220916_000000.jpg",
+	"Info": {
+		"PLACE": "실내",
+		"GPS": "35.125274/129.044808",
+		"ADDRESS": "대한민국 48785 부산 동구 초량동 초량3동 중앙대로",
+		"METHOD": "B4",
+		"DATE": "2022-09-16 08:50:36",
+		"DAY/NIGHT": "주간",
+		"DEVICE": "HU205",
+		"BRAND": "HUENTEK",
+		"RESOLUTION": "1185/891",
+		"COLOR": 1,
+		"ROTATE": 0,
+		"EXPOSURE": "0.002",
+		"ISO": 0
+	}
+}

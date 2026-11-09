@@ -1,0 +1,67 @@
+{
+	"objects": [
+		{
+			"id": "62426877-7c3f-4a08-949f-118793ac3ecd",
+			"class_id": "3cb81173-41f1-4cc4-8415-dc3b33dc14b4",
+			"tracking_id": 1,
+			"class_name": "c_5_01",
+			"annotation_type": "box",
+			"annotation": {
+				"coord": {
+					"x": 483.8681253696039,
+					"y": 0,
+					"width": 148.8194855115317,
+					"height": 410.7803814311059
+				},
+				"meta": {
+					"z_index": 1,
+					"visible": true,
+					"alpha": 1,
+					"color": "#76C923"
+				}
+			},
+			"properties": []
+		},
+		{
+			"id": "eac3ea74-2118-4350-8035-508ce42a6fcb",
+			"class_id": "292c5b9c-e203-4ec1-9ca8-7579273fc70c",
+			"tracking_id": 2,
+			"class_name": "c_6",
+			"annotation_type": "box",
+			"annotation": {
+				"coord": {
+					"x": 539.8460969840332,
+					"y": 854.5082052040214,
+					"width": 86.0149319929036,
+					"height": 28.49179479597865
+				},
+				"meta": {
+					"z_index": 2,
+					"visible": true,
+					"alpha": 1,
+					"color": "#C9F6EA"
+				}
+			},
+			"properties": []
+		}
+	],
+	"categories": {
+		"properties": []
+	},
+	"Image": "A9C_20221124_000006.jpg",
+	"Info": {
+		"PLACE": "실내",
+		"GPS": "37.9976578/127.0851553",
+		"ADDRESS": "초성리, 청산면, 연천군, 경기도, 11023, 대한민국",
+		"METHOD": "A9C",
+		"DATE": "2022-11-24",
+		"DAY/NIGHT": "주간",
+		"DEVICE": "HU205",
+		"BRAND": "HUENTEK",
+		"RESOLUTION": "1847/883",
+		"COLOR": 1,
+		"ROTATE": 0,
+		"EXPOSURE": "0.002",
+		"ISO": 0
+	}
+}

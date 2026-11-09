@@ -1,0 +1,133 @@
+{
+    "objects": [
+        {
+            "id": "cc578f29-e2ee-4491-82e2-503c9fbff8f9",
+            "class_id": "010c9f1d-3875-4f74-b8c7-96d95fef3b8b",
+            "tracking_id": 1,
+            "class_name": "c_2_02",
+            "annotation_type": "box",
+            "annotation": {
+                "coord": {
+                    "x": 1108.8864095714548,
+                    "y": 1016.8607302477092,
+                    "width": 568.3011050433201,
+                    "height": 794.1158524083219
+                },
+                "meta": {
+                    "z_index": 1,
+                    "visible": true,
+                    "alpha": 1,
+                    "color": "#FFD0CE"
+                }
+            },
+            "properties": []
+        },
+        {
+            "id": "9684d7b8-3b8b-4dd1-916c-6f7868579eb2",
+            "class_id": "010c9f1d-3875-4f74-b8c7-96d95fef3b8b",
+            "tracking_id": 2,
+            "class_name": "c_2_02",
+            "annotation_type": "box",
+            "annotation": {
+                "coord": {
+                    "x": 1967.0909352868237,
+                    "y": 2063.3224794220155,
+                    "width": 550.2166561928864,
+                    "height": 431.12201313016203
+                },
+                "meta": {
+                    "z_index": 2,
+                    "visible": true,
+                    "alpha": 1,
+                    "color": "#FFD0CE"
+                }
+            },
+            "properties": []
+        },
+        {
+            "id": "21d54ec2-90f0-4066-9ba6-fd151c58a132",
+            "class_id": "3ca26914-c881-426e-ad88-08f03faec923",
+            "tracking_id": 3,
+            "class_name": "c_4_02_01_01",
+            "annotation_type": "box",
+            "annotation": {
+                "coord": {
+                    "x": 1544.749206254786,
+                    "y": 2040.316129728975,
+                    "width": 425.09988083994176,
+                    "height": 360.279621632151
+                },
+                "meta": {
+                    "z_index": 3,
+                    "visible": true,
+                    "alpha": 1,
+                    "color": "#EFC000"
+                }
+            },
+            "properties": []
+        },
+        {
+            "id": "b0a77f83-873a-4d4f-8023-c3c990b67fa6",
+            "class_id": "292c5b9c-e203-4ec1-9ca8-7579273fc70c",
+            "tracking_id": 4,
+            "class_name": "c_6",
+            "annotation_type": "box",
+            "annotation": {
+                "coord": {
+                    "x": 920.8928624488926,
+                    "y": 1699.6914780691886,
+                    "width": 804.5373704893548,
+                    "height": 1192.9347578263214
+                },
+                "meta": {
+                    "z_index": 4,
+                    "visible": true,
+                    "alpha": 1,
+                    "color": "#C9F6EA"
+                }
+            },
+            "properties": []
+        },
+        {
+            "id": "29a1dfea-3de6-438b-9f05-8f43a24fe267",
+            "class_id": "3ca26914-c881-426e-ad88-08f03faec923",
+            "tracking_id": 5,
+            "class_name": "c_4_02_01_01",
+            "annotation_type": "box",
+            "annotation": {
+                "coord": {
+                    "x": 755.5361542603425,
+                    "y": 1849.5018820745977,
+                    "width": 348.458414387763,
+                    "height": 901.6366992396847
+                },
+                "meta": {
+                    "z_index": 5,
+                    "visible": true,
+                    "alpha": 1,
+                    "color": "#EFC000"
+                }
+            },
+            "properties": []
+        }
+    ],
+    "categories": {
+        "properties": []
+    },
+    "Image": "C_20220715_000010.jpg",
+    "Info": {
+        "PLACE": "실외",
+        "GPS": "35.14136944444444/129.05618333333334",
+        "ADDRESS": "보림극장, 중앙대로533번길, 범일1동, 범일동, 동구, 부산, 47370, 대한민국",
+        "METHOD": "C",
+        "DATE": "2022:07:14 18:42:52",
+        "DAY/NIGHT": "주간",
+        "DEVICE": "iPhone 11",
+        "BRAND": "Apple",
+        "RESOLUTION": "4032/3024",
+        "COLOR": 65535,
+        "ROTATE": 6,
+        "EXPOSURE": "0.008264462809917356",
+        "ISO": 80
+    }
+}

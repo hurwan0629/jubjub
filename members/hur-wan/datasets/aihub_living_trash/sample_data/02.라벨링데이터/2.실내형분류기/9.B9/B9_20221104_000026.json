@@ -1,0 +1,45 @@
+{
+	"objects": [
+		{
+			"id": "7a0cce25-9834-49a9-826a-37c16f75d842",
+			"class_id": "af917443-99d7-4ec2-b3e9-8136434afea5",
+			"tracking_id": 1,
+			"class_name": "c_4_02_02_02",
+			"annotation_type": "box",
+			"annotation": {
+				"coord": {
+					"x": 540.3245938817618,
+					"y": 102.80348467848572,
+					"width": 359.0027101680513,
+					"height": 434.86058784099066
+				},
+				"meta": {
+					"z_index": 1,
+					"visible": true,
+					"alpha": 1,
+					"color": "#FFFB9E"
+				}
+			},
+			"properties": []
+		}
+	],
+	"categories": {
+		"properties": []
+	},
+	"Image": "B9_20221104_000026.jpg",
+	"Info": {
+		"PLACE": "실내",
+		"GPS": "37.2859248/127.0594288",
+		"ADDRESS": "140, 광교중앙로, 영통구, 수원시, 경기도, 16514, 대한민국",
+		"METHOD": "B9",
+		"DATE": "2022-11-04 08:21:08",
+		"DAY/NIGHT": "주간",
+		"DEVICE": "HU205",
+		"BRAND": "HUENTEK",
+		"RESOLUTION": "1185/891",
+		"COLOR": 1,
+		"ROTATE": 0,
+		"EXPOSURE": "0.002",
+		"ISO": 0
+	}
+}
