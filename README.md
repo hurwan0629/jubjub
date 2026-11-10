@@ -3,7 +3,7 @@
 JetHexa 6족 로봇으로 공원에 떨어진 쓰레기를 **카메라로 인식 → 이동 → 집기 → 뒤쪽 수거통에 적재 → 분리수거**까지 수행하는 프로젝트입니다.
 로봇 상태 확인·제어용 모바일 앱도 함께 개발할 예정입니다.
 
-> 진행 상황: 기획 단계 (탐색/경로 알고리즘, 앱 프레임워크 미정)
+> 진행 상황: 기획 단계 (탐색/경로 알고리즘 미정). 앱은 Expo(React Native) + TypeScript로 결정 → [app/README.md](app/README.md)
 
 ## 팀원
 
@@ -23,7 +23,7 @@ parkkeeper-jupjup/
 ├─ docs/       기획, 회의록, 설계 문서
 ├─ robot/      JetHexa 제어 코드 (ROS) - 이동, 그리퍼, 수거통
 ├─ vision/     쓰레기 인식 모델 - 학습, 추론
-├─ app/        모바일 앱
+├─ app/        관리자 모바일 앱 (Expo · React Native) — 실행법 app/README.md, 코드 규칙 app/CONVENTIONS.md
 ├─ data/       데이터셋 안내 (실제 데이터는 git에 올리지 않음)
 └─ members/    팀원별 개인 작업 공간
 ```
@@ -82,4 +82,4 @@ git checkout dev
 - [ ] GitHub 레포 생성 후 `main` 브랜치 보호 설정
 - [ ] 탐색/경로 알고리즘 결정
 - [ ] 쓰레기 분류 클래스 결정 (`vision/README.md`)
-- [ ] 앱 프레임워크 결정
+- [x] 앱 프레임워크 결정 (Expo · React Native · TypeScript)

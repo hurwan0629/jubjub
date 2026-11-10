@@ -2,10 +2,11 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { useState } from 'react';
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Button, FilterBar, FilterChip, Icon, TopBar, Txt } from '../components/ui';
-import { icons } from '../icons';
-import type { TabParams } from '../navigation';
-import { colors, radius, softShadow } from '../theme';
+
+import { Button, FilterBar, FilterChip, Icon, Header, Txt } from '@/components';
+import { icons } from '@/icons';
+import type { TabParams } from '@/navigation';
+import { colors, radius, softShadow } from '@/theme';
 
 // Figma 지도 원본 크기
 const MAP_W = 390;
@@ -32,7 +33,7 @@ export function MapScreen({ navigation }: BottomTabScreenProps<TabParams, 'Map'>
 
   return (
     <SafeAreaView style={s.screen} edges={['top']}>
-      <TopBar title="한강공원" onBack={() => navigation.navigate('Home')} />
+      <Header title="한강공원" onBack={() => navigation.navigate('Home')} />
       <FilterBar>
         <FilterChip label="실시간" selected={layer === 'live'} onPress={() => setLayer('live')} minWidth={104} />
         <FilterChip label="히트맵" selected={layer === 'heat'} onPress={() => setLayer('heat')} minWidth={88} />
@@ -68,10 +69,18 @@ export function MapScreen({ navigation }: BottomTabScreenProps<TabParams, 'Map'>
           <Pressable style={s.controlButton} accessibilityLabel="현재 위치" onPress={() => setZoom(1)}>
             <Icon source={icons.locateFixed} size={20} />
           </Pressable>
-          <Pressable style={s.controlButton} accessibilityLabel="확대" onPress={() => setZoom((z) => Math.min(z + 0.25, 2))}>
+          <Pressable
+            style={s.controlButton}
+            accessibilityLabel="확대"
+            onPress={() => setZoom((z) => Math.min(z + 0.25, 2))}
+          >
             <Icon source={icons.plus} size={20} />
           </Pressable>
-          <Pressable style={s.controlButton} accessibilityLabel="축소" onPress={() => setZoom((z) => Math.max(z - 0.25, 1))}>
+          <Pressable
+            style={s.controlButton}
+            accessibilityLabel="축소"
+            onPress={() => setZoom((z) => Math.max(z - 0.25, 1))}
+          >
             <Icon source={icons.minus} size={20} />
           </Pressable>
         </View>

@@ -1,9 +1,10 @@
 import { useMemo, useRef, useState } from 'react';
 import { Animated, PanResponder, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Icon, Txt } from '../../components/ui';
-import { icons } from '../../icons';
-import { colors, radius } from '../../theme';
+
+import { Icon, Txt } from '@/components';
+import { icons } from '@/icons';
+import { colors, liftedShadow, radius } from '@/theme';
 
 export const STEP_COUNT = 6;
 
@@ -140,9 +141,19 @@ export function PointList({
       {points.map((p, i) => (
         <Animated.View
           key={`${p.name}-${p.x}-${p.y}`}
-          style={[st.row, drag === i ? { transform: [{ translateY: dy }], zIndex: 2, backgroundColor: colors.card, ...st.lifted } : null]}
+          style={[
+            st.row,
+            drag === i
+              ? { transform: [{ translateY: dy }], zIndex: 2, backgroundColor: colors.card, ...st.lifted }
+              : null,
+          ]}
         >
-          <View {...(reorder ? responders[i].panHandlers : {})} hitSlop={8} style={reorder ? st.grip : null} accessibilityLabel={`${p.name} 순서 바꾸기`}>
+          <View
+            {...(reorder ? responders[i].panHandlers : {})}
+            hitSlop={8}
+            style={reorder ? st.grip : null}
+            accessibilityLabel={`${p.name} 순서 바꾸기`}
+          >
             <Icon source={icons.grip} size={16} />
           </View>
           <View style={st.num}>
@@ -183,13 +194,27 @@ const st = StyleSheet.create({
   progress: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 16, gap: 8 },
   bars: { flexDirection: 'row', gap: 6 },
   bar: { flex: 1, height: 4, borderRadius: 2 },
-  info: { backgroundColor: colors.bgBrandSoft, minHeight: 48, paddingHorizontal: 24, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  info: {
+    backgroundColor: colors.bgBrandSoft,
+    minHeight: 48,
+    paddingHorizontal: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   footer: { backgroundColor: colors.card, paddingTop: 12, paddingHorizontal: 24, flexDirection: 'row', gap: 10 },
   btn: { height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   prev: { width: 106, backgroundColor: colors.bgBrandSoft },
   listCard: { backgroundColor: colors.card, borderRadius: radius[20], paddingHorizontal: 16, paddingVertical: 4 },
   row: { height: ROW_H, flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 12 },
-  lifted: { shadowColor: '#243d7e', shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
+  lifted: liftedShadow,
   grip: { paddingVertical: 12, cursor: 'grab' } as object,
-  num: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.bgBrandSoft, alignItems: 'center', justifyContent: 'center' },
+  num: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.bgBrandSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

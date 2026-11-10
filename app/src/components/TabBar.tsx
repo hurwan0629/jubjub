@@ -1,9 +1,13 @@
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { icons } from '../icons';
-import { colors, radius, softShadow } from '../theme';
-import { Icon, Txt } from './ui';
+
+import { icons } from '@/icons';
+import { colors, radius, softShadow } from '@/theme';
+
+import { Icon } from './Icon';
+import { Text } from './Text';
+import { Txt } from './Txt';
 
 const TABS = {
   Home: { label: '홈', icon: icons.tab.home },

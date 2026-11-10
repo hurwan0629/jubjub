@@ -1,44 +1,51 @@
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { ImageSource } from 'expo-image';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { AlertCard, Icon, TopBar, Txt } from '../components/ui';
-import { FilterChip } from '../components/ui';
-import { AlertItem, AlertKind, alerts } from '../data';
-import { icons } from '../icons';
-import type { TabParams } from '../navigation';
-import { colors } from '../theme';
 
-const FILTERS: { key: 'all' | AlertKind; label: string }[] = [
+import type { AppNotification, NotificationType } from '@/api/types';
+import { AlertCard, FilterChip, Header, Icon, Txt } from '@/components';
+import { useNotifications } from '@/hooks/useNotifications';
+import { icons } from '@/icons';
+import type { TabParams } from '@/navigation';
+import { colors } from '@/theme';
+import type { Tone } from '@/theme';
+import { NOTIFICATION_TYPE_LABEL } from '@/utils/labels';
+
+const FILTERS: { key: 'all' | NotificationType; label: string }[] = [
   { key: 'all', label: '전체' },
-  { key: 'robot', label: '로봇 오류' },
-  { key: 'pickup', label: '집기 불가' },
-  { key: 'battery', label: '배터리 부족' },
-  { key: 'report', label: '보고' },
+  ...(Object.keys(NOTIFICATION_TYPE_LABEL) as NotificationType[]).map((key) => ({
+    key,
+    label: NOTIFICATION_TYPE_LABEL[key],
+  })),
 ];
 
-const KIND_ICON = {
-  robot: { icon: icons.alertTriangleRed, tone: 'error' },
-  pickup: { icon: icons.hand, tone: 'error' },
-  battery: { icon: icons.alertTriangleRed, tone: 'error' },
-  report: { icon: icons.chartBrand, tone: 'brand' },
-} as const;
+const TYPE_ICON: Record<NotificationType, { icon: ImageSource; tone: Tone }> = {
+  robotError: { icon: icons.alertTriangleRed, tone: 'error' },
+  unpickable: { icon: icons.hand, tone: 'error' },
+  lowBattery: { icon: icons.alertTriangleRed, tone: 'error' },
+  dailyReport: { icon: icons.chartBrand, tone: 'brand' },
+};
 
-function Item({ a }: { a: AlertItem }) {
-  const k = KIND_ICON[a.kind];
-  return <AlertCard icon={k.icon} tone={k.tone} title={a.title} body={a.place} meta={a.meta} unread={a.unread} />;
+function Item({ a }: { a: AppNotification }) {
+  const k = TYPE_ICON[a.type];
+  const meta = a.note ? `${a.time} · ${a.note}` : a.time;
+  return (
+    <AlertCard icon={k.icon} tone={k.tone} title={a.title} body={a.place} meta={meta} unread={a.status === 'new'} />
+  );
 }
 
 export function AlertsScreen({ navigation }: BottomTabScreenProps<TabParams, 'Alerts'>) {
   const [filter, setFilter] = useState<(typeof FILTERS)[number]['key']>('all');
-  const list = alerts.filter((a) => filter === 'all' || a.kind === filter);
+  const { data: list = [], loading } = useNotifications(filter === 'all' ? undefined : filter);
   const pinned = list.filter((a) => a.pinned);
   const recent = list.filter((a) => !a.pinned);
-  const unreadCount = list.filter((a) => a.unread).length;
+  const unreadCount = list.filter((a) => a.status === 'new').length;
 
   return (
     <SafeAreaView style={s.screen} edges={['top']}>
-      <TopBar title="알림" onBack={() => navigation.navigate('Home')} />
+      <Header title="알림" onBack={() => navigation.navigate('Home')} />
 
       {/* 가로 필터 */}
       <View style={s.filterViewport}>
@@ -74,13 +81,15 @@ export function AlertsScreen({ navigation }: BottomTabScreenProps<TabParams, 'Al
             </Txt>
           ) : null}
         </View>
-        {recent.length > 0 ? (
-          recent.map((a) => <Item key={a.id} a={a} />)
-        ) : (
+        {recent.map((a) => (
+          <Item key={a.id} a={a} />
+        ))}
+        {/* 빈 안내는 불러오기가 끝난 뒤에만 보여 줘요 (불러오는 중에 깜빡이지 않게) */}
+        {!loading && recent.length === 0 ? (
           <Txt size={13} color={colors.textSub} style={s.empty}>
             해당하는 알림이 없어요
           </Txt>
-        )}
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );

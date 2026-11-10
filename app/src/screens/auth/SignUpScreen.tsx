@@ -1,7 +1,9 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { View } from 'react-native';
-import { LinkRow, SignUpMethodButton } from '../../components/form';
-import type { RootParams } from '../../navigation';
+
+import { LinkRow, SignUpMethodButton } from '@/components';
+import type { RootParams } from '@/navigation';
+
 import { AuthLayout } from './AuthLayout';
 
 /** C-04 회원가입 · 가입 방법 선택 */

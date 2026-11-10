@@ -2,9 +2,11 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { TopBar } from '../../components/ui';
-import type { RootParams } from '../../navigation';
-import { colors } from '../../theme';
+
+import { Header } from '@/components';
+import type { RootParams } from '@/navigation';
+import { colors } from '@/theme';
+
 import type { Pt } from './ParkMap';
 import { Footer, Progress, RoutePoint } from './parts';
 import { Park, Slot, StepDone, StepIntro, StepOrder, StepPark, StepPoints, StepRecycle, StepSchedule } from './steps';
@@ -47,14 +49,23 @@ export function RouteSetupScreen({ navigation }: NativeStackScreenProps<RootPara
       break;
     case 2:
       body = <StepPark park={park} onPick={setPark} />;
-      footer = <Footer onPrev={prev} nextLabel={park ? '이 공원으로 정할게요' : '다음'} nextDisabled={!park} onNext={next} />;
+      footer = (
+        <Footer onPrev={prev} nextLabel={park ? '이 공원으로 정할게요' : '다음'} nextDisabled={!park} onNext={next} />
+      );
       break;
     case 3:
       body = <StepRecycle recycle={recycle} onSet={setRecycle} />;
       footer = <Footer onPrev={prev} nextDisabled={!recycle} onNext={next} />;
       break;
     case 4:
-      body = <StepPoints points={points} recycle={recycle} onAdd={(p) => setPoints((ps) => [...ps, p])} onRemove={removePoint} />;
+      body = (
+        <StepPoints
+          points={points}
+          recycle={recycle}
+          onAdd={(p) => setPoints((ps) => [...ps, p])}
+          onRemove={removePoint}
+        />
+      );
       footer = <Footer onPrev={prev} nextDisabled={points.length === 0} onNext={next} />;
       break;
     case 5:
@@ -72,7 +83,7 @@ export function RouteSetupScreen({ navigation }: NativeStackScreenProps<RootPara
 
   return (
     <SafeAreaView style={st.screen} edges={['top']}>
-      <TopBar title="순찰 경로 정하기" onBack={step === 7 ? goHome : prev} />
+      <Header title="순찰 경로 정하기" onBack={step === 7 ? goHome : prev} />
       <Progress step={step} label={LABELS[step - 1]} />
       <View style={{ flex: 1 }}>{body}</View>
       {footer}

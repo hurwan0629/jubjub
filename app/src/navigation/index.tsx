@@ -1,16 +1,17 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { TabBar } from './components/TabBar';
-import { alerts } from './data';
-import { AlertsScreen } from './screens/AlertsScreen';
-import { LoginScreen } from './screens/auth/LoginScreen';
-import { SignUpEmailScreen } from './screens/auth/SignUpEmailScreen';
-import { SignUpScreen } from './screens/auth/SignUpScreen';
-import { HomeScreen } from './screens/HomeScreen';
-import { MapScreen } from './screens/MapScreen';
-import { ReportScreen } from './screens/ReportScreen';
-import { RouteSetupScreen } from './screens/route-setup/RouteSetupScreen';
-import { SplashScreen } from './screens/SplashScreen';
+
+import { TabBar } from '@/components';
+import { useUnreadCount } from '@/hooks/useNotifications';
+import { AlertsScreen } from '@/screens/AlertsScreen';
+import { LoginScreen } from '@/screens/auth/LoginScreen';
+import { SignUpEmailScreen } from '@/screens/auth/SignUpEmailScreen';
+import { SignUpScreen } from '@/screens/auth/SignUpScreen';
+import { HomeScreen } from '@/screens/HomeScreen';
+import { MapScreen } from '@/screens/MapScreen';
+import { ReportScreen } from '@/screens/ReportScreen';
+import { RouteSetupScreen } from '@/screens/route-setup/RouteSetupScreen';
+import { SplashScreen } from '@/screens/SplashScreen';
 
 export type TabParams = {
   Home: undefined;
@@ -32,9 +33,12 @@ const Tab = createBottomTabNavigator<TabParams>();
 const Stack = createNativeStackNavigator<RootParams>();
 
 function MainTabs() {
-  const unreadCount = alerts.filter((a) => a.unread).length;
+  const unreadCount = useUnreadCount();
   return (
-    <Tab.Navigator screenOptions={{ headerShown: false }} tabBar={(props) => <TabBar {...props} unreadCount={unreadCount} />}>
+    <Tab.Navigator
+      screenOptions={{ headerShown: false }}
+      tabBar={(props) => <TabBar {...props} unreadCount={unreadCount} />}
+    >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Map" component={MapScreen} />
       <Tab.Screen name="Alerts" component={AlertsScreen} />

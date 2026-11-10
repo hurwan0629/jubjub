@@ -1,12 +1,13 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useState } from 'react';
 import { View } from 'react-native';
-import { takeFirstLoginRouteSetup } from '../../auth';
-import { LinkRow, TextField } from '../../components/form';
-import { Button, Icon, Txt } from '../../components/ui';
-import { icons } from '../../icons';
-import type { RootParams } from '../../navigation';
-import { colors } from '../../theme';
+
+import { takeFirstLoginRouteSetup } from '@/api/auth';
+import { LinkRow, TextField, Button, Icon, Txt } from '@/components';
+import { icons } from '@/icons';
+import type { RootParams } from '@/navigation';
+import { colors } from '@/theme';
+
 import { AuthLayout } from './AuthLayout';
 
 /** C-01 로그인 */
@@ -18,8 +19,22 @@ export function LoginScreen({ navigation }: NativeStackScreenProps<RootParams, '
     <AuthLayout title={'공원을 돌보는 하루,\nJubi와 함께해요'} subtitle="관리자 계정으로 로그인해 주세요.">
       {/* 로그인 양식 */}
       <View style={{ gap: 20 }}>
-        <TextField label="아이디" icon={icons.userRound} placeholder="아이디를 입력해 주세요" value={id} onChangeText={setId} autoCapitalize="none" />
-        <TextField label="비밀번호" icon={icons.lockKeyhole} placeholder="비밀번호를 입력해 주세요" value={pw} onChangeText={setPw} secure />
+        <TextField
+          label="아이디"
+          icon={icons.userRound}
+          placeholder="아이디를 입력해 주세요"
+          value={id}
+          onChangeText={setId}
+          autoCapitalize="none"
+        />
+        <TextField
+          label="비밀번호"
+          icon={icons.lockKeyhole}
+          placeholder="비밀번호를 입력해 주세요"
+          value={pw}
+          onChangeText={setPw}
+          secure
+        />
         <Button
           label="로그인"
           onPress={async () => {

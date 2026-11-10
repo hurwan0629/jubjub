@@ -1,9 +1,21 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  TextInput,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Icon, Txt } from '../../components/ui';
-import { icons } from '../../icons';
-import { colors, font, radius } from '../../theme';
+
+import { Icon, Txt } from '@/components';
+import { icons } from '@/icons';
+import { colors, font, radius } from '@/theme';
+
 import { ParkMap, Pt } from './ParkMap';
 import { InfoBar, lapMinutes, PointList, RoutePoint } from './parts';
 
@@ -131,7 +143,11 @@ export function StepPark({ park, onPick }: { park: Park | null; onPick: (p: Park
                 results.map((p) => {
                   const on = park?.name === p.name;
                   return (
-                    <Pressable key={p.name} onPress={() => onPick(p)} style={[st.result, on ? { backgroundColor: colors.bgSelected } : null]}>
+                    <Pressable
+                      key={p.name}
+                      onPress={() => onPick(p)}
+                      style={[st.result, on ? { backgroundColor: colors.bgSelected } : null]}
+                    >
                       <View style={st.pinCircle}>
                         <Icon source={icons.mapPin} size={20} />
                       </View>
@@ -196,7 +212,9 @@ export function StepRecycle({ recycle, onSet }: { recycle: Pt | null; onSet: (p:
         </Txt>
       </View>
       <ParkMap height={290} recycle={recycle} recycleLabel onLongPress={onSet} />
-      <InfoBar text={recycle ? '다른 곳을 꾹 누르면 위치를 옮길 수 있어요' : '지도를 꾹 눌러 분리수거장 위치를 찍어요'} />
+      <InfoBar
+        text={recycle ? '다른 곳을 꾹 누르면 위치를 옮길 수 있어요' : '지도를 꾹 눌러 분리수거장 위치를 찍어요'}
+      />
       <View style={{ paddingHorizontal: 24, paddingTop: 12 }}>
         <View style={st.legendCard}>
           <View style={st.legendRow}>
@@ -437,7 +455,10 @@ export function StepDone({
   recycle: Pt | null;
   slots: Slot[];
 }) {
-  const on = slots.filter((s) => s.on).map((s) => s.time).sort();
+  const on = slots
+    .filter((s) => s.on)
+    .map((s) => s.time)
+    .sort();
   const now = new Date();
   const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   const next = on.find((t) => t > hhmm) ?? on[0];
@@ -484,13 +505,50 @@ const st = StyleSheet.create({
   padTight: { paddingHorizontal: 24, paddingTop: 8 },
   guideCard: { backgroundColor: colors.card, borderRadius: radius[16], padding: 16, gap: 14 },
   guideRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
-  guideNum: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.bgBrandSoft, alignItems: 'center', justifyContent: 'center' },
-  search: { marginTop: 4, backgroundColor: colors.bgBrandSoft, borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  searchInput: { flex: 1, fontSize: 15, fontFamily: font.regular, color: colors.text, padding: 0, outlineStyle: 'none' } as object,
-  locate: { height: 52, borderRadius: 14, backgroundColor: colors.bgBrandSoft, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  guideNum: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.bgBrandSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  search: {
+    marginTop: 4,
+    backgroundColor: colors.bgBrandSoft,
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: font.regular,
+    color: colors.text,
+    padding: 0,
+    outlineStyle: 'none',
+  } as object,
+  locate: {
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: colors.bgBrandSoft,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
   results: { backgroundColor: colors.card, borderRadius: radius[16], padding: 6, gap: 2 },
   result: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, borderRadius: 12 },
-  pinCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.bgBrandSoft, alignItems: 'center', justifyContent: 'center' },
+  pinCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.bgBrandSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   mapChip: {
     position: 'absolute',
     top: 120,
@@ -515,7 +573,13 @@ const st = StyleSheet.create({
     justifyContent: 'center',
   },
   parkLabel: { backgroundColor: colors.card, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
-  legendCard: { backgroundColor: colors.card, borderRadius: radius[20], paddingHorizontal: 12, paddingVertical: 8, gap: 4 },
+  legendCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius[20],
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 4,
+  },
   legendRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6 },
   legendRecycle: {
     width: 44,
@@ -538,10 +602,24 @@ const st = StyleSheet.create({
     justifyContent: 'center',
   },
   divider: { height: 1, backgroundColor: colors.border },
-  listHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 20, paddingBottom: 12 },
+  listHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 12,
+  },
   listHeadInline: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sheetDim: { flex: 1, backgroundColor: 'rgba(34, 46, 69, 0.3)' },
-  sheet: { backgroundColor: colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 24, paddingTop: 24, gap: 14 },
+  sheetDim: { flex: 1, backgroundColor: colors.overlaySoft },
+  sheet: {
+    backgroundColor: colors.card,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    gap: 14,
+  },
   nameInput: {
     backgroundColor: colors.bgBrandSoft,
     borderRadius: 16,
@@ -552,13 +630,55 @@ const st = StyleSheet.create({
     color: colors.brandText,
     outlineStyle: 'none',
   } as object,
-  quick: { paddingHorizontal: 18, height: 44, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  quick: {
+    paddingHorizontal: 18,
+    height: 44,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   quickOn: { borderColor: colors.brand, backgroundColor: colors.bgBrandSoft },
   sheetBtn: { flex: 1, height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  slot: { backgroundColor: colors.card, borderRadius: radius[16], padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  timeChip: { backgroundColor: colors.bgBrandSoft, borderRadius: 12, width: 64, height: 44, alignItems: 'center', justifyContent: 'center' },
-  addSlot: { height: 52, borderRadius: 14, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center' },
-  doneCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: colors.done, alignItems: 'center', justifyContent: 'center' },
-  summary: { alignSelf: 'stretch', marginTop: 24, backgroundColor: colors.card, borderRadius: radius[16], padding: 16, gap: 16 },
+  slot: {
+    backgroundColor: colors.card,
+    borderRadius: radius[16],
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  timeChip: {
+    backgroundColor: colors.bgBrandSoft,
+    borderRadius: 12,
+    width: 64,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addSlot: {
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: colors.brand,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  doneCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: colors.done,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  summary: {
+    alignSelf: 'stretch',
+    marginTop: 24,
+    backgroundColor: colors.card,
+    borderRadius: radius[16],
+    padding: 16,
+    gap: 16,
+  },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 16 },
 });

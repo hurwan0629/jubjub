@@ -2,10 +2,11 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
-import { Icon, Txt } from '../components/ui';
-import { icons } from '../icons';
-import type { RootParams } from '../navigation';
-import { colors } from '../theme';
+
+import { Icon, Txt } from '@/components';
+import { icons } from '@/icons';
+import type { RootParams } from '@/navigation';
+import { colors } from '@/theme';
 
 const SHOW_MS = 3000;
 

@@ -3,10 +3,11 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
-import { Button, Card, Icon, StatRow, TopBar, Txt } from '../components/ui';
-import { icons } from '../icons';
-import type { TabParams } from '../navigation';
-import { colors, radius } from '../theme';
+
+import { Button, Card, Icon, StatRow, Header, Txt } from '@/components';
+import { icons } from '@/icons';
+import type { TabParams } from '@/navigation';
+import { colors, radius } from '@/theme';
 
 const MATERIALS = [
   { name: '페트', count: 10, color: colors.data.pet },
@@ -25,9 +26,17 @@ const HOURLY = [
 const BAR_PER_ITEM = 14; // 막대 1개당 14px (Figma: 7개 = 98px)
 
 const TODOS = [
-  { icon: icons.reportHand, title: '자동 수거 제외 쓰레기', body: '집기 불가 대상은 관리자님의 현장 확인과 직접 처리가 필요해요.' },
+  {
+    icon: icons.reportHand,
+    title: '자동 수거 제외 쓰레기',
+    body: '집기 불가 대상은 관리자님의 현장 확인과 직접 처리가 필요해요.',
+  },
   { icon: icons.reportAlert, title: '로봇 오류 1번', body: '벤치 쉼터 근처에서 뒤집혀 13:58부터 22분 동안 멈췄어요.' },
-  { icon: icons.reportRoute, title: '돌지 못한 순찰 지점 1곳', body: '로봇 오류 때문에 오후 순찰에서 벤치 쉼터를 건너뛰었어요.' },
+  {
+    icon: icons.reportRoute,
+    title: '돌지 못한 순찰 지점 1곳',
+    body: '로봇 오류 때문에 오후 순찰에서 벤치 쉼터를 건너뛰었어요.',
+  },
 ];
 
 const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -82,7 +91,7 @@ export function ReportScreen({ navigation }: BottomTabScreenProps<TabParams, 'Re
 
   return (
     <SafeAreaView style={s.screen} edges={['top']}>
-      <TopBar title="일일 보고" onBack={() => navigation.navigate('Home')} />
+      <Header title="일일 보고" onBack={() => navigation.navigate('Home')} />
       <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
         {/* 보고 날짜 */}
         <View style={s.dateRow}>
@@ -116,14 +125,14 @@ export function ReportScreen({ navigation }: BottomTabScreenProps<TabParams, 'Re
             에이전트의 하루 요약
           </Txt>
           <Txt size={13} lineHeight={1.6} color={colors.textSub}>
-            오늘은 6번 순찰하며 쓰레기 24개를 수거했어요. 분리수거장에 3번 다녀왔고, 공연장 앞에서 쓰레기가 가장 많았어요.
+            오늘은 6번 순찰하며 쓰레기 24개를 수거했어요. 분리수거장에 3번 다녀왔고, 공연장 앞에서 쓰레기가 가장
+            많았어요.
           </Txt>
         </View>
 
         {/* 운영 통계 */}
         <StatRow
-          paddingH={8}
-          paddingV={18}
+          compact
           items={[
             { label: '집기 성공률', value: '87%' },
             { label: '순찰', value: '6회' },
@@ -228,13 +237,29 @@ const s = StyleSheet.create({
   dateRow: { height: 36, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   hero: { backgroundColor: colors.bgBrandSoft, borderRadius: radius[20], padding: 20, gap: 8 },
   donutRow: { flexDirection: 'row', alignItems: 'center', gap: 24 },
-  donutCenter: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  donutCenter: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
   legendRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   dot: { width: 8, height: 8, borderRadius: 4 },
   cardTitleRow: { flexDirection: 'row', justifyContent: 'space-between' },
   bars: { height: 155, flexDirection: 'row', alignItems: 'flex-end', gap: 14 },
   barCol: { flex: 1, alignItems: 'center', gap: 8 },
-  bar: { width: 32, backgroundColor: colors.brandText, borderTopLeftRadius: 6, borderTopRightRadius: 6, borderBottomLeftRadius: 2, borderBottomRightRadius: 2 },
+  bar: {
+    width: 32,
+    backgroundColor: colors.brandText,
+    borderTopLeftRadius: 6,
+    borderTopRightRadius: 6,
+    borderBottomLeftRadius: 2,
+    borderBottomRightRadius: 2,
+  },
   todo: { backgroundColor: colors.card, borderRadius: radius[16], padding: 16, flexDirection: 'row', gap: 12 },
   insight: { backgroundColor: colors.bgBrandSoft, borderRadius: radius[20], padding: 16, gap: 8 },
 });

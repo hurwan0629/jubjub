@@ -2,12 +2,12 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { markNeedsRouteSetup } from '../../auth';
-import { Checkbox, TextField } from '../../components/form';
-import { Button, Icon, TopBar, Txt } from '../../components/ui';
-import { icons } from '../../icons';
-import type { RootParams } from '../../navigation';
-import { colors, radius, softShadow } from '../../theme';
+
+import { markNeedsRouteSetup } from '@/api/auth';
+import { Checkbox, TextField, Button, Icon, Header, Txt } from '@/components';
+import { icons } from '@/icons';
+import type { RootParams } from '@/navigation';
+import { colors, radius, softShadow } from '@/theme';
 
 const ID_RULE = /^[A-Za-z0-9]{4,16}$/;
 const PW_RULE = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
@@ -32,10 +32,16 @@ export function SignUpEmailScreen({ navigation }: NativeStackScreenProps<RootPar
 
   return (
     <SafeAreaView style={s.screen} edges={['top', 'bottom']}>
-      <TopBar title="이메일로 가입하기" onBack={() => navigation.goBack()} />
+      <Header title="이메일로 가입하기" onBack={() => navigation.goBack()} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
-          <TextField label="이름" icon={icons.userRound} placeholder="이름을 입력해 주세요" value={form.name} onChangeText={set('name')} />
+          <TextField
+            label="이름"
+            icon={icons.userRound}
+            placeholder="이름을 입력해 주세요"
+            value={form.name}
+            onChangeText={set('name')}
+          />
           <TextField
             label="아이디"
             icon={icons.atSign}
@@ -45,7 +51,15 @@ export function SignUpEmailScreen({ navigation }: NativeStackScreenProps<RootPar
             autoCapitalize="none"
             error={errors.id}
           />
-          <TextField label="비밀번호" icon={icons.lockKeyhole} placeholder="영문, 숫자 포함 8자 이상" value={form.pw} onChangeText={set('pw')} secure error={errors.pw} />
+          <TextField
+            label="비밀번호"
+            icon={icons.lockKeyhole}
+            placeholder="영문, 숫자 포함 8자 이상"
+            value={form.pw}
+            onChangeText={set('pw')}
+            secure
+            error={errors.pw}
+          />
           <TextField
             label="비밀번호 확인"
             icon={icons.lockKeyhole}
@@ -140,7 +154,7 @@ const s = StyleSheet.create({
     backgroundColor: colors.card,
   },
   bottom: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 12 },
-  dim: { flex: 1, backgroundColor: 'rgba(34, 46, 69, 0.45)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  dim: { flex: 1, backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center', padding: 24 },
   dialog: {
     width: 310,
     maxWidth: '100%',
@@ -153,5 +167,12 @@ const s = StyleSheet.create({
     gap: 16,
     ...softShadow,
   },
-  doneBadge: { width: 56, height: 56, borderRadius: 28, backgroundColor: colors.bgDone, alignItems: 'center', justifyContent: 'center' },
+  doneBadge: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.bgDone,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

@@ -1,9 +1,10 @@
 import { ComponentRef, ReactNode, useRef } from 'react';
 import { GestureResponderEvent, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Svg, { Polyline } from 'react-native-svg';
-import { Icon, Txt } from '../../components/ui';
-import { icons } from '../../icons';
-import { colors, softShadow } from '../../theme';
+
+import { Icon, Txt } from '@/components';
+import { icons } from '@/icons';
+import { colors, softShadow } from '@/theme';
 
 // Figma 지도 원본 크기 (지도 좌표는 이 크기를 기준으로 저장해요)
 export const MAP_W = 390;
@@ -90,7 +91,10 @@ export function ParkMap({
       ) : null}
 
       {recycle ? (
-        <View pointerEvents="none" style={[st.recycleWrap, { left: recycle.x * scale - 22, top: recycle.y * scale - 22 }]}>
+        <View
+          pointerEvents="none"
+          style={[st.recycleWrap, { left: recycle.x * scale - 22, top: recycle.y * scale - 22 }]}
+        >
           <View style={st.recycle}>
             <Icon source={icons.markerRecycle} size={22} />
           </View>

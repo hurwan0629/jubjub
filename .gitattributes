@@ -9,6 +9,9 @@
 *.yaml text eol=lf
 *.yml  text eol=lf
 
+# git hook scripts (husky) must keep LF on every OS
+app/.husky/* text eol=lf
+
 # Binary
 *.png  binary
 *.jpg  binary
