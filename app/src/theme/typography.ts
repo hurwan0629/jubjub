@@ -10,6 +10,10 @@ export const font = {
   semibold: pair('Inter_600SemiBold', 'NotoSansKR_600SemiBold'), // Figma "강조"
   bold: pair('Inter_700Bold', 'NotoSansKR_700Bold'), // Figma "굵게"
   brand: 'Fredoka_700Bold', // JUBJUB 워드마크
+  // 숫자만 쓰는 자리(번호 원, 배지). 폰에서 한글 글꼴(Noto Sans KR)은 위아래 여백이 커서
+  // 작은 원 안의 숫자가 아래로 밀려요. 숫자는 Figma처럼 Inter로 써서 가운데에 오게 해요.
+  digitsRegular: 'Inter_400Regular',
+  digitsBold: 'Inter_700Bold',
 } as const;
 
 export type FontWeight = keyof typeof font;
@@ -59,11 +63,15 @@ export const typography = {
   '16-bold': style(16, 'bold'),
   '17-bold': style(17, 'bold'),
   '18-bold': style(18, 'bold'),
+  '20-bold': style(20, 'bold'), // 지점 이름 입력 (C-03 · A-04)
   '22-bold': style(22, 'bold'),
   '24-bold': style(24, 'bold'),
   '25-bold': style(25, 'bold', { letterSpacing: -0.7, lineHeight: 'tight' }),
   '30-bold': style(30, 'bold'),
   logo: style(22, 'brand', { letterSpacing: 0.88 }),
+  // 숫자 전용 (번호 원 · 지도 마커). 한글을 넣지 마세요.
+  '13-regular-digits': style(13, 'digitsRegular'),
+  '14-bold-digits': style(14, 'digitsBold'),
 } as const;
 
 export type TextVariant = keyof typeof typography;

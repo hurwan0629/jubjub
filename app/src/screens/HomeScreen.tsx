@@ -1,5 +1,7 @@
 // A-01 홈 (실시간 현황). 새 규칙(토큰 · Text · 훅 · 공통 컴포넌트)으로 쓴 예시 화면이에요.
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { CompositeScreenProps } from '@react-navigation/native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ImageSource } from 'expo-image';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,7 +12,7 @@ import { useDecisions } from '@/hooks/useDecisions';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useRobotStatus, useTaskQueue, useTodaySummary } from '@/hooks/useRobot';
 import { icons } from '@/icons';
-import type { TabParams } from '@/navigation';
+import type { HomeStackParams, TabParams } from '@/navigation';
 import { colors, layout, radius, softShadow, space } from '@/theme';
 import { SLOT_LABEL, SLOT_WARN_PERCENT } from '@/utils/labels';
 
@@ -23,7 +25,9 @@ const TASK_ICON: Record<TaskType, ImageSource> = {
   recover: icons.triangleAlert,
 };
 
-export function HomeScreen({ navigation }: BottomTabScreenProps<TabParams, 'Home'>) {
+type Props = CompositeScreenProps<NativeStackScreenProps<HomeStackParams, 'HomeMain'>, BottomTabScreenProps<TabParams>>;
+
+export function HomeScreen({ navigation }: Props) {
   const { data: robot } = useRobotStatus();
   const { data: tasks } = useTaskQueue();
   const { data: today } = useTodaySummary();
@@ -46,7 +50,12 @@ export function HomeScreen({ navigation }: BottomTabScreenProps<TabParams, 'Home
           </View>
           <Text variant="13-semibold">한강공원</Text>
         </View>
-        <Pressable style={s.iconButton} accessibilityLabel="설정">
+        <Pressable
+          style={s.iconButton}
+          onPress={() => navigation.navigate('Settings')}
+          accessibilityRole="button"
+          accessibilityLabel="설정"
+        >
           <Icon source={icons.settings} size={22} />
         </Pressable>
       </View>

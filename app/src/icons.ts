@@ -72,6 +72,12 @@ export const icons = {
   pencil: require('../assets/icons/pencil.svg'),
   checkWhiteLg: require('../assets/icons/check-white-lg.svg'),
 
+  // 설정 (C-02)
+  profileUser: require('../assets/icons/profile-user.svg'),
+  chevronRight: require('../assets/icons/chevron-right.svg'),
+  lockSmall: require('../assets/icons/lock-small.svg'),
+  toggleKnob: require('../assets/icons/toggle-knob.svg'),
+
   // 하단 탭
   tab: {
     home: { on: require('../assets/icons/tab-house-on.svg'), off: require('../assets/icons/tab-house-off.svg') },

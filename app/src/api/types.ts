@@ -35,6 +35,82 @@ export type RobotStatus = {
   updatedAt: string; // ISO 시각
 };
 
+/** 위도 · 경도 (WGS84) */
+export type LatLng = { latitude: number; longitude: number };
+
+/** 공원 범위 (남서쪽 · 북동쪽 모서리). 지도는 이 사각형 안에서만 움직여요. */
+export type ParkBounds = { southWest: LatLng; northEast: LatLng };
+
+/**
+ * 공원 경계 (다각형). 사각형 범위 안에도 도로 · 아파트 같은 공원 아닌 곳이 있어서,
+ * 꾹 눌러 위치를 정할 때는 이 경계 안인지 봐요.
+ * 여의도한강공원처럼 섬을 둘러싼 띠 모양 공원은 바깥 경계(outer) 안에서 구멍(holes: 섬 안쪽 도시)을 뺀 곳이 공원이에요.
+ */
+export type ParkArea = {
+  outer: LatLng[];
+  holes?: LatLng[][];
+};
+
+/** GET /parks?query= : 공원 검색 결과 (C-03 공원 찾기) */
+export type Park = {
+  id: string;
+  name: string;
+  address: string;
+  distance: string; // 표시용 거리 ('2.1km')
+  bounds: ParkBounds;
+  area: ParkArea;
+};
+
+/** 순찰 지점 (C-03 처음 설정 · A-04 경로 편집) */
+export type PatrolPoint = {
+  id: string;
+  name: string; // 알림 · 기록에 쓰는 장소 이름
+  position: LatLng;
+  stay: number; // 머무는 시간(분)
+};
+
+/** 순찰 시간 반복 */
+export type ScheduleRepeat = 'daily' | 'weekdays' | 'weekends';
+
+/** 순찰 시간표 항목 */
+export type PatrolSlot = {
+  id: string;
+  time: string; // 'HH:mm'
+  label: string; // 예: 점심 시간 순찰
+  on: boolean;
+  repeat: ScheduleRepeat;
+};
+
+/** GET · PUT /route : 지금 쓰는 순찰 경로 (A-04 경로 편집) */
+export type RouteConfig = {
+  parkName: string;
+  bounds: ParkBounds;
+  area: ParkArea;
+  station: LatLng | null; // 분리수거장
+  points: PatrolPoint[]; // 도는 순서대로
+  schedule: PatrolSlot[];
+};
+
+/** 지도 마커 종류 (A-02 지도 범례) */
+export type MapMarkerType = 'robot' | 'station' | 'unpickable';
+
+export type MapMarker = {
+  id: string;
+  type: MapMarkerType;
+  label: string;
+  position: LatLng;
+};
+
+/** GET /map/overview: A-02 지도 한 화면에 필요한 것 */
+export type MapOverview = {
+  parkName: string;
+  bounds: ParkBounds; // 공원 범위 (처음에 이 범위가 꽉 차게 보여요)
+  area: ParkArea; // 공원 경계
+  markers: MapMarker[];
+  route: LatLng[]; // 순찰 경로 (처음 지점으로 돌아오는 순서)
+  updatedAt: string; // ISO 시각
+};
+
 /** GET /tasks/queue 의 항목 */
 export type TaskType = 'empty' | 'patrol' | 'charge' | 'recheck' | 'visit' | 'recover';
 
@@ -55,6 +131,21 @@ export type TodaySummary = {
 
 /** 알림 유형 (핵심 범위. 수거함 가득 참은 확장 구현 때 추가) */
 export type NotificationType = 'robotError' | 'unpickable' | 'lowBattery' | 'dailyReport';
+
+/** GET /me: 로그인한 관리자 (C-02 설정 계정 카드) */
+export type Profile = {
+  name: string;
+  email: string;
+};
+
+/**
+ * GET /settings/notifications: 유형별 알림 받기 (C-02 설정)
+ * 로봇 오류는 안전을 위해 항상 받아서 끌 수 없어요.
+ */
+export type NotificationSettings = {
+  unpickable: boolean;
+  dailyReport: boolean;
+};
 
 /** 새로(안 읽음) → 확인 → 처리 완료 */
 export type NotificationStatus = 'new' | 'acked' | 'resolved';

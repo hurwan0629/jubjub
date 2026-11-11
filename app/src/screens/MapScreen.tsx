@@ -1,23 +1,25 @@
+// A-02 지도. 개발용 빌드에서는 네이버 지도, 웹 · Expo Go에서는 도식 지도를 보여 줘요.
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import { useState } from 'react';
-import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import type { CompositeScreenProps } from '@react-navigation/native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useRef, useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Button, FilterBar, FilterChip, Icon, Header, Txt } from '@/components';
+import type { MapMarkerType } from '@/api/types';
+import { Button, FilterBar, FilterChip, Header, Icon, ParkMap, Text } from '@/components';
+import type { ParkMapHandle, ParkMapMarkerKind } from '@/components';
+import { useMapOverview } from '@/hooks/useMap';
 import { icons } from '@/icons';
-import type { TabParams } from '@/navigation';
-import { colors, radius, softShadow } from '@/theme';
+import type { RootParams, TabParams } from '@/navigation';
+import { colors, layout, radius, softShadow, space } from '@/theme';
+import { formatTime } from '@/utils/date';
 
-// Figma 지도 원본 크기
-const MAP_W = 390;
-const MAP_H = 500;
-
-// 지도 좌표(390×500 기준)의 마커
-const MARKERS = [
-  { id: 'robot', x: 88, y: 76, color: colors.brand, icon: icons.markerBot, label: '로봇' },
-  { id: 'recycle', x: 158, y: 234, color: colors.done, icon: icons.markerRecycle, label: '분리수거장' },
-  { id: 'hand', x: 280, y: 214, color: colors.error, icon: icons.markerHand, label: '집기 불가' },
-];
+const MARKER_KIND: Record<MapMarkerType, ParkMapMarkerKind> = {
+  robot: 'robot',
+  station: 'station',
+  unpickable: 'unpickable',
+};
 
 const LEGEND = [
   { icon: icons.legendBot, label: '로봇' },
@@ -25,61 +27,71 @@ const LEGEND = [
   { icon: icons.legendHand, label: '집기 불가' },
 ];
 
-export function MapScreen({ navigation }: BottomTabScreenProps<TabParams, 'Map'>) {
+type Props = CompositeScreenProps<BottomTabScreenProps<TabParams, 'Map'>, NativeStackScreenProps<RootParams>>;
+
+export function MapScreen({ navigation }: Props) {
   const [layer, setLayer] = useState<'live' | 'heat'>('live');
-  const [zoom, setZoom] = useState(1);
-  const { width } = useWindowDimensions();
-  const scale = Math.min(width, 480) / MAP_W;
+  const { data: overview } = useMapOverview();
+  const map = useRef<ParkMapHandle>(null);
 
   return (
     <SafeAreaView style={s.screen} edges={['top']}>
-      <Header title="한강공원" onBack={() => navigation.navigate('Home')} />
+      <Header title={overview?.parkName ?? '지도'} onBack={() => navigation.navigate('Home')} />
       <FilterBar>
         <FilterChip label="실시간" selected={layer === 'live'} onPress={() => setLayer('live')} minWidth={104} />
         <FilterChip label="히트맵" selected={layer === 'heat'} onPress={() => setLayer('heat')} minWidth={88} />
       </FilterBar>
 
       <View style={s.body}>
-        {/* 한강공원 도식 지도 */}
-        <View style={[s.mapClip, { height: MAP_H * scale }]}>
-          <View style={{ width: MAP_W * scale, height: MAP_H * scale, transform: [{ scale: zoom }] }}>
-            <Icon source={icons.parkMap} width={MAP_W * scale} height={MAP_H * scale} />
-            {MARKERS.map((m) => (
-              <Pressable
-                key={m.id}
-                accessibilityLabel={m.label}
-                style={[s.marker, { left: m.x * scale, top: m.y * scale, backgroundColor: m.color }]}
-              >
-                <Icon source={m.icon} size={22} />
-              </Pressable>
-            ))}
-          </View>
-        </View>
+        {overview ? (
+          <ParkMap
+            ref={map}
+            style={s.map}
+            bounds={overview.bounds}
+            area={overview.area}
+            route={overview.route}
+            markers={overview.markers.map((m) => ({
+              id: m.id,
+              kind: MARKER_KIND[m.type],
+              position: m.position,
+              label: m.label,
+            }))}
+          />
+        ) : (
+          <View style={s.map} />
+        )}
 
         {/* 실시간 상태 */}
         <View style={s.liveBadge}>
           <Icon source={icons.radio} size={16} />
-          <Txt size={12} weight="semibold" color={colors.brandText}>
-            실시간 · 14:08 갱신
-          </Txt>
+          <Text variant="12-semibold" color="brandText">
+            실시간 · {overview ? formatTime(new Date(overview.updatedAt)) : '--:--'} 갱신
+          </Text>
         </View>
 
         {/* 지도 조작 */}
         <View style={s.controls}>
-          <Pressable style={s.controlButton} accessibilityLabel="현재 위치" onPress={() => setZoom(1)}>
+          <Pressable
+            style={s.controlButton}
+            onPress={() => map.current?.recenter()}
+            accessibilityRole="button"
+            accessibilityLabel="공원 가운데로"
+          >
             <Icon source={icons.locateFixed} size={20} />
           </Pressable>
           <Pressable
             style={s.controlButton}
+            onPress={() => map.current?.zoomIn()}
+            accessibilityRole="button"
             accessibilityLabel="확대"
-            onPress={() => setZoom((z) => Math.min(z + 0.25, 2))}
           >
             <Icon source={icons.plus} size={20} />
           </Pressable>
           <Pressable
             style={s.controlButton}
+            onPress={() => map.current?.zoomOut()}
+            accessibilityRole="button"
             accessibilityLabel="축소"
-            onPress={() => setZoom((z) => Math.max(z - 0.25, 1))}
           >
             <Icon source={icons.minus} size={20} />
           </Pressable>
@@ -91,13 +103,13 @@ export function MapScreen({ navigation }: BottomTabScreenProps<TabParams, 'Map'>
             {LEGEND.map((l) => (
               <View key={l.label} style={s.legendItem}>
                 <Icon source={l.icon} size={18} />
-                <Txt size={11} color={colors.textSub}>
+                <Text variant="11-regular" color="textSub">
                   {l.label}
-                </Txt>
+                </Text>
               </View>
             ))}
           </View>
-          <Button label="경로 편집" />
+          <Button label="경로 편집" onPress={() => navigation.navigate('RouteEdit')} />
         </View>
       </View>
     </SafeAreaView>
@@ -107,46 +119,35 @@ export function MapScreen({ navigation }: BottomTabScreenProps<TabParams, 'Map'>
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   body: { flex: 1 },
-  mapClip: { backgroundColor: colors.map, overflow: 'hidden', alignItems: 'center' },
-  marker: {
-    position: 'absolute',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 3,
-    borderColor: colors.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...softShadow,
-  },
+  map: { flex: 1, backgroundColor: colors.map },
   liveBadge: {
     position: 'absolute',
-    left: 16,
+    left: space[16],
     top: 68,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 12,
+    paddingHorizontal: space[12],
     paddingVertical: 9,
     borderRadius: 12,
     backgroundColor: colors.card,
     ...softShadow,
   },
-  controls: { position: 'absolute', right: 16, top: 68, gap: 8 },
+  controls: { position: 'absolute', right: space[16], top: 68, gap: space[8] },
   controlButton: {
-    width: 44,
-    height: 44,
+    width: layout.touchMin,
+    height: layout.touchMin,
     borderRadius: 14,
     backgroundColor: colors.card,
     alignItems: 'center',
     justifyContent: 'center',
     ...softShadow,
   },
-  bottomInfo: { position: 'absolute', left: 16, right: 16, bottom: 14, gap: 12 },
+  bottomInfo: { position: 'absolute', left: space[16], right: space[16], bottom: 14, gap: space[12] },
   legend: {
     backgroundColor: colors.card,
     borderRadius: radius[16],
-    paddingHorizontal: 12,
+    paddingHorizontal: space[12],
     paddingVertical: 14,
     flexDirection: 'row',
     justifyContent: 'space-between',
