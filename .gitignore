@@ -57,3 +57,6 @@ ios/Pods/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# ===== Server =====
+server/storage/
