@@ -1,0 +1,1 @@
+{"nodes": [{"id": "run_labels", "label": "Dataset Label Distribution and Bounding Box Stats", "file_type": "image", "source_file": "experiments/yolo_11n__taco-v2__trash_feature_training__s1/run/labels.jpg", "rationale": "Shows the distribution of instances per class and spatial distribution of bounding boxes in the training set."}], "edges": [], "hyperedges": []}
