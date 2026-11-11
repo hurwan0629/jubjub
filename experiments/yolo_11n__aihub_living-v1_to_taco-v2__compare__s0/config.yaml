@@ -1,7 +1,7 @@
 weights: ../../members/hur-wan/training/yolo11n.pt
 aihub_data: ../../data/aihub_living_yolo/data.yaml
 data: ../../data/taco_yolo/data.yaml
-epochs: 5
+epochs: 50
 patience: 10
 batch: 16
 imgsz: 640

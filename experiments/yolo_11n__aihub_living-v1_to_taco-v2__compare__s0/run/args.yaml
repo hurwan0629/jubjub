@@ -2,7 +2,7 @@ task: detect
 mode: train
 model: C:\LANG_CHAIN_2026\final-project\parkkeeper-jupjup\experiments\yolo_11n__aihub_living-v1_to_taco-v2__compare__s0\aihub_run\weights\best.pt
 data: C:\LANG_CHAIN_2026\final-project\parkkeeper-jupjup\data\taco_yolo\data.yaml
-epochs: 5
+epochs: 50
 time: null
 patience: 10
 batch: 16
