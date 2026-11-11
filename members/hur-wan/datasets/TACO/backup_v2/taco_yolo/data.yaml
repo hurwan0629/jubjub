@@ -1,0 +1,11 @@
+# 줍줍 라벨러 에서 내보낸 YOLO 데이터셋 (2026-11-10 16:13)
+# 이 폴더를 다른 곳으로 옮기면 아래 path 를 새 위치로 바꿔 주세요.
+path: "C:/LANG_CHAIN_2026/final-project/parkkeeper-jupjup/data/taco_yolo"
+train: images/train
+val: images/val
+nc: 4
+names:
+  0: "general"
+  1: "plastic"
+  2: "can"
+  3: "glass"

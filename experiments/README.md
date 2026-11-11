@@ -1,5 +1,16 @@
 # 실험 목록
 
+## 실험 진행 순서
+
+| 순서 | 실험 | 학습 흐름 |
+| --- | --- | --- |
+| 1 | [YOLO11n TACO 초기 기준 실험](01_yolo_11n_baseline-s0/) | YOLO11n으로 TACO 학습 |
+| 2 | D-FINE-N TACO 실험: [smoke](dfine-n__taco-v1__smoke__s0/), [smoke-b8-w2](dfine-n__taco-v1__smoke-b8-w2__s0/) | D-FINE-N의 두 실험을 같은 단계로 묶음. 두 실행 사이의 순서는 미기록 |
+| 3 | [YOLO11n AIHub 학습](yolo_11n__aihub_living-v1__trash_feature_training__s0/) | 공식 YOLO11n 가중치 → AIHub 생활폐기물 데이터 학습 |
+| 4 | [YOLO11n TACO 추가 학습](yolo_11n__taco-v2__trash_feature_training__s1/) | 3번의 `run/weights/best.pt` → TACO 학습 및 검증 |
+
+위 번호는 실험 진행 순서이며 성능 순위가 아닙니다. 3번과 4번은 하나의 가중치 계보로 이어집니다.
+
 ## JetHexa 하드웨어 참고 사양 (실제 장비 미확인)
 
 아래는 일반 판매 JetHexa의 Jetson Nano B01 구성에 대한 **제조사 공개 사양**입니다. 현재 사용할 장비에서 직접 확인한 값이나 추론 성능 측정값은 아닙니다. 출처: [Hiwonder JetHexa 제품 페이지](https://www.hiwonder.com/products/jethexa), [NVIDIA Jetson Nano 기술 사양](https://www.nvidia.com/en-sg/autonomous-machines/embedded-systems/jetson-nano/product-development/), [NVIDIA 발표 자료 (FP16 연산 성능)](https://developer.download.nvidia.com/video/gputechconf/gtc/2019/presentation/s9901-the-nvidia-jetson-platform-for-autonomous-machines.pdf).
