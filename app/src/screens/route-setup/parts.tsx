@@ -73,7 +73,7 @@ export function Footer({
   );
 }
 
-export type RoutePoint = { x: number; y: number; name: string; stay: number };
+export type RoutePoint = { x: number; y: number; name: string };
 
 const ROW_H = 57;
 
@@ -82,13 +82,11 @@ const ROW_H = 57;
  */
 export function PointList({
   points,
-  showStay,
   reorder,
   onRemove,
   onMove,
 }: {
   points: RoutePoint[];
-  showStay?: boolean;
   reorder?: boolean;
   onRemove: (i: number) => void;
   onMove?: (from: number, to: number) => void;
@@ -161,15 +159,10 @@ export function PointList({
               {i + 1}
             </Txt>
           </View>
-          <View style={{ flex: 1, gap: 2 }}>
+          <View style={{ flex: 1 }}>
             <Txt size={14} weight="bold">
               {p.name}
             </Txt>
-            {showStay ? (
-              <Txt size={12} color={colors.textSub}>
-                머무는 시간 {p.stay}분
-              </Txt>
-            ) : null}
           </View>
           <Pressable onPress={() => onRemove(i)} hitSlop={8} accessibilityLabel={`${p.name} 지우기`}>
             <Icon source={icons.circleMinus} size={22} />
@@ -180,14 +173,13 @@ export function PointList({
   );
 }
 
-/** 한 바퀴 예상 시간(분): 머무는 시간 + 이동 거리 */
+/** 한 바퀴 예상 시간(분): 이동 거리로만 어림해요 */
 export function lapMinutes(points: RoutePoint[], recycle: { x: number; y: number } | null) {
   if (points.length === 0) return 0;
   const loop = [...points, ...(recycle ? [recycle] : []), points[0]];
   let dist = 0;
   for (let i = 1; i < loop.length; i++) dist += Math.hypot(loop[i].x - loop[i - 1].x, loop[i].y - loop[i - 1].y);
-  const stay = points.reduce((n, p) => n + p.stay, 0);
-  return Math.max(1, Math.round(stay + dist / 40));
+  return Math.max(1, Math.round(dist / 40));
 }
 
 const st = StyleSheet.create({
