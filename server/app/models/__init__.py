@@ -5,6 +5,7 @@
 """
 
 from app.core.db import Base
+from app.models.park_catalog import ParkCatalogEntry
 from app.models.user import User
 
-__all__ = ["Base", "User"]
+__all__ = ["Base", "ParkCatalogEntry", "User"]
