@@ -95,14 +95,21 @@ export function SignUpEmailScreen({ navigation }: NativeStackScreenProps<RootPar
         name: form.name.trim(),
         email: form.email.trim(),
         phone: digitsOnly(form.phone),
-        agreedPrivacy: agreed,
       });
       setDone(true);
     } catch (e) {
-      if (e instanceof ApiError && e.code === 'duplicate_login_id') {
-        setServerErrors({ loginId: e.message });
+      if (!(e instanceof ApiError)) {
+        setFormError('가입하지 못했어요. 잠시 후 다시 시도해 주세요');
+      } else if (e.code === 'account_exists') {
+        // 서버는 아이디 · 이메일 중 어느 쪽이 겹치는지 알려 주지 않아서 두 칸에 모두 보여 줘요
+        setServerErrors({ loginId: e.message, email: e.message });
+      } else if (e.status === 422 && e.details?.length) {
+        // details[].field = "body.loginId" → 해당 칸 아래에 오류를 보여 줘요
+        const fields = e.details.map((d) => d.field.split('.').pop()).filter((f): f is Field => !!f && f in EMPTY);
+        if (fields.length) setServerErrors(Object.fromEntries(fields.map((f) => [f, INVALID])));
+        else setFormError(e.message);
       } else {
-        setFormError(e instanceof ApiError ? e.message : '가입하지 못했어요. 잠시 후 다시 시도해 주세요');
+        setFormError(e.message);
       }
     } finally {
       setBusy(false);

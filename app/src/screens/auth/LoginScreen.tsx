@@ -29,11 +29,8 @@ export function LoginScreen({ navigation }: NativeStackScreenProps<RootParams, '
       // 뒤로 가기로 로그인 화면에 돌아오지 않게 바꿔 끼워요. Main의 첫 탭이 A-01 홈이에요.
       navigation.replace(isFirstLogin ? 'RouteSetup' : 'Main');
     } catch (e) {
-      setError(
-        e instanceof ApiError && e.status === 401
-          ? '아이디 또는 비밀번호를 확인해 주세요'
-          : '로그인하지 못했어요. 잠시 후 다시 시도해 주세요',
-      );
+      // 401 아이디 · 비밀번호 틀림, 0 서버 연결 실패, 503 서버 설정 문제: 서버가 보낸 문구를 그대로 보여 줘요
+      setError(e instanceof ApiError ? e.message : '로그인하지 못했어요. 잠시 후 다시 시도해 주세요');
     } finally {
       setBusy(false);
     }

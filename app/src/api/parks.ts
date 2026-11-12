@@ -1,5 +1,5 @@
 // 공원 검색 API (C-03 공원 찾기)
-import { mockResponse, request, USE_MOCK } from './client';
+import { mockResponse, request, mockFor } from './client';
 import { mockParks } from './mock/parks';
 import type { Park } from './types';
 
@@ -7,7 +7,7 @@ import type { Park } from './types';
 export function searchParks(query: string): Promise<Park[]> {
   const q = query.trim();
   if (!q) return Promise.resolve([]);
-  if (USE_MOCK)
+  if (mockFor('parks'))
     return mockResponse(
       mockParks.filter((p) => p.name.includes(q) || p.address.includes(q)),
       100,
