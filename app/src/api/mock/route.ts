@@ -8,9 +8,9 @@ export const mockRouteConfig: RouteConfig = {
   area: HANGANG_AREA,
   station: S.station,
   points: [
-    { id: 'p1', name: '잔디광장', position: S.lawn, stay: 2 },
-    { id: 'p2', name: '공연장 앞', position: S.stage, stay: 3 },
-    { id: 'p3', name: '벤치 쉼터', position: S.bench, stay: 1 },
+    { id: 'p1', name: '잔디광장', position: S.lawn },
+    { id: 'p2', name: '공연장 앞', position: S.stage },
+    { id: 'p3', name: '벤치 쉼터', position: S.bench },
   ],
   schedule: [
     { id: 's1', time: '10:00', label: '매일 순찰', on: true, repeat: 'daily' },

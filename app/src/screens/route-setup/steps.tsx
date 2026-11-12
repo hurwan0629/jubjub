@@ -44,7 +44,7 @@ const GUIDE = [
   ['공원 찾기', '검색해서 Jubi가 일할 공원으로 이동해요'],
   ['분리수거장 위치', 'Jubi가 칸을 비우러 갈 곳을 1곳 정해요'],
   ['순찰 지점 찍기', '지도를 꾹 눌러 지점을 추가하고 이름을 붙여요'],
-  ['순서와 머무는 시간', '돌 순서와 지점마다 머무는 시간을 정해요'],
+  ['순서', '지점을 돌 순서를 정해요'],
   ['순찰 시간표', '하루 중 언제 순찰할지 정해요'],
 ];
 
@@ -352,7 +352,6 @@ export function StepPoints({
           </Txt>
         </View>
         <View style={{ paddingHorizontal: 24 }}>
-          {/* Figma 최신 시안에서 지점 목록의 '머무는 시간'을 뺐어요 */}
           <PointList points={points} onRemove={onRemove} />
         </View>
       </ScrollView>
@@ -363,7 +362,7 @@ export function StepPoints({
         order={points.length + 1}
         onCancel={() => setPending(null)}
         onSubmit={(name) => {
-          if (pending) onAdd({ id: `p${Date.now()}`, position: pending, name, stay: 2 });
+          if (pending) onAdd({ id: `p${Date.now()}`, position: pending, name });
           setPending(null);
         }}
       />

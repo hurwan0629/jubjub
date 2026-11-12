@@ -4,10 +4,12 @@
 export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? '';
 export const USE_MOCK = API_URL === '';
 
+/** 서버 에러 응답 형식 (server/app/core/errors.py): {"status": 404, "message": "...", "code": "not_found"} */
 export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    public code?: string,
   ) {
     super(message);
   }
@@ -31,7 +33,9 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
     },
   });
   if (!res.ok) {
-    throw new ApiError(res.status, `${init.method ?? 'GET'} ${path} 실패 (${res.status})`);
+    // 서버가 보낸 message가 있으면 그대로 쓰고, 없으면(네트워크 장비 에러 등) 기본 문구를 써요
+    const body = (await res.json().catch(() => null)) as { message?: string; code?: string } | null;
+    throw new ApiError(res.status, body?.message ?? `${init.method ?? 'GET'} ${path} 실패 (${res.status})`, body?.code);
   }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;

@@ -1,0 +1,1 @@
+{"nodes": [{"id": "eval_val_batch0_labels", "label": "Validation Batch 0 Ground Truth Labels", "file_type": "image", "source_file": "experiments/yolo_11n__taco-v2__trash_feature_training__s1/eval/val_batch0_labels.jpg"}], "edges": [], "hyperedges": []}

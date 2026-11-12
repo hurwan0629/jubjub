@@ -1,0 +1,5 @@
+# 개발용 (린트·포맷·테스트)
+-r requirements.txt
+ruff==0.17.4
+pytest==9.2.0
+httpx==0.28.1

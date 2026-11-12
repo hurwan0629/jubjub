@@ -12,8 +12,6 @@ const ROW_H = 57;
 
 type PointListProps = {
   points: PatrolPoint[];
-  /** '머무는 시간 N분' 줄을 보여 줄지 */
-  showStay?: boolean;
   /** ⠿ 손잡이를 끌어서 순서를 바꿀 수 있게 */
   reorder?: boolean;
   onRemove: (index: number) => void;
@@ -21,7 +19,7 @@ type PointListProps = {
 };
 
 /** 순찰 지점 목록 (C-03 처음 설정 · A-04 경로 편집) */
-export function PointList({ points, showStay, reorder, onRemove, onMove }: PointListProps) {
+export function PointList({ points, reorder, onRemove, onMove }: PointListProps) {
   const [drag, setDrag] = useState<number | null>(null);
   const dy = useRef(new Animated.Value(0)).current;
   const onMoveRef = useRef(onMove);
@@ -86,11 +84,6 @@ export function PointList({ points, showStay, reorder, onRemove, onMove }: Point
             <Text variant="14-bold" numberOfLines={1}>
               {p.name}
             </Text>
-            {showStay ? (
-              <Text variant="12-regular" color="textSub">
-                머무는 시간 {p.stay}분
-              </Text>
-            ) : null}
           </View>
           <Pressable
             onPress={() => onRemove(i)}
@@ -126,6 +119,6 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   numText: { textAlign: 'center' },
-  // 이름과 머무는 시간을 한 덩어리로 줄 가운데에 모아요
-  pointText: { flex: 1, justifyContent: 'center', gap: space[4] },
+  // 이름을 줄 가운데에 맞춰요
+  pointText: { flex: 1, justifyContent: 'center' },
 });

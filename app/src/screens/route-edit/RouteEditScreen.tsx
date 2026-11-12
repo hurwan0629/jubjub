@@ -143,7 +143,6 @@ function RouteEditor({ initial, onDone }: { initial: RouteConfig; onDone: () => 
           <View style={s.padded}>
             <PointList
               points={draft.points}
-              showStay
               reorder
               onRemove={(i) => setPoints(draft.points.filter((_, j) => j !== i))}
               onMove={(from, to) => setPoints(moveItem(draft.points, from, to))}
@@ -187,7 +186,7 @@ function RouteEditor({ initial, onDone }: { initial: RouteConfig; onDone: () => 
         order={draft.points.length + 1}
         onCancel={() => setPending(null)}
         onSubmit={(name) => {
-          if (pending) setPoints([...draft.points, { id: `p${Date.now()}`, name, position: pending, stay: 2 }]);
+          if (pending) setPoints([...draft.points, { id: `p${Date.now()}`, name, position: pending }]);
           setPending(null);
         }}
       />

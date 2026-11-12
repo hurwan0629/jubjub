@@ -1,0 +1,1 @@
+{"nodes": [{"id": "eval_confusion_matrix", "label": "Confusion Matrix (Evaluation)", "file_type": "image", "source_file": "experiments/yolo_11n__taco-v2__trash_feature_training__s1/eval/confusion_matrix.png", "rationale": "Shows raw counts of true vs predicted labels for the evaluation set."}], "edges": [], "hyperedges": []}

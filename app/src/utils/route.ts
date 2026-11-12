@@ -7,7 +7,7 @@ import { distanceMeters } from './geo';
 // 로봇 이동 속도 (m/분). 실제 값은 로봇 팀과 맞춰야 해요.
 const ROBOT_METERS_PER_MIN = 30;
 
-type PointLike = Pick<PatrolPoint, 'position' | 'stay'>;
+type PointLike = Pick<PatrolPoint, 'position'>;
 
 /** 한 바퀴: 지점들 → 분리수거장 → 처음 지점 */
 export function loopPath(points: PointLike[], station: LatLng | null): LatLng[] {
@@ -15,14 +15,13 @@ export function loopPath(points: PointLike[], station: LatLng | null): LatLng[] 
   return [...points.map((p) => p.position), ...(station ? [station] : []), points[0].position];
 }
 
-/** 한 바퀴 예상 시간(분): 머무는 시간 + 이동 거리 */
+/** 한 바퀴 예상 시간(분): 이동 거리로만 어림해요 */
 export function lapMinutes(points: PointLike[], station: LatLng | null) {
   const loop = loopPath(points, station);
   if (loop.length === 0) return 0;
   let meters = 0;
   for (let i = 1; i < loop.length; i++) meters += distanceMeters(loop[i - 1], loop[i]);
-  const stay = points.reduce((n, p) => n + p.stay, 0);
-  return Math.max(1, Math.round(stay + meters / ROBOT_METERS_PER_MIN));
+  return Math.max(1, Math.round(meters / ROBOT_METERS_PER_MIN));
 }
 
 /** 켜진 시간표 중 지금 이후 첫 순찰 시각 (없으면 내일 첫 순찰) */

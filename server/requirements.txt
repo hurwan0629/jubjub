@@ -1,0 +1,8 @@
+# 서버 실행에 필요한 패키지
+fastapi==0.162.4
+uvicorn[standard]==0.54.0
+SQLAlchemy==2.1.8
+alembic==1.20.1
+pydantic==2.14.3
+pydantic-settings==2.16.2
+psycopg[binary]==3.3.8

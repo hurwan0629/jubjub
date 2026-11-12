@@ -66,7 +66,6 @@ export type PatrolPoint = {
   id: string;
   name: string; // 알림 · 기록에 쓰는 장소 이름
   position: LatLng;
-  stay: number; // 머무는 시간(분)
 };
 
 /** 순찰 시간 반복 */
