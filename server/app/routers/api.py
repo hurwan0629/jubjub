@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends
 
 from app.models import User
+from app.routers import parks
 from app.schemas.auth import ProfileResponse
 from app.services.auth import get_current_user
 
@@ -15,3 +16,4 @@ def me(user: User = Depends(get_current_user)) -> ProfileResponse:
 
 
 # 이후 업무 라우터는 router.include_router(...)로 추가하면 Bearer 인증이 적용돼요.
+router.include_router(parks.router)
