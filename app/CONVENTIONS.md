@@ -174,5 +174,5 @@ import { Footer } from './parts'; // 3. 같은 폴더·상대 경로
 ## 10. 알아 두면 좋은 것
 
 - 커밋하면 husky가 바뀐 파일만 `eslint --fix` + `prettier`로 고쳐요. 에러가 남으면 커밋이 멈추니 메시지를 보고 고쳐요.
-- 지금 남아 있는 ESLint 경고 4개(`route-setup/parts.tsx`, `ReportScreen.tsx`)는 React Compiler 규칙 경고예요. 해당 화면을 손볼 때 같이 정리해요.
+- 지금 남아 있는 ESLint 경고 4개(`components/PointList.tsx`, `ReportScreen.tsx`)는 React Compiler 규칙 경고예요. 해당 화면을 손볼 때 같이 정리해요.
 - 기존 화면(지도, 보고, 로그인, 경로 설정)은 아직 `Txt`와 숫자 스타일이 남아 있어요. 그 화면 담당자가 작업할 때 `HomeScreen.tsx`를 참고해 하나씩 옮겨요.
