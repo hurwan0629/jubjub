@@ -30,11 +30,19 @@ DEFAULT_CODE = {
 
 
 class AppError(Exception):
-    def __init__(self, status: int, message: str, code: str | None = None, details: object = None):
+    def __init__(
+        self,
+        status: int,
+        message: str,
+        code: str | None = None,
+        details: object = None,
+        headers: dict[str, str] | None = None,
+    ):
         self.status = status
         self.message = message
         self.code = code or DEFAULT_CODE.get(status, "error")
         self.details = details
+        self.headers = headers
 
 
 def error_body(status: int, message: str, code: str | None = None, details: object = None) -> dict:
@@ -47,7 +55,9 @@ def error_body(status: int, message: str, code: str | None = None, details: obje
 def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def handle_app_error(_: Request, exc: AppError) -> JSONResponse:
-        return JSONResponse(error_body(exc.status, exc.message, exc.code, exc.details), status_code=exc.status)
+        return JSONResponse(
+            error_body(exc.status, exc.message, exc.code, exc.details), status_code=exc.status, headers=exc.headers
+        )
 
     @app.exception_handler(StarletteHTTPException)
     async def handle_http_error(_: Request, exc: StarletteHTTPException) -> JSONResponse:
