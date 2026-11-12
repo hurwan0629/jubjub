@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
-import { searchParks } from '@/api/parks';
+import { ApiError } from '@/api/client';
 import type { LatLng, Park, ParkArea, ParkBounds, PatrolPoint, PatrolSlot } from '@/api/types';
 import { AddTimeSheet, Icon, MapHint, ParkMap, PointList, PointNameSheet, ScheduleList, Text } from '@/components';
 import type { ParkMapMarker } from '@/components';
@@ -83,14 +83,26 @@ export function StepIntro() {
 export function StepPark({ park, onPick }: { park: Park | null; onPick: (p: Park | null) => void }) {
   const [query, setQuery] = useState(park?.name ?? '');
   const q = query.trim();
-  const { data: found } = useParkSearch(q);
-  const results = q ? (found ?? []) : [];
+  const search = useParkSearch(q);
+  const results = search.items;
+
+  const clearSearch = () => {
+    setQuery('');
+    onPick(null);
+  };
+
+  const listTitle = search.loading ? '찾는 중이에요…' : `검색 결과 ${results.length}곳${search.hasMore ? ' 이상' : ''}`;
+  const errorText = !search.error
+    ? undefined
+    : search.error instanceof ApiError && search.error.status === 401
+      ? '로그인이 만료됐어요. 다시 로그인해 주세요'
+      : search.error.message;
 
   return (
     <View style={s.flex}>
       <View style={[s.padTight, { gap: space[8] }]}>
         <Text variant="18-bold">Jubi가 일할 공원을 찾아 주세요</Text>
-        {!q ? (
+        {!search.active ? (
           <Text variant="13-regular" color="textSub" lineHeight="relaxed">
             공원 이름이나 주소로 찾으면 지도가 그곳으로 이동해요
           </Text>
@@ -109,42 +121,20 @@ export function StepPark({ park, onPick }: { park: Park | null; onPick: (p: Park
             accessibilityLabel="공원 검색"
             returnKeyType="search"
           />
-          {q ? (
-            <Pressable
-              onPress={() => {
-                setQuery('');
-                onPick(null);
-              }}
-              hitSlop={8}
-              accessibilityLabel="검색어 지우기"
-            >
+          {search.active ? (
+            <Pressable onPress={clearSearch} hitSlop={8} accessibilityLabel="검색어 지우기">
               <Icon source={icons.xCircle} size={18} />
             </Pressable>
           ) : null}
         </View>
 
-        {!q ? (
-          <Pressable
-            style={s.locate}
-            onPress={async () => {
-              // 위치 권한 연동 전까지는 가장 가까운 공원(첫 검색 결과)을 골라요
-              setQuery('한강');
-              const nearby = await searchParks('한강');
-              onPick(nearby[0] ?? null);
-            }}
-          >
-            <Icon source={icons.buttonRoute} size={19} />
-            <Text variant="15-bold" color="brandText">
-              내 위치에서 찾기
-            </Text>
-          </Pressable>
-        ) : (
+        {search.active ? (
           <>
-            <Text variant="12-semibold" color="textSub" style={s.mt4}>
-              검색 결과 {results.length}곳
+            <Text variant="12-semibold" color={errorText ? 'error' : 'textSub'} style={s.mt4}>
+              {errorText ?? listTitle}
             </Text>
-            <View style={s.results}>
-              {results.length === 0 ? (
+            <ScrollView style={s.results} contentContainerStyle={s.resultsContent} nestedScrollEnabled>
+              {search.loading || errorText ? null : results.length === 0 ? (
                 <Text variant="13-regular" color="textSub" style={s.p12}>
                   찾는 공원이 없어요. 다른 이름으로 찾아 보세요
                 </Text>
@@ -168,17 +158,21 @@ export function StepPark({ park, onPick }: { park: Park | null; onPick: (p: Park
                           {p.address}
                         </Text>
                       </View>
-                      <Text variant="12-regular" color="textSub">
-                        {p.distance}
-                      </Text>
                       {on ? <Icon source={icons.checkBrand} size={20} /> : null}
                     </Pressable>
                   );
                 })
               )}
-            </View>
+              {search.hasMore && !search.loading ? (
+                <Pressable style={s.more} onPress={search.loadMore} accessibilityRole="button">
+                  <Text variant="13-semibold" color="brandText">
+                    {search.loadingMore ? '불러오는 중…' : '더 보기'}
+                  </Text>
+                </Pressable>
+              ) : null}
+            </ScrollView>
           </>
-        )}
+        ) : null}
       </View>
 
       <View style={s.flexMt8}>
@@ -195,6 +189,16 @@ export function StepPark({ park, onPick }: { park: Park | null; onPick: (p: Park
                 </Text>
               </View>
             </View>
+            {/* 공원 경계 출처 (ODbL) */}
+            <Pressable
+              style={s.attribution}
+              onPress={() => Linking.openURL('https://www.openstreetmap.org/copyright')}
+              accessibilityRole="link"
+            >
+              <Text variant="10-regular" color="textSub">
+                공원 경계 © OpenStreetMap contributors
+              </Text>
+            </Pressable>
           </ParkMap>
         ) : (
           // 아직 공원을 고르지 않았을 때: 흐린 도식 지도 + 안내
@@ -522,16 +526,19 @@ const s = StyleSheet.create({
     padding: 0,
     outlineStyle: 'none',
   } as object,
-  locate: {
-    height: 52,
-    borderRadius: 14,
-    backgroundColor: colors.bgBrandSoft,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: space[8],
+  results: { backgroundColor: colors.card, borderRadius: radius[16], maxHeight: 248, flexGrow: 0 },
+  resultsContent: { padding: 6, gap: 2 },
+  more: { alignItems: 'center', paddingVertical: space[12] },
+  attribution: {
+    position: 'absolute',
+    left: space[8],
+    bottom: space[8],
+    backgroundColor: colors.card,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    opacity: 0.9,
   },
-  results: { backgroundColor: colors.card, borderRadius: radius[16], padding: 6, gap: 2 },
   result: { flexDirection: 'row', alignItems: 'center', gap: space[12], padding: 10, borderRadius: 12 },
   pinCircle: {
     width: 36,
