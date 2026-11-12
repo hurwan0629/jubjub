@@ -1,0 +1,23 @@
+plastic bottle litter on grass: +5 (total 5)
+plastic bag litter in park: +30 (total 35)
+crushed soda can on the ground: +21 (total 56)
+aluminum can litter street: +86 (total 142)
+broken glass bottle litter: +17 (total 159)
+beer bottle litter in park: +38 (total 197)
+paper cup litter on sidewalk: +23 (total 220)
+cigarette butts on the ground: +24 (total 244)
+C:\LANG_CHAIN_2026\2026-05-19_KDT_lang_chain\.venv\Lib\site-packages\PIL\Image.py:1136: UserWarning: Palette images with Transparency expressed in bytes should be converted to RGBA images
+  warnings.warn(
+snack wrapper litter on ground: +38 (total 282)
+styrofoam litter on ground: +35 (total 317)
+trash on the ground in park: +12 (total 329)
+litter on grass close up: +14 (total 343)
+litter on sidewalk close up: +18 (total 361)
+roadside litter close up: +44 (total 405)
+beach litter plastic bottles: +42 (total 447)
+공원 쓰레기: +130 (total 577)
+길거리 쓰레기 페트병: +147 (total 724)
+버려진 캔 쓰레기: +112 (total 836)
+버려진 소주병: +126 (total 962)
+길바닥 담배꽁초: +38 (total 1000)
+done: 1000 images -> C:\LANG_CHAIN_2026\final-project\parkkeeper-jupjup\members\hur-wan\datasets\web-and-large-model\raw

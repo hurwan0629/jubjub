@@ -1,0 +1,8 @@
+{
+  "excludes": [
+    "members/hur-wan/datasets",
+    "members/hur-wan/sam3",
+    "data/taco_yolo",
+    "wandb"
+  ]
+}

@@ -1,0 +1,17 @@
+weights: ../../members/hur-wan/training/yolo11n.pt
+data: ../../data/taco_yolo/data.yaml
+epochs: 50
+patience: 10
+batch: 16
+imgsz: 640
+device: 0
+workers: 4
+seed: 0
+deterministic: true
+freeze: 10
+optimizer: auto
+amp: true
+cache: false
+save: true
+val: true
+plots: true

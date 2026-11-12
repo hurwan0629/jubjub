@@ -1,6 +1,26 @@
 # ===== Data & models (too large for git) =====
 data/*
 !data/README.md
+!data/taco_yolo/
+data/taco_yolo/*
+!data/taco_yolo/classes.txt
+!data/taco_yolo/*.ipynb
+!data/taco_yolo/labels/
+data/taco_yolo/labels/*
+!data/taco_yolo/labels/train/
+!data/taco_yolo/labels/val/
+!data/taco_yolo/labels/test/
+data/taco_yolo/labels/train/*
+data/taco_yolo/labels/val/*
+data/taco_yolo/labels/test/*
+!data/taco_yolo/labels/train/*.txt
+!data/taco_yolo/labels/val/*.txt
+!data/taco_yolo/labels/test/*.txt
+!data/taco_coco/
+data/taco_coco/*
+!data/taco_coco/annotations/
+data/taco_coco/annotations/*
+!data/taco_coco/annotations/*.json
 *.pt
 *.pth
 *.onnx
@@ -57,6 +77,9 @@ ios/Pods/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# ===== cache =====
+cache/
 
 # ===== Server =====
 server/storage/

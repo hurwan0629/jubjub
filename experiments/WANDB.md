@@ -1,6 +1,6 @@
 # W&B 기록 규격
 
-객체 탐지는 W&B 프로젝트 `parkkeeper-detection`에 기록한다. **학습 1회 = run 1개**다. `run.name`은 `{model_id}__{dataset_id}-{version}__{experiment_id}__s{seed}`로 쓴다. 예: `yolo11n__taco-v1__baseline__s0`. seed만 다른 반복 실험은 같은 `group` (`{model_id}__{dataset_id}-{version}__{experiment_id}`)에 넣는다.
+객체 탐지는 W&B 프로젝트 `jubjub`에 기록한다. **학습 1회 = run 1개**다. `run.name`은 `{model_id}__{dataset_id}-{version}__{experiment_id}__s{seed}`로 쓴다. 예: `yolo11n__taco-v1__baseline__s0`. seed만 다른 반복 실험은 같은 `group` (`{model_id}__{dataset_id}-{version}__{experiment_id}`)에 넣는다.
 
 ## 시작할 때: `run.config`
 
