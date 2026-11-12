@@ -3,7 +3,7 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 SERVER_DIR = Path(__file__).resolve().parents[2]
@@ -24,7 +24,8 @@ class Settings(BaseSettings):
     cors_origin_regex: str = LOCAL_NETWORK_ORIGINS
 
     # 인증 (KAN-88)
-    jwt_secret: str = "change-me"
+    jwt_secret: str = Field(default="", repr=False)
+    jwt_access_token_minutes: int = Field(default=60, gt=0, le=1440)
 
     # 로봇
     robot_bridge_url: str = "ws://localhost:9090"
