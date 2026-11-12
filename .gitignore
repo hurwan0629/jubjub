@@ -69,8 +69,9 @@ ios/Pods/
 !.env.example
 
 # ===== IDE / OS =====
-.vscode/
+.vscode/*
 !.vscode/extensions.json
+!.vscode/settings.json
 .idea/
 *.swp
 .DS_Store
@@ -79,3 +80,6 @@ desktop.ini
 
 # ===== cache =====
 cache/
+
+# ===== Server =====
+server/storage/

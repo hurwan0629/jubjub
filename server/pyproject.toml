@@ -1,0 +1,27 @@
+# 패키지 배포용이 아니라 도구(ruff·pytest) 설정만 모아 둔 파일이에요. 의존성은 requirements*.txt 에 있어요.
+[project]
+name = "jubjub-server"
+version = "0.1.0"
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+# E/W: 기본 스타일, F: 버그 가능성, I: import 정렬, B: 흔한 실수, UP: 최신 문법, SIM: 단순화
+select = ["E", "W", "F", "I", "B", "UP", "SIM"]
+# B008: FastAPI는 기본값 자리에 Depends(...)를 쓰는 게 정석이라 끕니다
+# E501: 줄 길이는 ruff format이 맞춰요. 한글 문장은 글자 폭이 넓어 넘칠 수 있어서 검사에서 뺍니다
+ignore = ["B008", "E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+# 서버 폴더의 alembic/ 디렉터리 때문에 패키지 alembic을 우리 코드로 착각하지 않게
+known-third-party = ["alembic"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# TestClient가 httpx를 쓴다는 Starlette 안내 경고. 테스트 동작에는 영향 없어서 숨겨요
+filterwarnings = ["ignore:Using `httpx` with `starlette.testclient`"]
