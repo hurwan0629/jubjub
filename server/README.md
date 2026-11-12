@@ -104,6 +104,7 @@ server/
 ## DB 마이그레이션 (Alembic)
 
 로그인·회원가입 API와 시드 계정 실행 방법은 [AUTH.md](AUTH.md)를 참고해 주세요.
+서울 공원 검색 API·경계 데이터 적재와 프론트 연결 안내는 [PARKS.md](PARKS.md)에 있어요.
 
 테이블은 Supabase 대시보드에서 직접 바꾸지 않고 Alembic으로만 바꿔요.
 
