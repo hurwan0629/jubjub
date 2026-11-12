@@ -14,6 +14,8 @@ import type { RootParams } from '@/navigation';
 import { colors, layout, radius, softShadow, space } from '@/theme';
 import { digitsOnly, formatPhone, INVALID, PASSWORD_MISMATCH, RULES } from '@/utils/validation';
 
+import { PrivacyConsentDialog } from './PrivacyConsentDialog';
+
 type Field = 'loginId' | 'password' | 'password2' | 'name' | 'email' | 'phone';
 type Form = Record<Field, string>;
 
@@ -39,6 +41,7 @@ export function SignUpEmailScreen({ navigation }: NativeStackScreenProps<RootPar
   const [serverErrors, setServerErrors] = useState<Partial<Record<Field, string>>>({});
   const [formError, setFormError] = useState<string>();
   const [agreed, setAgreed] = useState(false);
+  const [consentOpen, setConsentOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -165,20 +168,29 @@ export function SignUpEmailScreen({ navigation }: NativeStackScreenProps<RootPar
           />
 
           {/* 개인정보 수집 · 이용 동의 */}
-          <Pressable
-            style={s.consent}
-            onPress={() => setAgreed((a) => !a)}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: agreed }}
-          >
-            <Checkbox checked={agreed} />
-            <Text variant="13-regular" style={s.flex}>
-              [필수] 개인정보 수집 · 이용 동의
-            </Text>
-            <Text variant="12-regular" color="textSub" style={s.underline}>
-              보기
-            </Text>
-          </Pressable>
+          <View style={s.consent}>
+            <Pressable
+              style={s.consentCheck}
+              onPress={() => setAgreed((a) => !a)}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: agreed }}
+            >
+              <Checkbox checked={agreed} />
+              <Text variant="13-regular" style={s.flex}>
+                [필수] 개인정보 수집 · 이용 동의
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setConsentOpen(true)}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="개인정보 수집 및 이용 동의서 보기"
+            >
+              <Text variant="12-regular" color="textSub" style={s.underline}>
+                보기
+              </Text>
+            </Pressable>
+          </View>
 
           {formError ? (
             <Text variant="12-regular" color="error" accessibilityLiveRegion="polite">
@@ -191,6 +203,15 @@ export function SignUpEmailScreen({ navigation }: NativeStackScreenProps<RootPar
           <Button label={busy ? '가입하는 중…' : '가입하기'} disabled={!canSubmit} onPress={submit} />
         </View>
       </View>
+
+      <PrivacyConsentDialog
+        visible={consentOpen}
+        onAgree={() => {
+          setAgreed(true);
+          setConsentOpen(false);
+        }}
+        onClose={() => setConsentOpen(false)}
+      />
 
       {/* C-04 회원가입 - 완료 */}
       <Modal visible={done} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setDone(false)}>
@@ -230,6 +251,7 @@ const s = StyleSheet.create({
     paddingBottom: space[24],
     gap: space[16],
   },
+  consentCheck: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
   consent: {
     flexDirection: 'row',
     alignItems: 'center',

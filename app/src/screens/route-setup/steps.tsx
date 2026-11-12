@@ -267,6 +267,9 @@ export function StepRecycle({
               <Text variant="12-regular" color="textSub">
                 Jubi가 칸을 비우는 곳 · 1곳
               </Text>
+              <Text variant="12-regular" color="textSub">
+                이 지점으로 Jubi가 돌아옵니다
+              </Text>
             </View>
             <Text variant="12-semibold" color={recycle ? 'textDone' : 'textSub'}>
               {recycle ? '정했어요' : '아직 안 정했어요'}

@@ -1,17 +1,34 @@
-import { ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useEffect, useRef, useState } from 'react';
+import type { ComponentRef, ReactNode } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon, Text } from '@/components';
+import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 import { icons } from '@/icons';
 import { colors, layout, space } from '@/theme';
 
 /** 로그인 · 회원가입 공통 틀: 서비스 소개 + 본문 + 하단 서비스 원칙 (Figma C-01 · C-04) */
 export function AuthLayout({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
+  // 키보드가 올라오면 그 높이만큼 화면 아래를 비우고, 입력 양식이 화면 위쪽에 오도록 스크롤해요.
+  // (안드로이드 edge-to-edge에서는 KeyboardAvoidingView가 동작하지 않아 직접 계산해요)
+  const insets = useSafeAreaInsets();
+  const keyboardHeight = useKeyboardHeight();
+  const keyboardSpace = Math.max(0, keyboardHeight - insets.bottom);
+  const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
+  const [formY, setFormY] = useState<number>();
+
+  useEffect(() => {
+    if (keyboardHeight > 0 && formY !== undefined) {
+      scrollRef.current?.scrollTo({ y: Math.max(0, formY - space[16]), animated: true });
+    }
+  }, [keyboardHeight, formY]);
+
   return (
     <SafeAreaView style={s.screen} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView style={s.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <View style={[s.flex, { paddingBottom: keyboardSpace }]}>
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={s.content}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -34,7 +51,10 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
             </View>
           </View>
 
-          {children}
+          {/* 입력 양식 · 안내 (키보드가 올라오면 여기까지 스크롤해요) */}
+          <View style={s.body} onLayout={(e) => setFormY(e.nativeEvent.layout.y)}>
+            {children}
+          </View>
 
           {/* 서비스 원칙 */}
           <View style={s.footer}>
@@ -43,7 +63,7 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
             </Text>
           </View>
         </ScrollView>
-      </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -59,6 +79,7 @@ const s = StyleSheet.create({
     gap: 44, // Figma 소개 ↔ 양식 간격 (토큰 없음)
   },
   intro: { gap: space[24] },
+  body: { gap: 44 }, // 양식 ↔ 안내 간격 (content의 gap과 같아요)
   titles: { gap: space[12] },
   brand: { flexDirection: 'row', alignItems: 'center', gap: space[12] },
   appIcon: {
