@@ -1,0 +1,2 @@
+# 커밋 전에 바뀐 앱 파일만 린트·포맷해요 (app/package.json 의 lint-staged 설정)
+cd app && npx lint-staged
