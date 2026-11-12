@@ -33,9 +33,13 @@ data/
 | TACO | 1,500 | 2,217 | 1,256 | 353 | 116 |
 | Drinking Waste | 4,811 | 0 | 2,528 | 1,128 | 1,402 |
 | PlastOPol | 1,887 | 1,884 | 1,679 | 187 | 174 |
+| 총합 (aihub 제외) | 8,198 | 4,101 | 5,463 | 1,668 | 1,692 |
 
 이미지 수는 로컬 `images/` 폴더, 박스 수는 `*_coco/annotations/`의 JSON 기준입니다.
 
 ## 향후 조사 예정인 데이터셋
 
 - [Waste Datasets Review](https://github.com/AgaMiko/waste-datasets-review)
+
+## 변경사항
+- taco v1은 aihub와 분류 기준이 달랐어서 v2로 변경되었습니다. (주로 비닐봉지를 플라스틱으로 분류하고있었음)
