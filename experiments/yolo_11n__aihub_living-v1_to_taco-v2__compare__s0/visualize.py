@@ -1,4 +1,10 @@
-"""Save sampled YOLO ground truth and predictions as one image grid."""
+"""AIHub 또는 TACO 단계의 YOLO 예측과 정답을 PNG 그리드로 비교한다.
+
+사용법 (이 폴더에서):
+    python visualize.py --model taco --dataset taco --split test --seed 1
+
+--model aihub는 aihub_run/, --model taco는 run/의 best.pt를 읽는다.
+"""
 
 import argparse
 from pathlib import Path
@@ -22,6 +28,7 @@ FONT = ImageFont.load_default(size=16)
 
 
 def draw_panel(image, detections, title, names):
+    # 원본 비율을 유지해 패널에 맞추고, 박스 좌표에도 같은 배율과 여백을 적용한다.
     scale = min(CELL_W / image.width, CELL_H / image.height)
     resized = image.resize((round(image.width * scale), round(image.height * scale)), Image.Resampling.BILINEAR)
     panel = Image.new("RGB", (CELL_W, CELL_H + HEADER_H), "white")
@@ -62,6 +69,7 @@ def main():
     if not 0 <= args.conf <= 1:
         parser.error("--conf must be between 0 and 1")
 
+    # --model aihub는 aihub_run/weights/best.pt, --model taco는 run/weights/best.pt를 읽는다.
     config_path = HERE / "config.yaml"
     config = yaml.safe_load(config_path.read_text(encoding="utf-8")) if config_path.is_file() else {}
     if not config_path.is_file() and not args.dataset:
@@ -85,6 +93,7 @@ def main():
     split = args.split or ("test" if dataset_name == "taco" else "val")
     if split not in data:
         parser.error(f"{data_yaml} has no {split} split")
+    # data.yaml의 images/<split>과 같은 위치의 labels/<split>을 짝지어 읽는다.
     data_root = Path(data["path"])
     if not data_root.is_absolute():
         data_root = (data_yaml.parent / data_root).resolve()
@@ -103,6 +112,7 @@ def main():
     if output.exists():
         parser.error(f"Output already exists: {output}")
 
+    # 클래스 번호의 의미가 다르면 GT와 예측을 나란히 놓아도 비교할 수 없다.
     model = YOLO(str(weights))
     names = {int(key): value for key, value in data["names"].items()} if isinstance(data["names"], dict) else dict(enumerate(data["names"]))
     if {int(key): str(value) for key, value in model.names.items()} != names:
@@ -112,6 +122,7 @@ def main():
         with Image.open(image_path) as source:
             image = source.convert("RGB")
         label_path = label_root / image_path.relative_to(image_root).with_suffix(".txt")
+        # YOLO 라벨의 정규화된 중심 좌표를 원본 이미지의 모서리 좌표로 바꾼다.
         ground_truth = []
         lines = label_path.read_text(encoding="utf-8").splitlines() if label_path.is_file() else []
         for line_number, line in enumerate(lines, 1):
@@ -131,6 +142,7 @@ def main():
         panels.append(draw_panel(image, ground_truth, f"GT | {name}", names))
         panels.append(draw_panel(image, predictions, f"Pred | {name}", names))
 
+    # 이미지마다 GT와 예측 패널을 연속 배치하고 네 열짜리 PNG 한 장으로 저장한다.
     rows = (len(panels) + 3) // 4
     grid = Image.new("RGB", (4 * CELL_W, rows * (CELL_H + HEADER_H)), "white")
     for index, panel in enumerate(panels):

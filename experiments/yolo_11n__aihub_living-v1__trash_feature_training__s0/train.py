@@ -1,4 +1,10 @@
-"""Train YOLO11n on the four-class AIHub living-waste dataset."""
+"""공식 YOLO11n 가중치를 AIHub 생활폐기물 4클래스로 학습·검증한다.
+
+사용법 (이 폴더에서):
+    python train.py
+
+config.yaml을 읽고 결과를 run/과 eval/에 저장한다.
+"""
 
 import csv
 import hashlib
@@ -28,6 +34,7 @@ METRIC_NAMES = {
 
 
 def main() -> None:
+    # config.yaml의 가중치·데이터 경로를 해석하고 기존 run/을 보호한다.
     config_path = HERE / "config.yaml"
     config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
     weights = (HERE / config.pop("weights")).resolve()
@@ -45,6 +52,7 @@ def main() -> None:
     if data_root.resolve() != data.parent:
         raise ValueError(f"data.yaml points to {data_root}, expected {data.parent}")
 
+    # 학습에 사용한 파일 목록과 크기를 남겨 데이터 구성을 추적한다.
     manifest = HERE / "data_manifest.tsv"
     with manifest.open("w", encoding="utf-8", newline="") as file:
         for split in ("train", "val"):
@@ -56,6 +64,7 @@ def main() -> None:
                     if path.is_file() and path.suffix.lower() in ({".jpg", ".jpeg", ".png"} if kind == "images" else {".txt"}):
                         print(split, kind, path.name, path.stat().st_size, sep="\t", file=file)
 
+    # 학습 결과는 이 실험의 run/에 저장하고, 실행 시점의 Git 커밋도 기록한다.
     train_args = {**config, "data": str(data), "project": str(HERE), "name": "run", "exist_ok": False}
     try:
         commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
@@ -85,6 +94,7 @@ def main() -> None:
         args_file = run_dir / "args.yaml"
         results_file = run_dir / "results.csv"
         best = run_dir / "weights" / "best.pt"
+        # optimizer=auto처럼 학습 중 결정된 값을 effective_args.yaml에 보관한다.
         effective_args = yaml.safe_load(args_file.read_text(encoding="utf-8"))
         effective_args["optimizer"] = type(model.trainer.optimizer).__name__
         effective_args["lr0"] = float(model.trainer.args.lr0)
@@ -94,12 +104,14 @@ def main() -> None:
         run.config.update({"train/args": effective_args}, allow_val_change=True)
         run.summary["train/optimizer"] = effective_args["optimizer"]
         run.summary["train/lr0"] = effective_args["lr0"]
+        # Ultralytics의 에포크별 results.csv를 W&B 지표로 옮긴다.
         with results_file.open(newline="", encoding="utf-8") as file:
             for row in csv.DictReader(file):
                 values = {key.strip(): float(value) for key, value in row.items() if key not in {"epoch", "time"} and value}
                 values.update({alias: values[source] for source, alias in METRIC_NAMES.items() if source in values})
                 run.log({"epoch": int(row["epoch"]), **values})
 
+        # best.pt를 별도로 불러와 검증 분할의 최종 지표와 혼동행렬을 남긴다.
         evaluation = YOLO(str(best)).val(
             data=str(data), split="val", imgsz=config["imgsz"], conf=0.001, iou=0.7,
             max_det=300, project=str(HERE), name="eval", exist_ok=False, plots=True,
@@ -120,6 +132,7 @@ def main() -> None:
         confusion = HERE / "eval" / "confusion_matrix.png"
         if confusion.is_file():
             run.log({"eval/confusion_matrix_image": wandb.Image(str(confusion))})
+        # 재현에 필요한 가중치·설정과 데이터 목록을 W&B 아티팩트로 묶는다.
         model_artifact = wandb.Artifact(f"model-{run.id}", type="model")
         for path in (best, config_path, args_file, effective_file, results_file, confusion):
             if path.is_file():

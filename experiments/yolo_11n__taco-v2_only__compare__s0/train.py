@@ -1,4 +1,10 @@
-"""Train and evaluate either arm of the YOLO11n TACO pretraining comparison."""
+"""공식 YOLO11n 가중치를 TACO만으로 학습해 비교군을 평가한다.
+
+사용법 (이 폴더에서):
+    python train.py
+
+config.yaml을 읽고 학습 결과는 run/, TACO test 평가는 eval/에 저장한다.
+"""
 
 import csv
 import hashlib
@@ -74,6 +80,7 @@ def main(experiment_dir: Path, stage: str) -> None:
                 paths = sorted(path for path in directory.iterdir() if path.is_file() and path.suffix.lower() in ({".jpg", ".jpeg", ".png"} if kind == "images" else {".txt"}))
                 stems[kind] = {path.stem for path in paths}
                 for path in paths:
+                    # TACO는 내용 해시를, 파일 수가 큰 AIHub는 크기를 지문으로 남긴다.
                     fingerprint = hashlib.sha256(path.read_bytes()).hexdigest() if stage == "taco" else path.stat().st_size
                     print(split, kind, path.name, fingerprint, sep="\t", file=file)
             if not stems["images"] or (expected_count and len(stems["images"]) != expected_count) or stems["images"] != stems["labels"]:
@@ -86,7 +93,7 @@ def main(experiment_dir: Path, stage: str) -> None:
     except (OSError, subprocess.CalledProcessError):
         commit = "unknown"
 
-    # W&B 저장용
+    # 실험군·단계·시작 가중치를 W&B 설정에서 구분할 수 있게 기록한다.
     run_config = {
         "comparison/arm": "aihub_then_taco" if aihub_data else "taco_only",
         "comparison/stage": stage,
@@ -123,7 +130,7 @@ def main(experiment_dir: Path, stage: str) -> None:
         results_file = run_dir / "results.csv"
         logged_epochs = 0
 
-        # 저장 코드
+        # 콜백이 여러 번 호출돼도 새로 추가된 results.csv 행만 W&B에 올린다.
         def log_epochs(_trainer) -> None:
             nonlocal logged_epochs
             if results_file.is_file():
@@ -148,6 +155,7 @@ def main(experiment_dir: Path, stage: str) -> None:
         try:
             model.train(**train_args)
         finally:
+            # 학습이 중단돼도 CSV에 기록된 마지막 에포크까지 업로드한다.
             log_epochs(None)
 
         # 6. 자동 선택된 optimizer 등 실제 적용된 학습 설정을 저장한다.

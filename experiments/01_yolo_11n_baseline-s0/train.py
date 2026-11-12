@@ -1,4 +1,10 @@
-"""Rerun the notebook's YOLO11n baseline with an explicit dataset path."""
+"""초기 노트북의 YOLO11n 학습 설정으로 기준 실험을 다시 실행한다.
+
+사용법 (이 폴더에서):
+    python train.py --dataset 원본_60클래스/data.yaml
+
+기존 train/은 유지하고 새 결과를 rerun/에 저장한다.
+"""
 
 import argparse
 from pathlib import Path
@@ -19,9 +25,11 @@ def main():
     args = parser.parse_args()
     if not args.dataset.is_file() or not args.weights.is_file():
         parser.error(f"Check dataset and weights: {args.dataset}, {args.weights}")
+    # 기존 노트북 결과인 train/을 보호하기 위해 별도 출력 폴더만 허용한다.
     output = args.output_dir.resolve()
     if output.exists():
         parser.error(f"Output already exists: {output}")
+    # 당시 Ultralytics가 남긴 args.yaml에서 실제 학습 설정을 다시 읽는다.
     saved = yaml.safe_load((HERE / "train/args.yaml").read_text(encoding="utf-8"))
     train_args = {key: saved[key] for key in (
         "epochs", "patience", "batch", "imgsz", "workers", "seed", "deterministic", "optimizer", "amp"

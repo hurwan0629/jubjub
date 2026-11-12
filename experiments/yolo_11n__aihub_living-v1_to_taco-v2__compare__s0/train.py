@@ -1,4 +1,11 @@
-"""Train and evaluate either arm of the YOLO11n TACO pretraining comparison."""
+"""YOLO11n을 AIHub로 학습한 뒤 TACO로 추가 학습해 각 단계를 평가한다.
+
+사용법 (이 폴더에서, 순서대로):
+    python train.py --stage aihub
+    python train.py --stage taco
+
+각 단계의 결과는 aihub_run/·aihub_eval/ 또는 run/·eval/에 저장한다.
+"""
 
 import argparse
 import csv
@@ -75,6 +82,7 @@ def main(experiment_dir: Path, stage: str) -> None:
                 paths = sorted(path for path in directory.iterdir() if path.is_file() and path.suffix.lower() in ({".jpg", ".jpeg", ".png"} if kind == "images" else {".txt"}))
                 stems[kind] = {path.stem for path in paths}
                 for path in paths:
+                    # TACO는 내용 해시를, 파일 수가 큰 AIHub는 크기를 지문으로 남긴다.
                     fingerprint = hashlib.sha256(path.read_bytes()).hexdigest() if stage == "taco" else path.stat().st_size
                     print(split, kind, path.name, fingerprint, sep="\t", file=file)
             if not stems["images"] or (expected_count and len(stems["images"]) != expected_count) or stems["images"] != stems["labels"]:
@@ -87,7 +95,7 @@ def main(experiment_dir: Path, stage: str) -> None:
     except (OSError, subprocess.CalledProcessError):
         commit = "unknown"
 
-    # W&B 저장용
+    # 실험군·단계·시작 가중치를 W&B 설정에서 구분할 수 있게 기록한다.
     run_config = {
         "comparison/arm": "aihub_then_taco" if aihub_data else "taco_only",
         "comparison/stage": stage,
@@ -124,7 +132,7 @@ def main(experiment_dir: Path, stage: str) -> None:
         results_file = run_dir / "results.csv"
         logged_epochs = 0
 
-        # 저장 코드
+        # 콜백이 여러 번 호출돼도 새로 추가된 results.csv 행만 W&B에 올린다.
         def log_epochs(_trainer) -> None:
             nonlocal logged_epochs
             if results_file.is_file():
@@ -149,6 +157,7 @@ def main(experiment_dir: Path, stage: str) -> None:
         try:
             model.train(**train_args)
         finally:
+            # 학습이 중단돼도 CSV에 기록된 마지막 에포크까지 업로드한다.
             log_epochs(None)
 
         # 6. 자동 선택된 optimizer 등 실제 적용된 학습 설정을 저장한다.
@@ -171,6 +180,7 @@ def main(experiment_dir: Path, stage: str) -> None:
             max_det=300, project=str(experiment_dir), name=eval_name,
             exist_ok=False, plots=True,
         )
+        
         scores = {
             "split": "val" if stage == "aihub" else "test",
             "precision": float(evaluation.box.mp), "recall": float(evaluation.box.mr),

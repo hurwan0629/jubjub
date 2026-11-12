@@ -9,6 +9,7 @@
 3. [YOLO11n AIHub 학습](yolo_11n__aihub_living-v1_to_taco-v2__compare__s0/): 공식 YOLO11n 가중치 → AIHub 생활폐기물 데이터 학습
 4. [YOLO11n TACO 추가 학습](yolo_11n__aihub_living-v1_to_taco-v2__compare__s0/): 3번의 `run/weights/best.pt` → TACO 학습 및 검증
 5. [YOLO11n TACO 단일 학습](yolo_11n__taco-v2_only__compare__s0/): 3-4 번과 비교를 위한 taco 데이터셋만을 이용한 실험
+6. **1차 모델 결정 [2026-11-12 10:31:56]**: 실험을 더 많이 하면 좋겠지만 로봇 개발 및 1회차 실전 테스트를 빠르게 실행하기 위해 mAP 0.225대비 조금 더 높은 0.245의 성능을 보여주는 [`aihub -> taco` 모델](https://forge.coreweave.com/wandb/hurwan0629-something/jubjub/runs/fmxhfn0z)을 사용. ([yolo11n 가중치](./yolo_11n__aihub_living-v1_to_taco-v2__compare__s0/run/weights/best.pt)) 
 
 위 번호는 실험 진행 순서이며 성능 순위가 아닙니다. 3번과 4번은 하나의 가중치 계보로 이어집니다.
 

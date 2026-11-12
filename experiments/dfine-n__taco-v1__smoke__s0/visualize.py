@@ -1,4 +1,10 @@
-"""Draw COCO ground truth and D-FINE predictions in one image grid."""
+"""D-FINE 가중치의 예측과 COCO 정답을 PNG 그리드 한 장으로 저장한다.
+
+사용법 (이 폴더에서):
+    python visualize.py --dataset taco --split val --seed 1
+
+기본 가중치는 best_stg1.pth이다. 다른 COCO 데이터는 --dataset JSON --images 폴더로 지정한다.
+"""
 
 import argparse
 import json
@@ -16,6 +22,7 @@ from PIL import Image, ImageDraw, ImageFont
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 DFINE_ROOT = ROOT / "members/hur-wan/models/D-FINE"
+# 모델 설정과 후처리기는 D-FINE 원본 구현에서 가져온다.
 sys.path.insert(0, str(DFINE_ROOT))
 from src.core import YAMLConfig
 
@@ -32,6 +39,7 @@ def draw_panel(
     title: str,
     class_names: dict[int, str],
 ) -> Image.Image:
+    # 원본 비율을 유지해 패널에 맞추고 박스도 같은 비율로 옮긴다.
     scale = min(CELL_W / image.width, CELL_H / image.height)
     resized = image.resize(
         (round(image.width * scale), round(image.height * scale)), Image.Resampling.BILINEAR
@@ -84,8 +92,10 @@ def main() -> None:
     if not args.config.is_file() or not args.weights.is_file():
         parser.error(f"Check config and checkpoint paths: {args.config}, {args.weights}")
 
+    # 체크포인트를 따로 불러오므로 모델 생성 시 기본 사전학습 가중치는 읽지 않는다.
     cfg = YAMLConfig(str(args.config))
     cfg.yaml_cfg["HGNetv2"]["pretrained"] = False
+    # TACO는 이미지와 COCO JSON이 다른 폴더에 있어 분할별 경로를 함께 정한다.
     if args.dataset == "taco":
         images_dir = ROOT / "data/taco_yolo/images" / args.split
         annotation_file = ROOT / "data/taco_coco/annotations" / f"{args.split}.json"
@@ -111,6 +121,7 @@ def main() -> None:
         if not annotation.get("iscrowd", 0):
             annotations[annotation["image_id"]].append(annotation)
 
+    # EMA 가중치가 저장돼 있으면 이를 우선 사용한다.
     checkpoint: dict[str, Any] = torch.load(args.weights, map_location="cpu", weights_only=False)
     state = checkpoint["ema"]["module"] if "ema" in checkpoint else checkpoint["model"]
     model = cfg.model
@@ -118,6 +129,7 @@ def main() -> None:
     model = model.deploy().to(args.device).eval()
     postprocessor = cfg.postprocessor.deploy().to(args.device).eval()
     transform = T.Compose([T.Resize((640, 640)), T.ToTensor()])
+    # 같은 seed로 다시 실행하면 동일한 이미지가 같은 순서로 선택된다.
     selected: list[dict[str, Any]] = random.Random(args.seed).sample(
         sorted(coco["images"], key=lambda image: image["id"]), args.count
     )
@@ -125,17 +137,20 @@ def main() -> None:
     panels: list[Image.Image] = []
     for image_info in selected:
         image = Image.open(images_dir / image_info["file_name"]).convert("RGB")
+        # 모델 입력은 640×640이고, 후처리 박스는 원본 이미지 크기로 되돌린다.
         original_size = torch.tensor([[image.width, image.height]], device=args.device)
         with torch.inference_mode():
             labels, boxes, scores = postprocessor(
                 model(transform(image).unsqueeze(0).to(args.device)), original_size
             )
 
+        # COCO의 xywh 박스를 그리기에 필요한 xyxy 좌표로 바꾼다.
         ground_truth: list[Detection] = []
         for annotation in annotations[image_info["id"]]:
             x, y, width, height = annotation["bbox"]
             ground_truth.append(((x, y, x + width, y + height), annotation["category_id"], None))
 
+        # conf 기준은 예측에만 적용하고, GT 박스는 원래 라벨대로 표시한다.
         keep = scores[0] >= args.conf
         predictions: list[Detection] = [
             (box.tolist(), int(label), float(score))
@@ -147,6 +162,7 @@ def main() -> None:
         panels.append(draw_panel(image, ground_truth, f"GT | {name}", class_names))
         panels.append(draw_panel(image, predictions, f"Pred | {name}", class_names))
 
+    # 각 이미지의 GT·예측을 나란히 놓고 네 열짜리 PNG 한 장으로 저장한다.
     grid = Image.new("RGB", (4 * CELL_W, ((len(panels) + 3) // 4) * (CELL_H + HEADER_H)), "white")
     for index, panel in enumerate(panels):
         grid.paste(panel, ((index % 4) * CELL_W, (index // 4) * (CELL_H + HEADER_H)))

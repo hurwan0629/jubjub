@@ -1,4 +1,10 @@
-"""Repeat this D-FINE smoke run without overwriting its saved results."""
+"""D-FINE smoke 실험을 원래 설정(1 epoch, batch 4)으로 다시 실행한다.
+
+사용법 (이 폴더에서):
+    python train.py
+
+기존 가중치는 유지하고 새 결과를 run/에 저장한다.
+"""
 
 import argparse
 import subprocess
@@ -10,6 +16,7 @@ HERE = Path(__file__).resolve().parent
 DFINE_ROOT = HERE.parents[1] / "members/hur-wan/models/D-FINE"
 CONFIG = DFINE_ROOT / "configs/dfine/custom/dfine_hgnetv2_n_custom.yml"
 COCO_WEIGHTS = "https://github.com/Peterande/storage/releases/download/dfinev1.0/dfine_n_coco.pth"
+# 원래 실행 기록의 epoch, 배치, 데이터 로더 worker 수.
 EPOCHS, BATCH, WORKERS = 1, 4, 0
 
 
@@ -24,8 +31,10 @@ def main():
     output = args.output_dir.resolve()
     if not config.is_file():
         parser.error(f"Config not found: {config}")
+    # 폴더 루트에 있는 기존 체크포인트와 새 학습 결과를 덮어쓰지 않는다.
     if output.exists():
         parser.error(f"Output already exists: {output}")
+    # D-FINE의 학습 진입점을 호출하고 -u로 이 실험의 설정만 덮어쓴다.
     command = [
         sys.executable, str(DFINE_ROOT / "train.py"), "-c", str(config),
         "--use-amp", "--seed", str(args.seed), "-t", args.tuning,
