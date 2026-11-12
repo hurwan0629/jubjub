@@ -1,28 +1,32 @@
 import type { ImageSource } from 'expo-image';
 import { useState } from 'react';
-import { Pressable, StyleSheet, TextInput, TextInputProps, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import type { TextInputProps, ViewProps } from 'react-native';
 
 import { icons } from '@/icons';
-import { colors, font } from '@/theme';
+import { colors, space, typography } from '@/theme';
 
 import { Icon } from './Icon';
-import { Txt } from './Txt';
+import { Text } from './Text';
 
-/** 입력 항목: 이름표 + 입력창 (Figma C-01 · C-04 입력 항목) */
-export function TextField({
-  label,
-  icon,
-  secure,
-  error,
-  ...input
-}: TextInputProps & { label: string; icon: ImageSource; secure?: boolean; error?: string }) {
+type TextFieldProps = TextInputProps & {
+  label: string;
+  icon: ImageSource;
+  /** 비밀번호처럼 가려서 보여 줘요 (눈 아이콘으로 보기 · 숨기기) */
+  secure?: boolean;
+  /** 있으면 칸 테두리를 빨갛게 하고 칸 아래에 보여 줘요 */
+  error?: string;
+  /** 항목 전체(이름표 포함)의 위치 · 크기. 키보드가 올라올 때 이 칸까지 스크롤하는 데 써요 */
+  onFieldLayout?: ViewProps['onLayout'];
+};
+
+/** 입력 항목: 이름표 + 입력창 (+ 오류 안내) (Figma C-01 · C-04 입력 항목) */
+export function TextField({ label, icon, secure, error, onFieldLayout, ...input }: TextFieldProps) {
   const [hidden, setHidden] = useState(true);
   return (
-    <View style={s.field}>
-      <Txt size={14} weight="bold">
-        {label}
-      </Txt>
-      <View style={[s.box, error ? { borderColor: colors.error } : null]}>
+    <View style={s.field} onLayout={onFieldLayout}>
+      <Text variant="14-bold">{label}</Text>
+      <View style={[s.box, error ? s.boxError : null]}>
         <Icon source={icon} size={20} />
         <TextInput
           {...input}
@@ -30,11 +34,13 @@ export function TextField({
           placeholderTextColor={colors.textDisabled}
           style={s.input}
           accessibilityLabel={label}
+          aria-invalid={!!error}
         />
         {secure ? (
           <Pressable
             onPress={() => setHidden((h) => !h)}
             hitSlop={10}
+            accessibilityRole="button"
             accessibilityLabel={hidden ? '비밀번호 보기' : '비밀번호 숨기기'}
           >
             <Icon source={hidden ? icons.eyeOff : icons.eye} size={20} />
@@ -42,9 +48,9 @@ export function TextField({
         ) : null}
       </View>
       {error ? (
-        <Txt size={12} color={colors.error}>
+        <Text variant="12-regular" color="error" accessibilityLiveRegion="polite">
           {error}
-        </Txt>
+        </Text>
       ) : null}
     </View>
   );
@@ -59,54 +65,19 @@ export function Checkbox({ checked }: { checked: boolean }) {
   );
 }
 
-/** 이름표 + 안내 + 링크 한 줄 (회원가입 안내, 로그인 안내) */
+/** 안내 + 링크 한 줄 (회원가입 안내, 로그인 안내) */
 export function LinkRow({ lead, action, onPress }: { lead: string; action: string; onPress: () => void }) {
   return (
     <View style={s.linkRow}>
-      <Txt size={12} color={colors.textSub}>
+      <Text variant="12-regular" color="textSub">
         {lead}
-      </Txt>
+      </Text>
       <Pressable onPress={onPress} hitSlop={8} accessibilityRole="link">
-        <Txt size={12} weight="bold" color={colors.brandText} style={{ textDecorationLine: 'underline' }}>
+        <Text variant="12-bold" color="brandText" style={s.underline}>
           {action}
-        </Txt>
+        </Text>
       </Pressable>
     </View>
-  );
-}
-
-const SOCIAL = {
-  kakao: { bg: colors.kakao, fg: colors.kakaoText, icon: icons.kakao, border: undefined },
-  google: { bg: colors.card, fg: colors.text, icon: icons.google, border: colors.border },
-  email: { bg: colors.brand, fg: colors.card, icon: icons.mailWhite, border: undefined },
-} as const;
-
-/** 가입 방법 버튼 (Figma 가입 방법 버튼: 방식=카카오/구글/이메일) */
-export function SignUpMethodButton({
-  kind,
-  label,
-  onPress,
-}: {
-  kind: keyof typeof SOCIAL;
-  label: string;
-  onPress?: () => void;
-}) {
-  const v = SOCIAL[kind];
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      style={({ pressed }) => [
-        s.method,
-        { backgroundColor: v.bg, opacity: pressed ? 0.85 : 1 },
-        v.border ? { borderWidth: 1, borderColor: v.border } : null,
-      ]}
-    >
-      <Icon source={v.icon} size={20} />
-      <Txt size={15} weight="bold" color={v.fg}>
-        {label}
-      </Txt>
-    </Pressable>
   );
 }
 
@@ -118,29 +89,28 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.card,
-    paddingHorizontal: 16,
+    paddingHorizontal: space[16],
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: space[12],
   },
+  boxError: { borderColor: colors.error, borderWidth: 1.5 },
   input: {
     flex: 1,
     height: '100%',
-    fontSize: 14,
-    fontFamily: font.regular,
+    ...typography['14-regular'],
     color: colors.text,
     outlineStyle: 'none',
   } as object,
   check: { width: 22, height: 22, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
   checkOn: { backgroundColor: colors.brand },
   checkOff: { backgroundColor: colors.card, borderWidth: 1.5, borderColor: colors.border },
-  linkRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, paddingVertical: 4 },
-  method: {
-    height: 52,
-    borderRadius: 14,
+  linkRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: space[4],
   },
+  underline: { textDecorationLine: 'underline' },
 });

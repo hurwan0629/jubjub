@@ -35,6 +35,37 @@ export type RobotStatus = {
   updatedAt: string; // ISO 시각
 };
 
+/**
+ * POST /auth/signup 요청 (C-04 회원가입).
+ * 서버(FastAPI)가 snake_case를 쓰면 Pydantic alias로 이 이름(camelCase)에 맞춰 주세요.
+ */
+export type SignUpRequest = {
+  loginId: string; // 아이디 (영문 · 숫자 4~16자)
+  password: string; // 영문 · 숫자 포함 8자 이상 (확인 칸은 앱에서만 비교하고 보내지 않아요)
+  name: string;
+  email: string;
+  phone: string; // 숫자만 ('01012345678')
+  agreedPrivacy: boolean; // [필수] 개인정보 수집 · 이용 동의
+};
+
+/** POST /auth/login 요청 */
+export type LoginRequest = { loginId: string; password: string };
+
+/** POST /auth/login 응답 */
+export type LoginResponse = {
+  accessToken: string; // 다음 요청부터 Authorization: Bearer 로 붙여요
+  user: { id: string; loginId: string; name: string };
+  /** 가입 후 첫 로그인이면 true → C-03 순찰 경로 처음 설정, 아니면 A-01 홈 */
+  isFirstLogin: boolean;
+};
+
+/** POST /auth/signup 응답: 만들어진 계정 (비밀번호는 돌려주지 않아요) */
+export type SignUpResponse = {
+  id: string;
+  loginId: string;
+  name: string;
+};
+
 /** 위도 · 경도 (WGS84) */
 export type LatLng = { latitude: number; longitude: number };
 

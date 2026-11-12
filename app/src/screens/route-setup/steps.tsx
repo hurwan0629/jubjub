@@ -3,11 +3,11 @@ import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native
 
 import { searchParks } from '@/api/parks';
 import type { LatLng, Park, ParkArea, ParkBounds, PatrolPoint, PatrolSlot } from '@/api/types';
-import { AddTimeSheet, Icon, MapHint, ParkMap, PointList, PointNameSheet, ScheduleList, Text, Txt } from '@/components';
+import { AddTimeSheet, Icon, MapHint, ParkMap, PointList, PointNameSheet, ScheduleList, Text } from '@/components';
 import type { ParkMapMarker } from '@/components';
 import { useParkSearch } from '@/hooks/useParks';
 import { icons } from '@/icons';
-import { colors, font, radius } from '@/theme';
+import { colors, layout, radius, space, typography } from '@/theme';
 import { lapMinutes, loopPath, nextPatrolTime, REPEAT_LABEL } from '@/utils/route';
 
 const MAP_HEIGHT = 290;
@@ -50,35 +50,31 @@ const GUIDE = [
 
 export function StepIntro() {
   return (
-    <ScrollView contentContainerStyle={st.pad}>
-      <Txt size={18} weight="bold">
-        {'Jubi가 돌 순찰 경로를\n처음 한 번 정해 주세요'}
-      </Txt>
-      <Txt size={13} lineHeight={1.5} color={colors.textSub}>
+    <ScrollView contentContainerStyle={s.pad}>
+      <Text variant="18-bold">{'Jubi가 돌 순찰 경로를\n처음 한 번 정해 주세요'}</Text>
+      <Text variant="13-regular" color="textSub" lineHeight="relaxed">
         Jubi는 정해 준 지점을 순서대로 돌며 쓰레기를 주워요. 지점마다 붙인 이름은 알림과 기록에서 장소 이름으로 쓰여요.
-      </Txt>
-      <View style={st.guideCard}>
+      </Text>
+      <View style={s.guideCard}>
         {GUIDE.map(([title, desc], i) => (
-          <View key={title} style={st.guideRow}>
-            <View style={st.guideNum}>
+          <View key={title} style={s.guideRow}>
+            <View style={s.guideNum}>
               <Text variant="13-regular-digits" color="brandText">
                 {i + 1}
               </Text>
             </View>
-            <View style={{ flex: 1, gap: 2 }}>
-              <Txt size={15} weight="bold">
-                {title}
-              </Txt>
-              <Txt size={13} lineHeight={1.5} color={colors.textSub}>
+            <View style={s.textCol}>
+              <Text variant="15-bold">{title}</Text>
+              <Text variant="13-regular" color="textSub" lineHeight="relaxed">
                 {desc}
-              </Txt>
+              </Text>
             </View>
           </View>
         ))}
       </View>
-      <Txt size={13} lineHeight={1.5} color={colors.textSub}>
+      <Text variant="13-regular" color="textSub" lineHeight="relaxed">
         {'나중에 지도 > 경로 편집에서 언제든 바꿀 수 있어요'}
-      </Txt>
+      </Text>
     </ScrollView>
   );
 }
@@ -91,17 +87,15 @@ export function StepPark({ park, onPick }: { park: Park | null; onPick: (p: Park
   const results = q ? (found ?? []) : [];
 
   return (
-    <View style={{ flex: 1 }}>
-      <View style={[st.padTight, { gap: 8 }]}>
-        <Txt size={18} weight="bold">
-          Jubi가 일할 공원을 찾아 주세요
-        </Txt>
+    <View style={s.flex}>
+      <View style={[s.padTight, { gap: space[8] }]}>
+        <Text variant="18-bold">Jubi가 일할 공원을 찾아 주세요</Text>
         {!q ? (
-          <Txt size={13} lineHeight={1.5} color={colors.textSub}>
+          <Text variant="13-regular" color="textSub" lineHeight="relaxed">
             공원 이름이나 주소로 찾으면 지도가 그곳으로 이동해요
-          </Txt>
+          </Text>
         ) : null}
-        <View style={st.search}>
+        <View style={s.search}>
           <Icon source={icons.search} size={20} />
           <TextInput
             value={query}
@@ -111,7 +105,7 @@ export function StepPark({ park, onPick }: { park: Park | null; onPick: (p: Park
             }}
             placeholder="공원 이름이나 주소를 입력해요"
             placeholderTextColor={colors.textSub}
-            style={[st.searchInput, q ? { fontFamily: font.bold } : null]}
+            style={[s.searchInput, q ? s.searchInputFilled : null]}
             accessibilityLabel="공원 검색"
             returnKeyType="search"
           />
@@ -131,7 +125,7 @@ export function StepPark({ park, onPick }: { park: Park | null; onPick: (p: Park
 
         {!q ? (
           <Pressable
-            style={st.locate}
+            style={s.locate}
             onPress={async () => {
               // 위치 권한 연동 전까지는 가장 가까운 공원(첫 검색 결과)을 골라요
               setQuery('한강');
@@ -140,20 +134,20 @@ export function StepPark({ park, onPick }: { park: Park | null; onPick: (p: Park
             }}
           >
             <Icon source={icons.buttonRoute} size={19} />
-            <Txt size={15} weight="bold" color={colors.brandText}>
+            <Text variant="15-bold" color="brandText">
               내 위치에서 찾기
-            </Txt>
+            </Text>
           </Pressable>
         ) : (
           <>
-            <Txt size={12} weight="semibold" color={colors.textSub} style={{ marginTop: 4 }}>
+            <Text variant="12-semibold" color="textSub" style={s.mt4}>
               검색 결과 {results.length}곳
-            </Txt>
-            <View style={st.results}>
+            </Text>
+            <View style={s.results}>
               {results.length === 0 ? (
-                <Txt size={13} color={colors.textSub} style={{ padding: 12 }}>
+                <Text variant="13-regular" color="textSub" style={s.p12}>
                   찾는 공원이 없어요. 다른 이름으로 찾아 보세요
-                </Txt>
+                </Text>
               ) : (
                 results.map((p) => {
                   const on = park?.id === p.id;
@@ -161,22 +155,22 @@ export function StepPark({ park, onPick }: { park: Park | null; onPick: (p: Park
                     <Pressable
                       key={p.id}
                       onPress={() => onPick(p)}
-                      style={[st.result, on ? { backgroundColor: colors.bgSelected } : null]}
+                      style={[s.result, on ? { backgroundColor: colors.bgSelected } : null]}
                     >
-                      <View style={st.pinCircle}>
+                      <View style={s.pinCircle}>
                         <Icon source={icons.mapPin} size={20} />
                       </View>
-                      <View style={{ flex: 1, gap: 3 }}>
-                        <Txt size={14} weight="bold" color={on ? colors.brandText : colors.text}>
+                      <View style={s.textColLoose}>
+                        <Text variant="14-bold" color={on ? 'brandText' : 'text'}>
                           {p.name}
-                        </Txt>
-                        <Txt size={12} color={colors.textSub}>
+                        </Text>
+                        <Text variant="12-regular" color="textSub">
                           {p.address}
-                        </Txt>
+                        </Text>
                       </View>
-                      <Txt size={12} color={colors.textSub}>
+                      <Text variant="12-regular" color="textSub">
                         {p.distance}
-                      </Txt>
+                      </Text>
                       {on ? <Icon source={icons.checkBrand} size={20} /> : null}
                     </Pressable>
                   );
@@ -187,32 +181,32 @@ export function StepPark({ park, onPick }: { park: Park | null; onPick: (p: Park
         )}
       </View>
 
-      <View style={{ flex: 1, marginTop: 8 }}>
+      <View style={s.flexMt8}>
         {park ? (
           // 고른 공원 범위로 지도가 옮겨가요. 공원 밖으로는 움직이지 않아요.
-          <ParkMap key={park.id} style={st.fill} bounds={park.bounds} area={park.area}>
-            <View style={[st.parkPinWrap, { top: 60 }]} pointerEvents="none">
-              <View style={st.parkPin}>
+          <ParkMap key={park.id} style={s.fill} bounds={park.bounds} area={park.area}>
+            <View style={[s.parkPinWrap, { top: 60 }]} pointerEvents="none">
+              <View style={s.parkPin}>
                 <Icon source={icons.mapPinWhite} size={22} />
               </View>
-              <View style={st.parkLabel}>
-                <Txt size={12} weight="bold" color={colors.brandText}>
+              <View style={s.parkLabel}>
+                <Text variant="12-bold" color="brandText">
                   {park.name}
-                </Txt>
+                </Text>
               </View>
             </View>
           </ParkMap>
         ) : (
           // 아직 공원을 고르지 않았을 때: 흐린 도식 지도 + 안내
-          <View style={[st.fill, st.mapPlaceholder]}>
-            <View style={st.placeholderImage} pointerEvents="none">
+          <View style={[s.fill, s.mapPlaceholder]}>
+            <View style={s.placeholderImage} pointerEvents="none">
               <Icon source={icons.parkMapBase} width={390} height={500} />
             </View>
-            <View style={st.mapChip} pointerEvents="none">
+            <View style={s.mapChip} pointerEvents="none">
               <Icon source={icons.searchSmall} size={14} />
-              <Txt size={12} weight="semibold" color={colors.brandText}>
+              <Text variant="12-semibold" color="brandText">
                 공원을 찾으면 지도가 그곳으로 이동해요
-              </Txt>
+              </Text>
             </View>
           </View>
         )}
@@ -235,17 +229,15 @@ export function StepRecycle({
 }) {
   const notice = useOutsideNotice();
   return (
-    <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
-      <View style={[st.padTight, { gap: 8, paddingBottom: 12 }]}>
-        <Txt size={18} weight="bold">
-          분리수거장 위치를 정해 주세요
-        </Txt>
-        <Txt size={13} lineHeight={1.5} color={colors.textSub}>
+    <ScrollView contentContainerStyle={{ paddingBottom: space[16] }}>
+      <View style={[s.padTight, { gap: space[8], paddingBottom: space[12] }]}>
+        <Text variant="18-bold">분리수거장 위치를 정해 주세요</Text>
+        <Text variant="13-regular" color="textSub" lineHeight="relaxed">
           Jubi가 칸을 비우러 가는 곳이에요. 1곳만 정할 수 있어요
-        </Txt>
+        </Text>
       </View>
       <ParkMap
-        style={st.mapBox}
+        style={s.mapBox}
         bounds={bounds}
         area={area}
         markers={routeMarkers([], recycle, true)}
@@ -264,40 +256,36 @@ export function StepRecycle({
               : '지도를 꾹 눌러 분리수거장 위치를 찍어요'
         }
       />
-      <View style={{ paddingHorizontal: 24, paddingTop: 12 }}>
-        <View style={st.legendCard}>
-          <View style={st.legendRow}>
-            <View style={st.legendRecycle}>
+      <View style={s.padTop}>
+        <View style={s.legendCard}>
+          <View style={s.legendRow}>
+            <View style={s.legendRecycle}>
               <Icon source={icons.markerRecycle} size={22} />
             </View>
-            <View style={{ flex: 1, gap: 2 }}>
-              <Txt size={13} weight="semibold">
-                분리수거장
-              </Txt>
-              <Txt size={12} color={colors.textSub}>
+            <View style={s.textCol}>
+              <Text variant="13-semibold">분리수거장</Text>
+              <Text variant="12-regular" color="textSub">
                 Jubi가 칸을 비우는 곳 · 1곳
-              </Txt>
+              </Text>
             </View>
-            <Txt size={12} weight="semibold" color={recycle ? colors.textDone : colors.textSub}>
+            <Text variant="12-semibold" color={recycle ? 'textDone' : 'textSub'}>
               {recycle ? '정했어요' : '아직 안 정했어요'}
-            </Txt>
+            </Text>
           </View>
-          <View style={st.divider} />
-          <View style={st.legendRow}>
-            <View style={{ width: 44, alignItems: 'center' }}>
-              <View style={st.legendPoint}>
+          <View style={s.divider} />
+          <View style={s.legendRow}>
+            <View style={s.iconCol}>
+              <View style={s.legendPoint}>
                 <Text variant="14-bold-digits" color="card">
                   1
                 </Text>
               </View>
             </View>
-            <View style={{ flex: 1, gap: 2 }}>
-              <Txt size={13} weight="semibold">
-                순찰 지점
-              </Txt>
-              <Txt size={12} color={colors.textSub}>
+            <View style={s.textCol}>
+              <Text variant="13-semibold">순찰 지점</Text>
+              <Text variant="12-regular" color="textSub">
                 쓰레기를 줍는 곳 · 다음 단계에서 찍어요
-              </Txt>
+              </Text>
             </View>
           </View>
         </View>
@@ -327,9 +315,9 @@ export function StepPoints({
 
   return (
     <>
-      <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: space[16] }}>
         <ParkMap
-          style={st.mapBox}
+          style={s.mapBox}
           bounds={bounds}
           area={area}
           markers={routeMarkers(points, recycle)}
@@ -343,15 +331,13 @@ export function StepPoints({
         <InfoBar
           text={notice.outside ? '공원 밖이에요. 공원 안을 꾹 눌러 주세요' : '지도를 꾹 눌러 순찰 지점을 추가해요'}
         />
-        <View style={st.listHead}>
-          <Txt size={17} weight="bold">
-            순찰 지점
-          </Txt>
-          <Txt size={12} color={colors.textSub}>
+        <View style={s.listHead}>
+          <Text variant="17-bold">순찰 지점</Text>
+          <Text variant="12-regular" color="textSub">
             {points.length}개 지점 · 약 {lapMinutes(points, recycle)}분
-          </Txt>
+          </Text>
         </View>
-        <View style={{ paddingHorizontal: 24 }}>
+        <View style={s.padX}>
           <PointList points={points} onRemove={onRemove} />
         </View>
       </ScrollView>
@@ -387,25 +373,23 @@ export function StepOrder({
   onRemove: (i: number) => void;
 }) {
   return (
-    <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
+    <ScrollView contentContainerStyle={{ paddingBottom: space[16] }}>
       {/* 지점 → 분리수거장 → 처음 지점으로 돌아오는 한 바퀴 */}
       <ParkMap
-        style={st.mapBox}
+        style={s.mapBox}
         bounds={bounds}
         area={area}
         markers={routeMarkers(points, recycle)}
         route={loopPath(points, recycle)}
       />
       <InfoBar text="끌어서 순서를 바꿀 수 있어요" center />
-      <View style={st.listHead}>
-        <Txt size={17} weight="bold">
-          순찰 지점
-        </Txt>
-        <Txt size={12} color={colors.textSub}>
+      <View style={s.listHead}>
+        <Text variant="17-bold">순찰 지점</Text>
+        <Text variant="12-regular" color="textSub">
           {points.length}개 지점 · 약 {lapMinutes(points, recycle)}분
-        </Txt>
+        </Text>
       </View>
-      <View style={{ paddingHorizontal: 24 }}>
+      <View style={s.padX}>
         <PointList points={points} reorder onMove={onMove} onRemove={onRemove} />
       </View>
     </ScrollView>
@@ -417,7 +401,7 @@ export function StepSchedule({ slots, onChange }: { slots: PatrolSlot[]; onChang
   const [adding, setAdding] = useState(false);
   return (
     <>
-      <ScrollView contentContainerStyle={[st.padTight, { paddingTop: 16, paddingBottom: 24 }]}>
+      <ScrollView contentContainerStyle={[s.padTight, { paddingTop: space[16], paddingBottom: space[24] }]}>
         <ScheduleList slots={slots} onChange={onChange} onAddPress={() => setAdding(true)} />
       </ScrollView>
       <AddTimeSheet
@@ -446,8 +430,8 @@ export function StepDone({
   slots: PatrolSlot[];
 }) {
   const on = slots
-    .filter((s) => s.on)
-    .map((s) => s.time)
+    .filter((slot) => slot.on)
+    .map((slot) => slot.time)
     .sort();
   const next = nextPatrolTime(slots);
   const rows: [string, string][] = [
@@ -459,44 +443,57 @@ export function StepDone({
     ['시간표', on.length ? `하루 ${on.length}번 · ${on.join(' ')}` : '꺼져 있어요'],
   ];
   return (
-    <ScrollView contentContainerStyle={[st.padTight, { alignItems: 'center', paddingTop: 40, gap: 0 }]}>
-      <View style={st.doneCircle}>
+    <ScrollView contentContainerStyle={[s.padTight, { alignItems: 'center', paddingTop: 40, gap: 0 }]}>
+      <View style={s.doneCircle}>
         <Icon source={icons.checkWhiteLg} size={40} />
       </View>
-      <Txt size={18} weight="bold" style={{ marginTop: 22 }}>
+      <Text variant="18-bold" style={s.doneTitle}>
         순찰 경로를 저장했어요
-      </Txt>
-      <Txt size={13} color={colors.textSub} style={{ marginTop: 18 }}>
+      </Text>
+      <Text variant="13-regular" color="textSub" style={s.doneBody}>
         {next ? `${next} 순찰부터 Jubi가 이 경로로 돌아요` : '시간표를 켜면 Jubi가 이 경로로 돌아요'}
-      </Txt>
-      <View style={st.summary}>
+      </Text>
+      <View style={s.summary}>
         {rows.map(([k, v]) => (
-          <View key={k} style={st.summaryRow}>
-            <Txt size={13} color={colors.textSub}>
+          <View key={k} style={s.summaryRow}>
+            <Text variant="13-regular" color="textSub">
               {k}
-            </Txt>
-            <Txt size={13} style={{ flexShrink: 1, textAlign: 'right' }}>
+            </Text>
+            <Text variant="13-regular" style={s.summaryValue}>
               {v}
-            </Txt>
+            </Text>
           </View>
         ))}
       </View>
-      <Txt size={13} color={colors.textSub} style={{ marginTop: 20 }}>
+      <Text variant="13-regular" color="textSub" style={s.mt20}>
         {'지도 > 경로 편집에서 언제든 바꿀 수 있어요'}
-      </Txt>
+      </Text>
     </ScrollView>
   );
 }
 
-const st = StyleSheet.create({
+const s = StyleSheet.create({
+  flex: { flex: 1 },
+  textCol: { flex: 1, gap: 2 },
+  textColLoose: { flex: 1, gap: 3 },
+  flexMt8: { flex: 1, marginTop: space[8] },
+  mt4: { marginTop: space[4] },
+  mt20: { marginTop: space[20] },
+  p12: { padding: space[12] },
+  padX: { paddingHorizontal: layout.screenPadding },
+  padTop: { paddingHorizontal: layout.screenPadding, paddingTop: space[12] },
+  iconCol: { width: layout.touchMin, alignItems: 'center' },
+  doneTitle: { marginTop: 22 }, // Figma 완료 화면 간격 (토큰 없음)
+  doneBody: { marginTop: 18 },
+  summaryValue: { flexShrink: 1, textAlign: 'right' },
   fill: { flex: 1 },
   mapBox: { height: MAP_HEIGHT },
   mapPlaceholder: { backgroundColor: colors.map, overflow: 'hidden', alignItems: 'center' },
   placeholderImage: { opacity: 0.35 },
-  pad: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24, gap: 16 },
-  padTight: { paddingHorizontal: 24, paddingTop: 8 },
-  guideCard: { backgroundColor: colors.card, borderRadius: radius[16], padding: 16, gap: 14 },
-  guideRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
+  pad: { paddingHorizontal: space[24], paddingTop: space[24], paddingBottom: space[24], gap: space[16] },
+  padTight: { paddingHorizontal: space[24], paddingTop: space[8] },
+  guideCard: { backgroundColor: colors.card, borderRadius: radius[16], padding: space[16], gap: 14 },
+  guideRow: { flexDirection: 'row', gap: space[12], alignItems: 'flex-start' },
   guideNum: {
     width: 28,
     height: 28,
@@ -506,18 +503,18 @@ const st = StyleSheet.create({
     justifyContent: 'center',
   },
   search: {
-    marginTop: 4,
+    marginTop: space[4],
     backgroundColor: colors.bgBrandSoft,
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: radius[16],
+    padding: space[16],
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: space[12],
   },
+  searchInputFilled: { fontFamily: typography['15-bold'].fontFamily },
   searchInput: {
     flex: 1,
-    fontSize: 15,
-    fontFamily: font.regular,
+    ...typography['15-regular'],
     color: colors.text,
     padding: 0,
     outlineStyle: 'none',
@@ -529,10 +526,10 @@ const st = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: space[8],
   },
   results: { backgroundColor: colors.card, borderRadius: radius[16], padding: 6, gap: 2 },
-  result: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, borderRadius: 12 },
+  result: { flexDirection: 'row', alignItems: 'center', gap: space[12], padding: 10, borderRadius: 12 },
   pinCircle: {
     width: 36,
     height: 36,
@@ -550,8 +547,8 @@ const st = StyleSheet.create({
     gap: 6,
     backgroundColor: colors.card,
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: space[12],
+    paddingVertical: space[8],
   },
   parkPinWrap: { position: 'absolute', alignSelf: 'center', alignItems: 'center', gap: 6 },
   parkPin: {
@@ -564,15 +561,15 @@ const st = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  parkLabel: { backgroundColor: colors.card, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  parkLabel: { backgroundColor: colors.card, borderRadius: 8, paddingHorizontal: space[8], paddingVertical: space[4] },
   legendCard: {
     backgroundColor: colors.card,
     borderRadius: radius[20],
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 4,
+    paddingHorizontal: space[12],
+    paddingVertical: space[8],
+    gap: space[4],
   },
-  legendRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6 },
+  legendRow: { flexDirection: 'row', alignItems: 'center', gap: space[12], paddingVertical: 6 },
   legendRecycle: {
     width: 44,
     height: 44,
@@ -586,7 +583,7 @@ const st = StyleSheet.create({
   legendPoint: {
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: radius[16],
     borderWidth: 3,
     borderColor: colors.card,
     backgroundColor: colors.brand,
@@ -598,9 +595,9 @@ const st = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 12,
+    paddingHorizontal: space[24],
+    paddingTop: space[20],
+    paddingBottom: space[12],
   },
   doneCircle: {
     width: 72,
@@ -612,11 +609,11 @@ const st = StyleSheet.create({
   },
   summary: {
     alignSelf: 'stretch',
-    marginTop: 24,
+    marginTop: space[24],
     backgroundColor: colors.card,
     borderRadius: radius[16],
-    padding: 16,
-    gap: 16,
+    padding: space[16],
+    gap: space[16],
   },
-  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 16 },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', gap: space[16] },
 });

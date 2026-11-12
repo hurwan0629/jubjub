@@ -3,11 +3,10 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { icons } from '@/icons';
-import { colors, radius, softShadow } from '@/theme';
+import { colors, radius, softShadow, space } from '@/theme';
 
 import { Icon } from './Icon';
 import { Text } from './Text';
-import { Txt } from './Txt';
 
 const TABS = {
   Home: { label: '홈', icon: icons.tab.home },
@@ -41,13 +40,15 @@ export function TabBar({ state, navigation, unreadCount }: BottomTabBarProps & {
               <Icon source={focused ? tab.icon.on : tab.icon.off} size={21} />
               {route.name === 'Alerts' && unreadCount > 0 ? (
                 <View style={s.badge}>
-                  <Text style={s.badgeText}>{unreadCount}</Text>
+                  <Text variant="10-bold-digits" color="card" style={s.badgeText}>
+                    {unreadCount}
+                  </Text>
                 </View>
               ) : null}
             </View>
-            <Txt size={11} weight={focused ? 'bold' : 'medium'} color={focused ? colors.brandText : colors.textSub}>
+            <Text variant={focused ? '11-bold' : '11-medium'} color={focused ? 'brandText' : 'textSub'}>
               {tab.label}
-            </Txt>
+            </Text>
           </Pressable>
         );
       })}
@@ -59,7 +60,7 @@ const s = StyleSheet.create({
   bar: {
     flexDirection: 'row',
     backgroundColor: colors.card,
-    paddingTop: 8,
+    paddingTop: space[8],
     ...softShadow,
   },
   tab: { flex: 1, height: 54, alignItems: 'center', justifyContent: 'center', gap: 2 },
@@ -81,10 +82,7 @@ const s = StyleSheet.create({
   // 숫자만 들어가므로 Inter를 쓰고, 줄 높이를 고정해 폰에서도 배지 안 가운데에 오도록 해요.
   // (Noto Sans KR은 위아래 여백이 커서 안드로이드에서 숫자가 아래로 밀려요)
   badgeText: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 10,
     lineHeight: 12,
-    color: colors.card,
     textAlign: 'center',
     includeFontPadding: false,
     textAlignVertical: 'center',

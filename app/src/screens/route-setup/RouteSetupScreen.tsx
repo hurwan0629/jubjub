@@ -98,15 +98,16 @@ export function RouteSetupScreen({ navigation }: NativeStackScreenProps<RootPara
   }
 
   return (
-    <SafeAreaView style={st.screen} edges={['top']}>
+    <SafeAreaView style={s.screen} edges={['top']}>
       <Header title="순찰 경로 정하기" onBack={step === 7 ? goHome : prev} />
       <Progress step={step} label={LABELS[step - 1]} />
-      <View style={{ flex: 1 }}>{body}</View>
+      <View style={s.flex}>{body}</View>
       {footer}
     </SafeAreaView>
   );
 }
 
-const st = StyleSheet.create({
+const s = StyleSheet.create({
+  flex: { flex: 1 },
   screen: { flex: 1, backgroundColor: colors.bg },
 });
