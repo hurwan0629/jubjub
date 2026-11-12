@@ -5,11 +5,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
 from app.core.errors import register_error_handlers
-from app.routers import health
+from app.routers import api, auth, health
 from app.schemas.common import ErrorResponse
 
 # 모든 API 문서(/docs)에 공통 에러 형식을 보여줘요
-ERROR_RESPONSES = {code: {"model": ErrorResponse} for code in (400, 401, 404, 422, 500)}
+ERROR_RESPONSES = {code: {"model": ErrorResponse} for code in (400, 401, 403, 404, 409, 422, 500, 503)}
 
 
 def create_app() -> FastAPI:
@@ -30,8 +30,10 @@ def create_app() -> FastAPI:
     )
     register_error_handlers(app)
 
-    # 라우터는 여기에 한 줄씩 추가해요
+    # 공개 API예요. 업무 API는 routers/api.py에 등록해서 인증을 적용해요.
     app.include_router(health.router)
+    app.include_router(auth.router)
+    app.include_router(api.router)
 
     return app
 

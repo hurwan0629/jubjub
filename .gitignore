@@ -83,3 +83,7 @@ cache/
 
 # ===== Server =====
 server/storage/
+
+# Local authentication tests
+server/tests/test_auth.py
+server/tests/test_seed_user.py
