@@ -116,7 +116,6 @@ export function SignUpEmailScreen({ navigation }: NativeStackScreenProps<RootPar
         <ScrollView ref={scrollRef} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
           <TextField
             label="아이디"
-            icon={icons.atSign}
             placeholder="영문, 숫자 4~16자"
             {...bind('loginId')}
             autoCapitalize="none"
@@ -125,30 +124,23 @@ export function SignUpEmailScreen({ navigation }: NativeStackScreenProps<RootPar
           />
           <TextField
             label="비밀번호"
-            icon={icons.lockKeyhole}
             placeholder="영문, 숫자 포함 8자 이상"
             {...bind('password')}
             secure
+            revealToggle={false}
             autoComplete="new-password"
           />
           <TextField
             label="비밀번호 확인"
-            icon={icons.lockKeyhole}
             placeholder="비밀번호를 한 번 더 입력해 주세요"
             {...bind('password2')}
             secure
+            revealToggle={false}
             autoComplete="new-password"
           />
-          <TextField
-            label="이름"
-            icon={icons.userRound}
-            placeholder="이름을 입력해 주세요"
-            {...bind('name')}
-            autoComplete="name"
-          />
+          <TextField label="이름" placeholder="이름을 입력해 주세요" {...bind('name')} autoComplete="name" />
           <TextField
             label="이메일"
-            icon={icons.mailInput}
             placeholder="example@email.com"
             {...bind('email')}
             autoCapitalize="none"
@@ -158,7 +150,6 @@ export function SignUpEmailScreen({ navigation }: NativeStackScreenProps<RootPar
           />
           <TextField
             label="전화번호"
-            icon={icons.phone}
             placeholder="010-1234-5678"
             {...bind('phone')}
             keyboardType="phone-pad"

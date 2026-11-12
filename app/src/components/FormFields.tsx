@@ -11,9 +11,12 @@ import { Text } from './Text';
 
 type TextFieldProps = TextInputProps & {
   label: string;
-  icon: ImageSource;
-  /** 비밀번호처럼 가려서 보여 줘요 (눈 아이콘으로 보기 · 숨기기) */
+  /** 칸 왼쪽 아이콘. 없으면 글만 보여요 (C-04 회원가입은 아이콘 없음) */
+  icon?: ImageSource;
+  /** 비밀번호처럼 가려서 보여 줘요 */
   secure?: boolean;
+  /** secure일 때 눈 아이콘으로 보기 · 숨기기를 보여 줄지 (기본: 보여 줌) */
+  revealToggle?: boolean;
   /** 있으면 칸 테두리를 빨갛게 하고 칸 아래에 보여 줘요 */
   error?: string;
   /** 항목 전체(이름표 포함)의 위치 · 크기. 키보드가 올라올 때 이 칸까지 스크롤하는 데 써요 */
@@ -21,13 +24,21 @@ type TextFieldProps = TextInputProps & {
 };
 
 /** 입력 항목: 이름표 + 입력창 (+ 오류 안내) (Figma C-01 · C-04 입력 항목) */
-export function TextField({ label, icon, secure, error, onFieldLayout, ...input }: TextFieldProps) {
+export function TextField({
+  label,
+  icon,
+  secure,
+  revealToggle = true,
+  error,
+  onFieldLayout,
+  ...input
+}: TextFieldProps) {
   const [hidden, setHidden] = useState(true);
   return (
     <View style={s.field} onLayout={onFieldLayout}>
       <Text variant="14-bold">{label}</Text>
       <View style={[s.box, error ? s.boxError : null]}>
-        <Icon source={icon} size={20} />
+        {icon ? <Icon source={icon} size={20} /> : null}
         <TextInput
           {...input}
           secureTextEntry={secure ? hidden : false}
@@ -36,7 +47,7 @@ export function TextField({ label, icon, secure, error, onFieldLayout, ...input 
           accessibilityLabel={label}
           aria-invalid={!!error}
         />
-        {secure ? (
+        {secure && revealToggle ? (
           <Pressable
             onPress={() => setHidden((h) => !h)}
             hitSlop={10}

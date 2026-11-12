@@ -53,7 +53,6 @@ export const icons = {
   circleHelp: require('../assets/icons/circle-help.svg'),
   atSign: require('../assets/icons/at-sign.svg'),
   mailInput: require('../assets/icons/mail-input.svg'),
-  phone: require('../assets/icons/phone.svg'),
   mailWhite: require('../assets/icons/mail-white.svg'),
   kakao: require('../assets/icons/kakao.svg'),
   google: require('../assets/icons/google.svg'),
