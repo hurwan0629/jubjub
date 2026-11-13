@@ -28,7 +28,8 @@ python -c "import secrets; print(secrets.token_hex(32))"
 
 `POST /auth/register` (토큰 없이 호출, 성공 201)
 
-프로젝트에서 사용하는 정식 관리자 회원가입이에요. 가입 정보는 Supabase의 `users`에 저장되며,
+프로젝트에서 사용하는 하위관리자 회원가입이에요. 역할은 항상 manager이고 role 입력은 거부해요.
+총관리자는 별도 콘솔 명령으로 생성해요([ADMIN.md](ADMIN.md)). 가입 정보는 Supabase의 `users`에 저장되며,
 가입한 계정으로 바로 로그인할 수 있어요. 별도 회원가입 활성화 설정은 필요하지 않아요.
 
 ```json
@@ -73,9 +74,11 @@ python -c "import secrets; print(secrets.token_hex(32))"
 }
 ```
 
-`isFirstLogin`은 `not users.route_setup_done`이에요. `true`면 앱이 C-03으로 이동해요.
-로그인 횟수가 아니라 경로 설정 완료 여부를 나타내며, 로그인만으로 상태를 바꾸지 않아요.
-설정 완료 API를 구현할 때 해당 사용자의 `route_setup_done`을 `true`로 저장해야 해요.
+로그인 응답에 role, parkStatus, routeSetupDone을 함께 반환해요.
+하위관리자는 공원 미선택 → 신청 → 승인 대기/반려 → 승인 → 경로 설정 순으로 이동해요.
+앱은 role → parkStatus → routeSetupDone 순으로 분기해야 해요.
+isFirstLogin은 호환 필드로, 승인된 공원에서 설정을 마친 하위관리자와 총관리자는 false예요.
+완료 여부는 users가 아닌 parks.route_setup_done에 저장하며 로그인 자체로 상태를 바꾸지 않아요.
 
 아이디·비밀번호가 틀리면 모두 같은 응답을 반환해요.
 
@@ -93,7 +96,7 @@ GET /me
 Authorization: Bearer <accessToken>
 ```
 
-성공 시 앱의 `Profile` 타입과 같은 `{ "name": "관리자", "email": "admin@example.com" }`을 반환해요.
+성공 시 name/email과 role/parkStatus/routeSetupDone을 반환해요.
 토큰 누락·만료·변조·잘못된 알고리즘·삭제된 계정은 401 `invalid_token`이에요.
 JWT는 사용자 번호(`sub`), 발급 시각(`iat`), 만료 시각(`exp`)만 포함해요.
 JWT는 암호화가 아니라 서명이므로 비밀번호·연락처를 담지 않아요.

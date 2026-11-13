@@ -6,6 +6,20 @@
 
 from app.core.db import Base
 from app.models.park_catalog import ParkCatalogEntry
+from app.models.patrol import AgentRun, AgentStep, Park, PatrolPoint, Route, RoutePoint, Schedule
+from app.models.robot import Robot
 from app.models.user import User
 
-__all__ = ["Base", "ParkCatalogEntry", "User"]
+__all__ = [
+    "Base",
+    "ParkCatalogEntry",
+    "User",
+    "Park",
+    "PatrolPoint",
+    "Route",
+    "RoutePoint",
+    "Schedule",
+    "AgentRun",
+    "AgentStep",
+    "Robot",
+]

@@ -16,8 +16,8 @@ from app.core.security import (
     unauthorized,
     verify_password,
 )
-from app.models import User
-from app.schemas.auth import LoginRequest, LoginResponse, RegisterRequest
+from app.models import Park, User
+from app.schemas.auth import LoginRequest, LoginResponse, ProfileResponse, RegisterRequest
 
 bearer = HTTPBearer(auto_error=False)
 
@@ -29,7 +29,7 @@ def register_user(db: Session, body: RegisterRequest) -> User:
         name=body.name,
         phone=body.phone,
         email=str(body.email),
-        route_setup_done=False,
+        role="manager",
     )
     db.add(user)
     try:
@@ -55,7 +55,36 @@ def login_user(db: Session, body: LoginRequest) -> LoginResponse:
             headers={"WWW-Authenticate": "Bearer"},
         )
     token, expires_in = create_access_token(user.id)
-    return LoginResponse(access_token=token, expires_in=expires_in, is_first_login=not user.route_setup_done)
+    profile = profile_for_user(db, user)
+    return LoginResponse(
+        access_token=token,
+        expires_in=expires_in,
+        is_first_login=user.role == "manager" and not (profile.park_status == "approved" and profile.route_setup_done),
+        role=profile.role,
+        park_status=profile.park_status,
+        route_setup_done=profile.route_setup_done,
+    )
+
+
+def profile_for_user(db: Session, user: User) -> ProfileResponse:
+    park = db.scalar(select(Park).where(Park.user_id == user.id)) if user.role == "manager" else None
+    return ProfileResponse(
+        name=user.name,
+        email=user.email,
+        role=user.role,
+        park_status=park.status if park else None,
+        route_setup_done=park.route_setup_done if park else False,
+    )
+
+
+def require_super_admin(user: User):
+    if user.role != "super_admin":
+        raise AppError(403, "총관리자만 사용할 수 있어요", code="super_admin_required")
+
+
+def require_manager(user: User):
+    if user.role != "manager":
+        raise AppError(403, "하위관리자 계정으로 공원을 신청해 주세요", code="manager_required")
 
 
 def get_current_user(

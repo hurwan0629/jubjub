@@ -10,13 +10,11 @@ from app.services.parks import search_parks
 router = APIRouter(tags=["parks"])
 
 
-@router.get("/parks", response_model=list[ParkResponse], summary="이름·주소 또는 내 위치로 서울 공원 검색")
+@router.get("/parks", response_model=list[ParkResponse], summary="이름·주소로 서울 공원 검색")
 def parks(
     query: str = Query(default="", max_length=100),
-    latitude: float | None = Query(default=None, ge=-90, le=90, allow_inf_nan=False),
-    longitude: float | None = Query(default=None, ge=-180, le=180, allow_inf_nan=False),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0, le=10000),
     db: Session = Depends(get_db),
 ) -> list[ParkResponse]:
-    return search_parks(db, query, latitude, longitude, limit, offset)
+    return search_parks(db, query, limit, offset)
