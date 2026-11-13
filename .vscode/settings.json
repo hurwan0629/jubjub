@@ -17,5 +17,6 @@
     "editor.codeActionsOnSave": { "source.organizeImports.ruff": "explicit" }
   },
   "python.defaultInterpreterPath": "${workspaceFolder}/server/.venv",
-  "typescript.tsdk": "app/node_modules/typescript/lib"
+  "typescript.tsdk": "app/node_modules/typescript/lib",
+  "python.terminal.useEnvFile": true
 }

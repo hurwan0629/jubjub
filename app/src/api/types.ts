@@ -35,6 +35,30 @@ export type RobotStatus = {
   updatedAt: string; // ISO 시각
 };
 
+/** POST /auth/register 요청 (server/AUTH.md). 비밀번호 확인 · 개인정보 동의는 앱에서만 확인하고 보내지 않아요. */
+export type SignUpRequest = {
+  loginId: string; // 영문 · 숫자 4~16자 (대소문자 구분)
+  password: string; // 영문 · 숫자 포함 8~128자
+  name: string; // 1~100자
+  phone: string; // 숫자만 ('01012345678'). 서버도 하이픈 · 공백을 지워요
+  email: string; // 서버가 소문자로 저장해요
+};
+
+/** POST /auth/register 응답 (201). 비밀번호는 돌려주지 않아요 */
+export type SignUpResponse = { id: string; name: string; email: string };
+
+/** POST /auth/login 요청 */
+export type LoginRequest = { loginId: string; password: string };
+
+/** POST /auth/login 응답 */
+export type LoginResponse = {
+  accessToken: string; // 다음 요청부터 Authorization: Bearer 로 붙여요
+  tokenType: 'bearer';
+  expiresIn: number; // 초 (기본 3600). 만료되면 다시 로그인해요
+  /** 순찰 경로 처음 설정(C-03)을 아직 안 끝냈으면 true → C-03, 아니면 A-01 홈 */
+  isFirstLogin: boolean;
+};
+
 /** 위도 · 경도 (WGS84) */
 export type LatLng = { latitude: number; longitude: number };
 

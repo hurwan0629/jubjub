@@ -5,7 +5,7 @@ export { BottomSheet } from './BottomSheet';
 export { Button } from './Button';
 export { Card } from './Card';
 export { FilterBar, FilterChip } from './FilterChip';
-export { Checkbox, LinkRow, SignUpMethodButton, TextField } from './FormFields';
+export { Checkbox, LinkRow, TextField } from './FormFields';
 export { Header } from './Header';
 export { Icon } from './Icon';
 export { MapHint } from './MapHint';

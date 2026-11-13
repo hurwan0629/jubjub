@@ -5,11 +5,11 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { AppNotification, NotificationType } from '@/api/types';
-import { AlertCard, FilterChip, Header, Icon, Txt } from '@/components';
+import { AlertCard, FilterChip, Header, Icon, Text } from '@/components';
 import { useNotifications } from '@/hooks/useNotifications';
 import { icons } from '@/icons';
 import type { TabParams } from '@/navigation';
-import { colors } from '@/theme';
+import { colors, space } from '@/theme';
 import type { Tone } from '@/theme';
 import { NOTIFICATION_TYPE_LABEL } from '@/utils/labels';
 
@@ -61,9 +61,9 @@ export function AlertsScreen({ navigation }: BottomTabScreenProps<TabParams, 'Al
           <>
             <View style={s.pinnedLabel}>
               <Icon source={icons.pin} size={14} />
-              <Txt size={12} weight="semibold" color={colors.error}>
+              <Text variant="12-semibold" color="error">
                 먼저 확인해 주세요
-              </Txt>
+              </Text>
             </View>
             {pinned.map((a) => (
               <Item key={a.id} a={a} />
@@ -72,13 +72,11 @@ export function AlertsScreen({ navigation }: BottomTabScreenProps<TabParams, 'Al
         ) : null}
 
         <View style={s.listTitle}>
-          <Txt size={15} weight="bold">
-            최근 알림
-          </Txt>
+          <Text variant="15-bold">최근 알림</Text>
           {unreadCount > 0 ? (
-            <Txt size={12} color={colors.brandText}>
+            <Text variant="12-regular" color="brandText">
               미확인 {unreadCount}개
-            </Txt>
+            </Text>
           ) : null}
         </View>
         {recent.map((a) => (
@@ -86,9 +84,9 @@ export function AlertsScreen({ navigation }: BottomTabScreenProps<TabParams, 'Al
         ))}
         {/* 빈 안내는 불러오기가 끝난 뒤에만 보여 줘요 (불러오는 중에 깜빡이지 않게) */}
         {!loading && recent.length === 0 ? (
-          <Txt size={13} color={colors.textSub} style={s.empty}>
+          <Text variant="13-regular" color="textSub" style={s.empty}>
             해당하는 알림이 없어요
-          </Txt>
+          </Text>
         ) : null}
       </ScrollView>
     </SafeAreaView>
@@ -98,9 +96,9 @@ export function AlertsScreen({ navigation }: BottomTabScreenProps<TabParams, 'Al
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   filterViewport: { backgroundColor: colors.card, height: 68 },
-  filterContent: { paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
-  content: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 24, gap: 12 },
+  filterContent: { paddingHorizontal: space[16], paddingVertical: space[12], gap: space[8] },
+  content: { paddingHorizontal: space[24], paddingTop: space[20], paddingBottom: space[24], gap: space[12] },
   pinnedLabel: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  listTitle: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 8, paddingBottom: 2 },
-  empty: { textAlign: 'center', paddingVertical: 32 },
+  listTitle: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: space[8], paddingBottom: 2 },
+  empty: { textAlign: 'center', paddingVertical: space[32] },
 });
