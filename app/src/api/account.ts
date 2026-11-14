@@ -1,21 +1,21 @@
 // 계정 · 알림 설정 API (C-02 설정)
-import { mockResponse, request, setAuthToken, USE_MOCK } from './client';
+import { mockFor, mockResponse, request, setAuthToken } from './client';
 import { mockNotificationSettings, mockProfile } from './mock/account';
 import type { NotificationSettings, Profile } from './types';
 
 /** GET /me */
 export function getProfile(): Promise<Profile> {
-  return USE_MOCK ? mockResponse(mockProfile) : request('/me');
+  return mockFor('me') ? mockResponse(mockProfile) : request('/me');
 }
 
 /** GET /settings/notifications */
 export function getNotificationSettings(): Promise<NotificationSettings> {
-  return USE_MOCK ? mockResponse(mockNotificationSettings) : request('/settings/notifications');
+  return mockFor('settings') ? mockResponse(mockNotificationSettings) : request('/settings/notifications');
 }
 
 /** PATCH /settings/notifications: 바꾼 항목만 보내요 */
 export function updateNotificationSettings(patch: Partial<NotificationSettings>): Promise<NotificationSettings> {
-  if (USE_MOCK) {
+  if (mockFor('settings')) {
     Object.assign(mockNotificationSettings, patch);
     return mockResponse(mockNotificationSettings);
   }

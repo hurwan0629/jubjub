@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { completeRouteSetup } from '@/api/auth';
 import type { LatLng, Park, PatrolPoint, PatrolSlot } from '@/api/types';
 import { Header } from '@/components';
 import type { RootParams } from '@/navigation';
@@ -32,7 +33,11 @@ export function RouteSetupScreen({ navigation }: NativeStackScreenProps<RootPara
   // 첫 로그인에서 왔으면 홈 탭을 새로 띄우고, 설정 > 공원 변경하기에서 왔으면 원래 홈 탭으로 돌아가요
   const goHome = () => navigation.popTo('Main');
   const prev = () => (step === 1 ? goHome() : setStep(step - 1));
-  const next = () => setStep(step + 1);
+  const next = () => {
+    // 마지막 단계(완료 화면)로 넘어가면 처음 설정을 끝낸 거예요. 다음 로그인부터 A-01 홈으로 가요
+    if (step + 1 === 7) completeRouteSetup().catch(() => {});
+    setStep(step + 1);
+  };
   // 다른 공원을 고르면 그 공원 범위 밖의 위치가 남지 않도록 분리수거장 · 지점을 비워요
   const pickPark = (p: Park | null) => {
     if (p?.id !== park?.id) {
@@ -98,15 +103,16 @@ export function RouteSetupScreen({ navigation }: NativeStackScreenProps<RootPara
   }
 
   return (
-    <SafeAreaView style={st.screen} edges={['top']}>
+    <SafeAreaView style={s.screen} edges={['top']}>
       <Header title="순찰 경로 정하기" onBack={step === 7 ? goHome : prev} />
       <Progress step={step} label={LABELS[step - 1]} />
-      <View style={{ flex: 1 }}>{body}</View>
+      <View style={s.flex}>{body}</View>
       {footer}
     </SafeAreaView>
   );
 }
 
-const st = StyleSheet.create({
+const s = StyleSheet.create({
+  flex: { flex: 1 },
   screen: { flex: 1, backgroundColor: colors.bg },
 });

@@ -59,6 +59,7 @@ export const typography = {
   '14-regular': style(14, 'regular'),
   '14-semibold': style(14, 'semibold'),
   '14-bold': style(14, 'bold'),
+  '15-regular': style(15, 'regular'), // 시작화면 소개 문장 (C-00)
   '15-bold': style(15, 'bold'),
   '16-bold': style(16, 'bold'),
   '17-bold': style(17, 'bold'),
@@ -69,7 +70,10 @@ export const typography = {
   '25-bold': style(25, 'bold', { letterSpacing: -0.7, lineHeight: 'tight' }),
   '30-bold': style(30, 'bold'),
   logo: style(22, 'brand', { letterSpacing: 0.88 }),
+  'logo-40': style(40, 'brand', { letterSpacing: 1.6 }), // 로그인 · 회원가입 (C-01 · C-04)
+  'logo-52': style(52, 'brand', { letterSpacing: 2.08 }), // 시작화면 (C-00)
   // 숫자 전용 (번호 원 · 지도 마커). 한글을 넣지 마세요.
+  '10-bold-digits': style(10, 'digitsBold'), // 하단 탭 알림 수 배지
   '13-regular-digits': style(13, 'digitsRegular'),
   '14-bold-digits': style(14, 'digitsBold'),
 } as const;

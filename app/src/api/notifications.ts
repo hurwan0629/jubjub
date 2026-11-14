@@ -1,11 +1,11 @@
 // 알림 API (A-05 알림 목록, A-06 알림 상세)
-import { mockResponse, request, USE_MOCK } from './client';
+import { mockResponse, request, mockFor } from './client';
 import { mockNotifications } from './mock/notifications';
 import type { AppNotification, NotificationStatus, NotificationType } from './types';
 
 /** GET /notifications?type= */
 export function getNotifications(type?: NotificationType): Promise<AppNotification[]> {
-  if (USE_MOCK) {
+  if (mockFor('notifications')) {
     return mockResponse(mockNotifications.filter((n) => !type || n.type === type));
   }
   return request(`/notifications${type ? `?type=${type}` : ''}`);
@@ -13,7 +13,7 @@ export function getNotifications(type?: NotificationType): Promise<AppNotificati
 
 /** GET /notifications/{id} */
 export function getNotification(id: string): Promise<AppNotification> {
-  if (USE_MOCK) {
+  if (mockFor('notifications')) {
     const found = mockNotifications.find((n) => n.id === id);
     return found ? mockResponse(found) : Promise.reject(new Error(`알림 ${id} 없음`));
   }
@@ -29,15 +29,21 @@ function setMockStatus(id: string, status: NotificationStatus) {
 
 /** POST /notifications/{id}/ack: 확인 */
 export function ackNotification(id: string): Promise<void> {
-  return USE_MOCK ? setMockStatus(id, 'acked') : request(`/notifications/${id}/ack`, { method: 'POST' });
+  return mockFor('notifications')
+    ? setMockStatus(id, 'acked')
+    : request(`/notifications/${id}/ack`, { method: 'POST' });
 }
 
 /** POST /notifications/{id}/resolve: 처리 완료 표시 → 서버가 로봇 재확인을 대기열에 넣어요 */
 export function resolveNotification(id: string): Promise<void> {
-  return USE_MOCK ? setMockStatus(id, 'resolved') : request(`/notifications/${id}/resolve`, { method: 'POST' });
+  return mockFor('notifications')
+    ? setMockStatus(id, 'resolved')
+    : request(`/notifications/${id}/resolve`, { method: 'POST' });
 }
 
 /** POST /notifications/{id}/recheck: 로봇 재확인 요청 */
 export function recheckNotification(id: string): Promise<void> {
-  return USE_MOCK ? mockResponse(undefined) : request(`/notifications/${id}/recheck`, { method: 'POST' });
+  return mockFor('notifications')
+    ? mockResponse(undefined)
+    : request(`/notifications/${id}/recheck`, { method: 'POST' });
 }

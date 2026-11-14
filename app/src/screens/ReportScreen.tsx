@@ -4,10 +4,10 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 
-import { Button, Card, Icon, StatRow, Header, Txt } from '@/components';
+import { Button, Card, Icon, StatRow, Header, Text } from '@/components';
 import { icons } from '@/icons';
 import type { TabParams } from '@/navigation';
-import { colors, radius } from '@/theme';
+import { colors, radius, space } from '@/theme';
 
 const MATERIALS = [
   { name: '페트', count: 10, color: colors.data.pet },
@@ -73,12 +73,10 @@ function Donut({ size = 142, ring = 24 }: { size?: number; ring?: number }) {
         })}
       </Svg>
       <View style={s.donutCenter}>
-        <Txt size={25} weight="bold" lineHeight={1.2} style={{ letterSpacing: -0.7 }}>
-          {total}개
-        </Txt>
-        <Txt size={11} color={colors.textSub}>
+        <Text variant="25-bold">{total}개</Text>
+        <Text variant="11-regular" color="textSub">
           총 수거량
-        </Txt>
+        </Text>
       </View>
     </View>
   );
@@ -98,9 +96,7 @@ export function ReportScreen({ navigation }: BottomTabScreenProps<TabParams, 'Re
           <Pressable onPress={() => shift(-1)} hitSlop={12} accessibilityLabel="이전 날">
             <Icon source={icons.datePrev} size={20} />
           </Pressable>
-          <Txt size={14} weight="bold">
-            {formatDate(date)}
-          </Txt>
+          <Text variant="14-bold">{formatDate(date)}</Text>
           <Pressable onPress={() => shift(1)} hitSlop={12} accessibilityLabel="다음 날">
             <Icon source={icons.dateNext} size={20} />
           </Pressable>
@@ -108,26 +104,22 @@ export function ReportScreen({ navigation }: BottomTabScreenProps<TabParams, 'Re
 
         {/* 오늘의 수거량 */}
         <View style={s.hero}>
-          <Txt size={13} weight="semibold">
-            오늘의 수거량
-          </Txt>
-          <Txt size={30} weight="bold" color={colors.brandText}>
+          <Text variant="13-semibold">오늘의 수거량</Text>
+          <Text variant="30-bold" color="brandText">
             24개
-          </Txt>
-          <Txt size={13} lineHeight={1.5}>
+          </Text>
+          <Text variant="13-regular" lineHeight="relaxed">
             전날보다 12% 늘었어요
-          </Txt>
+          </Text>
         </View>
 
         {/* 에이전트 요약 */}
-        <View style={{ gap: 10 }}>
-          <Txt size={16} weight="bold">
-            에이전트의 하루 요약
-          </Txt>
-          <Txt size={13} lineHeight={1.6} color={colors.textSub}>
+        <View style={s.gap10}>
+          <Text variant="16-bold">에이전트의 하루 요약</Text>
+          <Text variant="13-regular" color="textSub" lineHeight="loose">
             오늘은 6번 순찰하며 쓰레기 24개를 수거했어요. 분리수거장에 3번 다녀왔고, 공연장 앞에서 쓰레기가 가장
             많았어요.
-          </Txt>
+          </Text>
         </View>
 
         {/* 운영 통계 */}
@@ -141,22 +133,18 @@ export function ReportScreen({ navigation }: BottomTabScreenProps<TabParams, 'Re
         />
 
         {/* 재질별 수거량 */}
-        <Card style={{ gap: 20 }}>
-          <Txt size={16} weight="bold">
-            재질별 수거량
-          </Txt>
+        <Card style={s.gap20}>
+          <Text variant="16-bold">재질별 수거량</Text>
           <View style={s.donutRow}>
             <Donut />
-            <View style={{ flex: 1, gap: 16 }}>
+            <View style={s.flexGap16}>
               {MATERIALS.map((m) => (
                 <View key={m.name} style={s.legendRow}>
                   <View style={[s.dot, { backgroundColor: m.color }]} />
-                  <Txt size={12} color={colors.textSub} style={{ flex: 1 }}>
+                  <Text variant="12-regular" color="textSub" style={s.flex}>
                     {m.name}
-                  </Txt>
-                  <Txt size={12} weight="semibold">
-                    {m.count}개
-                  </Txt>
+                  </Text>
+                  <Text variant="12-semibold">{m.count}개</Text>
                 </View>
               ))}
             </View>
@@ -164,48 +152,42 @@ export function ReportScreen({ navigation }: BottomTabScreenProps<TabParams, 'Re
         </Card>
 
         {/* 시간대별 수거량 */}
-        <Card style={{ gap: 16 }}>
+        <Card style={s.gap16}>
           <View style={s.cardTitleRow}>
-            <Txt size={16} weight="bold">
-              시간대별 수거량
-            </Txt>
-            <Txt size={11} color={colors.textSub}>
+            <Text variant="16-bold">시간대별 수거량</Text>
+            <Text variant="11-regular" color="textSub">
               단위: 개
-            </Txt>
+            </Text>
           </View>
           <View style={s.bars}>
             {HOURLY.map((h) => (
               <View key={h.range} style={s.barCol}>
-                <Txt size={12} weight="semibold" color={colors.brandText}>
+                <Text variant="12-semibold" color="brandText">
                   {h.count}
-                </Txt>
+                </Text>
                 <View style={[s.bar, { height: h.count * BAR_PER_ITEM }]} />
-                <Txt size={10} color={colors.textSub}>
+                <Text variant="10-regular" color="textSub">
                   {h.range}
-                </Txt>
+                </Text>
               </View>
             ))}
           </View>
-          <Txt size={11} color={colors.textSub}>
+          <Text variant="11-regular" color="textSub">
             08–18시 · 총 {total}개
-          </Txt>
+          </Text>
         </Card>
 
         {/* 처리 못 한 일 */}
-        <View style={{ gap: 12 }}>
-          <Txt size={16} weight="bold">
-            처리 못 한 일
-          </Txt>
+        <View style={s.gap12}>
+          <Text variant="16-bold">처리 못 한 일</Text>
           {TODOS.map((t) => (
             <View key={t.title} style={s.todo}>
               <Icon source={t.icon} size={22} />
-              <View style={{ flex: 1, gap: 6 }}>
-                <Txt size={14} weight="bold">
-                  {t.title}
-                </Txt>
-                <Txt size={12} lineHeight={1.6} color={colors.textSub}>
+              <View style={s.flexGap6}>
+                <Text variant="14-bold">{t.title}</Text>
+                <Text variant="12-regular" color="textSub" lineHeight="loose">
                   {t.body}
-                </Txt>
+                </Text>
               </View>
             </View>
           ))}
@@ -213,30 +195,38 @@ export function ReportScreen({ navigation }: BottomTabScreenProps<TabParams, 'Re
 
         {/* 인사이트 */}
         <View style={s.insight}>
-          <Txt size={12} weight="semibold" color={colors.brandText}>
+          <Text variant="12-semibold" color="brandText">
             오늘의 인사이트
-          </Txt>
-          <Txt size={13} lineHeight={1.6}>
+          </Text>
+          <Text variant="13-regular" lineHeight="loose">
             오늘은 공연장 앞에서 쓰레기가 가장 많았어요
-          </Txt>
+          </Text>
         </View>
 
         <Button label="발생 통계 보기 (확장)" variant="soft" icon={icons.buttonRoute} />
 
-        <Txt size={11} color={colors.textSub} style={{ textAlign: 'center' }}>
+        <Text variant="11-regular" color="textSub" style={s.center}>
           2026.11.06 22:00 작성
-        </Txt>
+        </Text>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
+  flex: { flex: 1 },
+  center: { textAlign: 'center' },
+  gap10: { gap: 10 },
+  gap12: { gap: space[12] },
+  gap16: { gap: space[16] },
+  gap20: { gap: space[20] },
+  flexGap16: { flex: 1, gap: space[16] },
+  flexGap6: { flex: 1, gap: 6 },
   screen: { flex: 1, backgroundColor: colors.bg },
-  content: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 28, gap: 20 },
+  content: { paddingHorizontal: space[24], paddingTop: space[16], paddingBottom: 28, gap: space[20] },
   dateRow: { height: 36, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  hero: { backgroundColor: colors.bgBrandSoft, borderRadius: radius[20], padding: 20, gap: 8 },
-  donutRow: { flexDirection: 'row', alignItems: 'center', gap: 24 },
+  hero: { backgroundColor: colors.bgBrandSoft, borderRadius: radius[20], padding: space[20], gap: space[8] },
+  donutRow: { flexDirection: 'row', alignItems: 'center', gap: space[24] },
   donutCenter: {
     position: 'absolute',
     top: 0,
@@ -245,13 +235,13 @@ const s = StyleSheet.create({
     bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    gap: space[4],
   },
   legendRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   dot: { width: 8, height: 8, borderRadius: 4 },
   cardTitleRow: { flexDirection: 'row', justifyContent: 'space-between' },
   bars: { height: 155, flexDirection: 'row', alignItems: 'flex-end', gap: 14 },
-  barCol: { flex: 1, alignItems: 'center', gap: 8 },
+  barCol: { flex: 1, alignItems: 'center', gap: space[8] },
   bar: {
     width: 32,
     backgroundColor: colors.brandText,
@@ -260,6 +250,12 @@ const s = StyleSheet.create({
     borderBottomLeftRadius: 2,
     borderBottomRightRadius: 2,
   },
-  todo: { backgroundColor: colors.card, borderRadius: radius[16], padding: 16, flexDirection: 'row', gap: 12 },
-  insight: { backgroundColor: colors.bgBrandSoft, borderRadius: radius[20], padding: 16, gap: 8 },
+  todo: {
+    backgroundColor: colors.card,
+    borderRadius: radius[16],
+    padding: space[16],
+    flexDirection: 'row',
+    gap: space[12],
+  },
+  insight: { backgroundColor: colors.bgBrandSoft, borderRadius: radius[20], padding: space[16], gap: space[8] },
 });
