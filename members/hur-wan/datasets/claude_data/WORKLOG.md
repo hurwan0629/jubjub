@@ -1,6 +1,6 @@
 # 작업 기록
 
-2026-11-14에 Claude가 수행한 작업을 순서대로 적었습니다. 결과 요약과 사용법은 [README.md](README.md)에 있습니다.
+2026-11-14에 Claude가 수행한 작업을 순서대로 적었습니다. 2026-11-15에 사용자가 받아 준 HOWA를 추가한 과정은 8번에 따로 적었습니다. 결과 요약과 사용법은 [README.md](README.md)에 있습니다.
 
 ## 1. 목표와 선별 기준
 
@@ -89,6 +89,8 @@ Roboflow Universe는 내려받는 데 API 키가 필요해서 보지 않았습�
 
 비영리 연구·교육 목적으로만 제공되며 구글 폼으로 신청해야 합니다. 신청서에 이름과 소속을 적어야 해서 제가 대신 신청하지 않았습니다. 사진을 보지 못했으므로 라벨 품질은 받은 뒤에 확인해야 합니다.
 
+→ 2026-11-15에 사용자가 받아 주어 확인했고 채택했습니다. 8번을 보세요.
+
 ## 4. 변환하면서 내린 결정
 
 ### 공통
@@ -143,3 +145,78 @@ python scripts/make_figures.py      # -> figures/
 - 호환성 시험에 쓴 Ultralytics와 pycocotools는 가상환경에서 뺐습니다. `.venv/`에는 `pillow`와 `matplotlib`만 있습니다.
 - Ultralytics가 만든 라벨 캐시(`labels/*.cache`)는 지웠습니다. 학습을 시작하면 자동으로 다시 만들어집니다.
 - 저장소 안에서 `claude_data/` 밖의 파일은 읽기만 했고 고치지 않았습니다.
+
+## 8. HOWA 추가 (2026-11-15)
+
+사용자가 신청해 받은 `howa.zip`(3.9GB)을 `claude_data/`에 두었습니다. 이 파일을 `_raw/howa/howa.zip`으로 옮겨 작업했습니다. 압축 파일 안 파일들의 날짜가 2023년 초(공개 시점)이고 유닉스에서 만든 것이라 배포처가 만든 원본 그대로로 보입니다. SHA-256은 `scripts/download.py`에 적어 두었습니다.
+
+### 받은 파일의 구조
+
+- `dataset/train`, `val`, `test` 폴더에 `image_rgb_<번호>.png`와 같은 이름의 `.json`(labelme 형식)이 한 쌍씩 있습니다. 6,942쌍입니다.
+- 모든 사진이 640×480이고, 사진마다 다각형 라벨이 정확히 하나 있습니다.
+- 클래스는 plastic 1,776 / metal 1,772 / glass 1,768 / carton 1,626입니다.
+- 소개 페이지에는 6,943장, glass 1,769, JPG라고 적혀 있지만 받은 파일은 6,942장, glass 1,768, PNG입니다.
+
+### 확인한 것과 결과
+
+| 확인한 것 | 방법 | 결과 |
+| --- | --- | --- |
+| 박스가 물체와 맞는가 | 무작위 180장에 박스를 그려서 봄 | 전부 맞음. 투명한 용기도 윤곽을 따라 그려져 있음 |
+| metal이 캔인가, plastic에 비닐이 없는가 | 클래스마다 크롭 252개를 번호 순으로 고르게 뽑아서 봄 (모두 1,008개) | metal은 음료 캔과 통조림 캔. plastic은 병, 용기, 컵. carton은 종이팩과 종이 상자. glass는 병, 유리 용기, 유리컵. 다른 클래스로 보이는 것은 찾지 못함 ([plastic](reports/evidence/howa_plastic_crops.jpg), [metal](reports/evidence/howa_metal_crops.jpg), [carton](reports/evidence/howa_carton_crops.jpg), [glass](reports/evidence/howa_glass_crops.jpg). 근거 사진은 126개씩) |
+| 사진 속 쓰레기가 빠짐없이 라벨되어 있는가 | 아래 "라벨 없는 물체 찾기" | 두 구간 21장에서 라벨 없는 물체를 찾아 제외 |
+| 배경에 쓰레기가 있는가 | 장소마다 배경을 확대해서 봄 | 자갈 더미 장면의 흰 조각은 깨진 타일과 벽돌 ([사진](reports/evidence/howa_gravel_background_rubble.jpg)). 풀밭 장면에 10픽셀쯤 되는 초록 조각 하나와 종이나 낙엽으로 보이는 조각이 있음. 그대로 둠 |
+| 분할이 겹치지 않는가 | 파일 번호 순서와 배경을 봄 | 원본 분할은 같은 배경과 물건이 세 분할에 섞여 있음. 장소 단위로 다시 나눔 |
+
+### 라벨 없는 물체 찾기
+
+처음 본 표본에서 라벨된 캔 옆에 라벨 없는 캔이 하나 더 있는 사진(3425번)이 나왔습니다. 이런 사진이 얼마나 되는지 세 가지로 확인했습니다.
+
+1. **무작위 180장.** 박스를 그려서 봤고, 라벨 없는 물체가 있는 사진은 없었습니다.
+2. **같은 자리 박스.** 번호가 이어지는 사진에서 박스가 거의 같은 자리(IoU 0.7 이상)에 있는 구간을 찾았습니다. 정상이라면 사진마다 물체 위치가 바뀌기 때문입니다. 3411~3433번만 길게 이어졌고 나머지 49곳은 두 장짜리였습니다.
+3. **배경과 다른 덩어리.** 카메라가 고정되어 있어서, 앞뒤 사진들의 중앙값을 배경으로 삼고 박스 밖에서 배경과 색이 다른 덩어리를 찾았습니다. 그림자 때문에 잘못 잡히는 것이 많아서 물체 크기의 덩어리가 있는 334장과, 같은 자리에 3장 이상 남아 있는 덩어리 143곳을 직접 봤습니다. 이 방법은 이미 알고 있던 3412~3433번 17장 중 14장을 찾았습니다.
+
+찾은 것은 두 구간입니다.
+
+| 번호 | 장수 | 내용 |
+| --- | ---: | --- |
+| 3412~3433 | 17 | 라벨된 캔은 그대로 있고, 라벨 없는 캔이 하나 더 굴러다님 ([사진](reports/evidence/howa_unlabeled_second_can.jpg)) |
+| 1681~1686 | 4 | 앞에서 찍던 흰 컵이 왼쪽 끝에 남아 있음 ([사진](reports/evidence/howa_unlabeled_leftover_cup.jpg)) |
+
+3번 방법은 전수 검사가 아닙니다. 17장 중 3장을 놓쳤으므로, 물체가 한두 장에만 잠깐 찍힌 경우는 남아 있을 수 있습니다. 무작위 180장에서 하나도 나오지 않았으니 남아 있더라도 드뭅니다.
+
+이 검사에 쓴 스크립트는 일회용이라 남기지 않았습니다. 찾은 구간만 `scripts/convert_howa.py`의 `UNLABELED`에 번호로 적었습니다.
+
+### 변환하면서 내린 결정
+
+- **1:1로 매핑했습니다.** carton → general, plastic → plastic, metal → can, glass → glass. 재질 기준 데이터는 1번의 선별 기준 2에 걸려 탈락시켜 왔지만(MRS-Trash-Detection 등), HOWA는 크롭으로 확인한 실제 내용이 품목 기준과 맞았습니다.
+- **다각형의 바깥 사각형을 박스로 썼습니다.**
+- **분할을 장소 단위로 다시 정했습니다.** 파일 번호가 촬영 순서이고, 번호 범위마다 배경이 같습니다 ([장소별 배경](reports/evidence/howa_scenes.jpg)). 원본의 무작위 분할에서는 작게 줄여 비교했을 때 거의 같은 사진 59,690쌍 중 28,367쌍이 분할 사이에 걸쳐 있었습니다. 이대로 쓰면 val과 test 점수가 학습 데이터를 다시 맞히는 점수가 됩니다. 장소 9곳 중 네 클래스가 모두 있는 흙바닥(784장)을 val로, 풀밭(495장)을 test로 정했습니다. 새 분할에서는 걸친 쌍이 0입니다.
+- **풀밭을 test로 고른 이유.** 공원 잔디와 가장 비슷한 배경이라, 처음 보는 풀밭에서 얼마나 되는지를 재는 것이 쓸모 있다고 봤습니다. 대신 train에는 풀밭이 없습니다. 반대로 하고 싶으면 `SCENES`의 분할 이름만 바꾸면 됩니다.
+- **이미지는 PNG 그대로 복사했습니다.** JPG로 바꾸면 용량이 줄지만 화질이 조금 바뀌므로, 다른 데이터셋과 같은 규칙(원본 그대로)을 따랐습니다. 그래서 `howa_yolo/`가 3.9GB입니다.
+- **git에 올리지 않게 했습니다.** `claude_data/.gitignore`에 `howa_yolo/`, `howa_coco/`를 넣었습니다. 신청자에게만 비영리 연구·교육 목적으로 주는 데이터라서, 라벨을 공개 저장소에 올리는 것이 허용되는지 확실하지 않습니다. 사용자가 판단해서 바꿀 수 있습니다.
+
+### 검사 결과
+
+- `check_quality.py`: 문제 0건. 거의 같은 사진은 같은 분할 안에 59,690쌍, 분할 사이에 0쌍입니다. 같은 분할 안의 쌍이 많은 것은 배경이 같고 물체만 다르기 때문입니다.
+- pycocotools와 Ultralytics 8.4.212로 세 분할을 모두 읽었습니다 (5,642 / 784 / 495장, 손상 0).
+- `aihub → taco` 모델 점수 (imgsz 640, conf 0.001, iou 0.7, CPU): train mAP50 0.598 / mAP50-95 0.448, val 0.725 / 0.597, test 0.498 / 0.386.
+
+### 실행한 순서
+
+```bash
+python scripts/download.py howa     # howa.zip 의 SHA-256 확인, 압축 풀기 -> _raw/howa/extracted/
+python scripts/convert_howa.py      # -> howa_yolo/, howa_coco/
+python scripts/check_quality.py     # 세 데이터셋 모두 다시 검사
+python scripts/make_stats.py
+python scripts/make_previews.py
+python scripts/make_figures.py
+```
+
+### 바꾼 파일과 정리한 것
+
+- 새로 만든 파일: `scripts/convert_howa.py`
+- 고친 파일: `scripts/download.py`(howa 항목 추가, 자동으로 받을 수 없는 원본 처리), `scripts/make_figures.py`(데이터셋 목록에 howa 추가), `.gitignore`, `README.md`, 이 문서
+- `figures/`의 그림 번호가 하나씩 밀려서, 내용이 같은 이전 파일 두 개(`03_sample_click.png`, `04_sample_tod.png`)를 지웠습니다.
+- `_raw/howa/extracted/`(4.1GB)는 변환 뒤 지웠습니다. `python scripts/download.py howa`로 다시 풀리는 것을 확인했습니다.
+- Ultralytics 라벨 캐시를 지웠습니다.
+- `claude_data/` 밖의 파일은 읽기만 했습니다.

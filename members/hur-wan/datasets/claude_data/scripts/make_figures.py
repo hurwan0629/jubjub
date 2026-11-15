@@ -16,7 +16,7 @@ from common import NAMES, ROOT
 REPO = ROOT.parents[3]                                   # 저장소 루트 (parkkeeper-jupjup/)
 ORIGINAL = REPO / "data" / "figures" / "make_figures.py"
 OUT = ROOT / "figures"
-DATASETS = [("click", "CLICK"), ("tod", "TOD")]          # (폴더 이름 앞부분, 그림에 쓸 이름)
+DATASETS = [("click", "CLICK"), ("tod", "TOD"), ("howa", "HOWA")]   # (폴더 이름 앞부분, 그림에 쓸 이름)
 
 
 def main():

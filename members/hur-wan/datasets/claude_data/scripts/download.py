@@ -5,6 +5,7 @@
 
 내려받은 파일의 SHA-256 이 아래 값과 다르면 멈춘다 (원본이 바뀌었거나 받다가 깨진 경우).
 이미 받은 파일이 있고 값이 맞으면 다시 받지 않는다.
+howa 는 신청 양식을 내야 받을 수 있어서 내려받지 않는다. 직접 받은 howa.zip 을 _raw/howa/ 에 두면 확인하고 압축만 푼다.
 """
 import hashlib
 import sys
@@ -25,6 +26,11 @@ SOURCES = {
         "file": "TrAsh_DAtaset_v1.1.zip",
         "sha256": "36b0b0ed28cf9765d3ee9197096cb6b0112e0146dc8bb5aa826dc89785776e7f",
     },
+    "howa": {    # HOWA dataset v1, 비영리 연구·교육용, 3.9GB. 신청 양식을 내야 받을 수 있어서 자동으로 받지 못한다.
+        "url": None,     # https://iuii.ua.es/datasets/howa/index.html 에서 신청해 받은 파일을 _raw/howa/howa.zip 에 둔다
+        "file": "howa.zip",
+        "sha256": "dbb54dce12d4977a0a8a11befec08169318d5a20456fa2a50f7641451fe309de",
+    },
 }
 
 
@@ -43,7 +49,9 @@ def main():
         folder.mkdir(parents=True, exist_ok=True)
         archive = folder / source["file"]
 
-        if not archive.exists() or sha256(archive) != source["sha256"]:
+        if source["url"] is None and not archive.exists():
+            raise SystemExit(f"{name}: 자동으로 받을 수 없습니다. 직접 받은 파일을 {archive} 에 두고 다시 실행하세요.")
+        if source["url"] is not None and (not archive.exists() or sha256(archive) != source["sha256"]):
             print(f"{name}: 내려받는 중 ... {source['url']}")
             request = urllib.request.Request(source["url"], headers={"User-Agent": "dataset-download-script"})
             with urllib.request.urlopen(request) as response, open(archive, "wb") as file:

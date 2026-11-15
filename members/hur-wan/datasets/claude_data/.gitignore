@@ -2,3 +2,8 @@
 # (이미지 *.jpg, *.png 와 *.zip, *.cache 는 members/hur-wan/.gitignore 에서 이미 제외된다)
 _raw/
 .venv/
+
+# HOWA 는 신청해서 받는 비영리 연구·교육용 데이터라 라벨도 올리지 않는다.
+# 원본 howa.zip 이 있으면 scripts/convert_howa.py 로 똑같이 다시 만들 수 있다.
+howa_yolo/
+howa_coco/

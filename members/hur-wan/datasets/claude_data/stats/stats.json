@@ -78,6 +78,79 @@
       "glass": {}
     }
   },
+  "howa": {
+    "source": {
+      "source": "HOWA dataset v1 (Paez-Ubieta, Castano-Amoros, Puente, Gil, 2023)",
+      "url": "https://iuii.ua.es/datasets/howa/index.html",
+      "license": "non-profit research or educational purposes only"
+    },
+    "splits": {
+      "train": {
+        "images": 5642,
+        "boxes": 5642,
+        "classes": {
+          "general": 1308,
+          "plastic": 1490,
+          "can": 1420,
+          "glass": 1424
+        },
+        "empty_images": 0
+      },
+      "val": {
+        "images": 784,
+        "boxes": 784,
+        "classes": {
+          "general": 179,
+          "plastic": 193,
+          "can": 205,
+          "glass": 207
+        },
+        "empty_images": 0
+      },
+      "test": {
+        "images": 495,
+        "boxes": 495,
+        "classes": {
+          "general": 139,
+          "plastic": 89,
+          "can": 130,
+          "glass": 137
+        },
+        "empty_images": 0
+      }
+    },
+    "image_sizes": {
+      "640x480": 6921
+    },
+    "boxes_per_image": {
+      "mean": 1,
+      "median": 1,
+      "max": 1
+    },
+    "box_side_at_640": {
+      "general": {
+        "32-96px": 984,
+        ">=96px": 620,
+        "16-32px": 22
+      },
+      "plastic": {
+        ">=96px": 863,
+        "32-96px": 903,
+        "16-32px": 6
+      },
+      "can": {
+        "32-96px": 1639,
+        ">=96px": 61,
+        "8-16px": 1,
+        "16-32px": 54
+      },
+      "glass": {
+        "32-96px": 1318,
+        ">=96px": 418,
+        "16-32px": 32
+      }
+    }
+  },
   "tod": {
     "source": {
       "source": "TOD: Trash Object Detection Dataset v1.0 (Jo, Han, Jeong, 2021)",
