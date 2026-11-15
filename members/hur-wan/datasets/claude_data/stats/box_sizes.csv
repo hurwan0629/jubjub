@@ -1,0 +1,9 @@
+dataset,class,<8px,8-16px,16-32px,32-96px,>=96px
+click,general,10,82,422,855,512
+click,plastic,2,9,35,103,94
+click,can,0,1,4,13,0
+click,glass,0,0,0,0,0
+tod,general,0,1,161,3137,1606
+tod,plastic,2,4,310,2226,136
+tod,can,0,1,234,1574,0
+tod,glass,0,1,95,1192,0

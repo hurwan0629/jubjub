@@ -1,0 +1,4 @@
+general
+plastic
+can
+glass

@@ -1,0 +1,4 @@
+# 내려받은 원본과 작업용 가상환경은 올리지 않는다.
+# (이미지 *.jpg, *.png 와 *.zip, *.cache 는 members/hur-wan/.gitignore 에서 이미 제외된다)
+_raw/
+.venv/

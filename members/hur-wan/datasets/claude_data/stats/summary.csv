@@ -1,0 +1,7 @@
+dataset,split,images,boxes,general,plastic,can,glass,empty_images
+click,train,875,1746,1534,196,16,0,4
+click,val,109,213,192,20,1,0,0
+click,test,110,183,155,27,1,0,0
+tod,train,2180,9068,4106,2335,1519,1108,0
+tod,val,208,876,417,207,181,71,0
+tod,test,335,736,382,136,109,109,0

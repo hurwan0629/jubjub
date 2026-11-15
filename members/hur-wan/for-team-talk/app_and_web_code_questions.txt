@@ -1,0 +1,18 @@
+# https://kdt-3team-finalterm.atlassian.net/jira/software/projects/KAN/boards/1?filter=&groupBy=none&selectedIssue=KAN-23
+get /parks 응답에서 bounds는 뭐지. 
+
+공원 검색은 뭐에 쓰는거지
+
+area는 응답 형식이 어떻게 되는거지
+
+회원가입에 인증 시간은 일단 넘어가도록 하고. 이메일과 전화번호는 결국 모두 사용하는건가
+
+role은 enum같이 정해진 문자열같은게 존재하나
+
+서버에서 어플에 토큰준다고 하면 관리는 캐시서버에서 따로 하는건가? redis나 postgre 캐싱?
+
+get/put route에서 id 같은거는 없어도 되는건가. 검색할 때 route가 2가지 이상 있을 수 있는거 아닌가
+
+schedule가 순회 스케줄같기는 한데 뭔가 어떤 느낌인지 구체적으로 생각이 잘 안남. db에 어떻게 기록되고, 이걸 로봇에 서버쪽에서 보내는 방식인건가? 서버가 로봇을 키는 느낌?
+
+맨 상단에 api 전체 보여주거나 뭔가 계층적 페이지로 다시 구성해주면 좋을거같기도 하고. 

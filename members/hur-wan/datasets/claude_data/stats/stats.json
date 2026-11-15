@@ -1,0 +1,156 @@
+{
+  "click": {
+    "source": {
+      "source": "CLICK Trash Dataset v1.0 (Manjit Baishya, 2026)",
+      "url": "https://huggingface.co/datasets/manjt/click_trash_dataset",
+      "license": "MIT"
+    },
+    "splits": {
+      "train": {
+        "images": 875,
+        "boxes": 1746,
+        "classes": {
+          "general": 1534,
+          "plastic": 196,
+          "can": 16,
+          "glass": 0
+        },
+        "empty_images": 4
+      },
+      "val": {
+        "images": 109,
+        "boxes": 213,
+        "classes": {
+          "general": 192,
+          "plastic": 20,
+          "can": 1,
+          "glass": 0
+        },
+        "empty_images": 0
+      },
+      "test": {
+        "images": 110,
+        "boxes": 183,
+        "classes": {
+          "general": 155,
+          "plastic": 27,
+          "can": 1,
+          "glass": 0
+        },
+        "empty_images": 0
+      }
+    },
+    "image_sizes": {
+      "3072x3072": 378,
+      "3468x3468": 180,
+      "3024x3024": 136,
+      "4624x3468": 68,
+      "4096x3072": 48,
+      "4000x3000": 45,
+      "4284x4284": 39,
+      "2003x2003": 14
+    },
+    "boxes_per_image": {
+      "mean": 1.96,
+      "median": 1.0,
+      "max": 29
+    },
+    "box_side_at_640": {
+      "general": {
+        "32-96px": 855,
+        "16-32px": 422,
+        "8-16px": 82,
+        ">=96px": 512,
+        "<8px": 10
+      },
+      "plastic": {
+        "32-96px": 103,
+        "16-32px": 35,
+        ">=96px": 94,
+        "8-16px": 9,
+        "<8px": 2
+      },
+      "can": {
+        "16-32px": 4,
+        "32-96px": 13,
+        "8-16px": 1
+      },
+      "glass": {}
+    }
+  },
+  "tod": {
+    "source": {
+      "source": "TOD: Trash Object Detection Dataset v1.0 (Jo, Han, Jeong, 2021)",
+      "url": "https://doi.org/10.5281/zenodo.4607158",
+      "license": "MIT"
+    },
+    "splits": {
+      "train": {
+        "images": 2180,
+        "boxes": 9068,
+        "classes": {
+          "general": 4106,
+          "plastic": 2335,
+          "can": 1519,
+          "glass": 1108
+        },
+        "empty_images": 0
+      },
+      "val": {
+        "images": 208,
+        "boxes": 876,
+        "classes": {
+          "general": 417,
+          "plastic": 207,
+          "can": 181,
+          "glass": 71
+        },
+        "empty_images": 0
+      },
+      "test": {
+        "images": 335,
+        "boxes": 736,
+        "classes": {
+          "general": 382,
+          "plastic": 136,
+          "can": 109,
+          "glass": 109
+        },
+        "empty_images": 0
+      }
+    },
+    "image_sizes": {
+      "1280x720": 2723
+    },
+    "boxes_per_image": {
+      "mean": 3.92,
+      "median": 3,
+      "max": 13
+    },
+    "box_side_at_640": {
+      "general": {
+        "32-96px": 3137,
+        ">=96px": 1606,
+        "16-32px": 161,
+        "8-16px": 1
+      },
+      "plastic": {
+        "32-96px": 2226,
+        "16-32px": 310,
+        ">=96px": 136,
+        "8-16px": 4,
+        "<8px": 2
+      },
+      "can": {
+        "32-96px": 1574,
+        "16-32px": 234,
+        "8-16px": 1
+      },
+      "glass": {
+        "16-32px": 95,
+        "32-96px": 1192,
+        "8-16px": 1
+      }
+    }
+  }
+}
