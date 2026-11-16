@@ -42,10 +42,11 @@ export type SignUpRequest = {
   name: string; // 1~100자
   phone: string; // 숫자만 ('01012345678'). 서버도 하이픈 · 공백을 지워요
   email: string; // 서버가 소문자로 저장해요
+  catalogId: string; // 회원가입 신청과 함께 지정할 담당 공원 ID
 };
 
 /** POST /auth/register 응답 (201). 비밀번호는 돌려주지 않아요 */
-export type SignUpResponse = { id: string; name: string; email: string };
+export type SignUpResponse = { id: string; name: string; email: string; registrationStatus: 'pending' };
 
 /** POST /auth/login 요청 */
 export type LoginRequest = { loginId: string; password: string };
@@ -57,6 +58,10 @@ export type LoginResponse = {
   expiresIn: number; // 초 (기본 3600). 만료되면 다시 로그인해요
   /** 순찰 경로 처음 설정(C-03)을 아직 안 끝냈으면 true → C-03, 아니면 A-01 홈 */
   isFirstLogin: boolean;
+  role: 'manager' | 'super_admin';
+  parkStatus: 'pending' | 'approved' | 'rejected' | null;
+  registrationStatus: 'pending' | 'approved' | 'rejected' | null;
+  routeSetupDone: boolean;
 };
 
 /** 위도 · 경도 (WGS84) */
@@ -83,6 +88,14 @@ export type Park = {
   distance: string; // 표시용 거리 ('2.1km')
   bounds: ParkBounds;
   area: ParkArea;
+};
+
+/** GET /park: 신청한 공원과 승인 상태 */
+export type ManagedPark = Omit<Park, 'distance'> & {
+  catalogId: string;
+  status: 'pending' | 'approved' | 'rejected';
+  routeSetupDone: boolean;
+  rejectReason: string | null;
 };
 
 /** 순찰 지점 (C-03 처음 설정 · A-04 경로 편집) */
@@ -159,6 +172,10 @@ export type NotificationType = 'robotError' | 'unpickable' | 'lowBattery' | 'dai
 export type Profile = {
   name: string;
   email: string;
+  role: LoginResponse['role'];
+  parkStatus: LoginResponse['parkStatus'];
+  registrationStatus: LoginResponse['registrationStatus'];
+  routeSetupDone: boolean;
 };
 
 /**

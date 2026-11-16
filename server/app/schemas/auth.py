@@ -23,6 +23,7 @@ class RegisterRequest(AuthSchema):
     name: str = Field(min_length=1, max_length=100)
     phone: str = Field(min_length=9, max_length=30)
     email: EmailStr = Field(max_length=254)
+    catalog_id: str = Field(pattern=r"^[1-9][0-9]{0,18}$")
 
     @field_validator("password")
     @classmethod
@@ -61,6 +62,7 @@ class LoginResponse(AuthSchema):
     role: Literal["super_admin", "manager"]
     park_status: Literal["pending", "approved", "rejected"] | None
     route_setup_done: bool
+    registration_status: Literal["pending", "approved", "rejected"] | None
 
 
 class ProfileResponse(AuthSchema):
@@ -69,6 +71,7 @@ class ProfileResponse(AuthSchema):
     role: Literal["super_admin", "manager"] = "manager"
     park_status: Literal["pending", "approved", "rejected"] | None = None
     route_setup_done: bool = False
+    registration_status: Literal["pending", "approved", "rejected"] | None = None
 
 
 class RegisterResponse(ProfileResponse):

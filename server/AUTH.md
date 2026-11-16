@@ -30,7 +30,7 @@ python -c "import secrets; print(secrets.token_hex(32))"
 
 프로젝트에서 사용하는 하위관리자 회원가입이에요. 역할은 항상 manager이고 role 입력은 거부해요.
 총관리자는 별도 콘솔 명령으로 생성해요([ADMIN.md](ADMIN.md)). 가입 정보는 Supabase의 `users`에 저장되며,
-가입한 계정으로 바로 로그인할 수 있어요. 별도 회원가입 활성화 설정은 필요하지 않아요.
+선택한 공원은 `parks`에 같은 트랜잭션으로 저장해요. 총관리자가 회원가입을 승인해야 로그인할 수 있어요.
 
 ```json
 {
@@ -38,7 +38,8 @@ python -c "import secrets; print(secrets.token_hex(32))"
   "password": "ExamplePass123!",
   "name": "관리자",
   "phone": "010-1234-5678",
-  "email": "admin@example.com"
+  "email": "admin@example.com",
+  "catalogId": "1"
 }
 ```
 
@@ -47,6 +48,7 @@ python -c "import secrets; print(secrets.token_hex(32))"
 - 이름: 앞뒤 공백을 제거하고 1~100자.
 - 전화번호: 하이픈·공백을 제거해 숫자 9~15자로 저장해요.
 - 이메일: 형식을 검증하고 소문자로 저장해요.
+- 담당 공원: 공개 `GET /parks?query=...` 검색 결과의 `id`를 `catalogId`로 보내요. 없는 공원이면 404이며 계정도 생성하지 않아요.
 - 비밀번호 확인은 앱에서 비교하고 전송하지 않아요.
 - 아이디·이메일 중복: 409 `account_exists`. 동시 요청도 DB 유일 제약으로 막아요.
 - 입력 오류: 422 `validation_error`.
@@ -54,7 +56,7 @@ python -c "import secrets; print(secrets.token_hex(32))"
 응답에는 비밀번호·해시를 넣지 않아요.
 
 ```json
-{"id":"1","name":"관리자","email":"admin@example.com"}
+{"id":"1","name":"관리자","email":"admin@example.com","role":"manager","registrationStatus":"pending","parkStatus":"pending","routeSetupDone":false}
 ```
 
 ## 로그인
@@ -74,9 +76,12 @@ python -c "import secrets; print(secrets.token_hex(32))"
 }
 ```
 
-로그인 응답에 role, parkStatus, routeSetupDone을 함께 반환해요.
-하위관리자는 공원 미선택 → 신청 → 승인 대기/반려 → 승인 → 경로 설정 순으로 이동해요.
-앱은 role → parkStatus → routeSetupDone 순으로 분기해야 해요.
+로그인 응답에 role, registrationStatus, parkStatus, routeSetupDone을 함께 반환해요.
+관리자는 가입 정보와 담당 공원을 함께 신청하고, 총관리자 승인 후 로그인 → 경로 설정 순으로 이동해요.
+승인 전에는 403 `registration_pending`, 반려 후에는 403 `registration_rejected`이며 토큰을 발급하지 않아요.
+이전 버전의 미완료 계정(담당 공원 없음)은 403 `registration_incomplete`로 담당자 문의를 안내해요.
+기존 토큰으로도 `/me`·순찰 등 업무 API에 접근할 수 없도록 매 요청 승인 상태를 확인해요.
+앱은 role → registrationStatus → routeSetupDone 순으로 분기해야 해요.
 isFirstLogin은 호환 필드로, 승인된 공원에서 설정을 마친 하위관리자와 총관리자는 false예요.
 완료 여부는 users가 아닌 parks.route_setup_done에 저장하며 로그인 자체로 상태를 바꾸지 않아요.
 
@@ -110,7 +115,7 @@ Swagger의 Authorize에 로그인 응답의 `accessToken`을 입력하면 `/me`�
 ## 시드 계정
 
 ```powershell
-python -m app.scripts.seed_user --login-id admin01 --name "관리자" --phone 01012345678 --email admin@example.com
+python -m app.scripts.seed_user --login-id admin01 --name "관리자" --phone 01012345678 --email admin@example.com --catalog-id 1
 ```
 
 비밀번호와 확인값은 터미널에서 숨겨 입력받아요. 명령 인자·파일에 평문 비밀번호를 남기지 않아요.

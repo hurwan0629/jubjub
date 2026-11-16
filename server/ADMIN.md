@@ -25,23 +25,29 @@ agent_runs의 관리자 경로 변경 로그는 로봇 실행이 아니므로 ro
 
 ## 앱 흐름
 
-1. POST /auth/register로 가입해요. 역할은 항상 manager이고 role 입력은 422예요.
-2. 로그인 응답 또는 GET /me에서 role/parkStatus/routeSetupDone을 확인해요.
-3. 공원 미선택(parkStatus=null)이면 검색 후 PUT /park `{catalogId}`로 신청해요.
-4. pending이면 승인 대기 화면, rejected면 rejectReason을 표시하고 다시 신청해요.
-5. approved일 때만 분리수거장·경로·시간표 설정과 할당 로봇 조회를 사용해요.
-6. routeSetupDone=false면 초기 설정, true면 운영 화면으로 이동해요.
+1. 가입 화면에서 계정 정보를 입력하고 공개 GET /parks로 담당 공원을 검색·지정해요.
+2. POST /auth/register에 계정 정보와 catalogId를 함께 보내요. 역할은 항상 manager이고 role 입력은 422예요.
+3. users와 parks를 한 트랜잭션으로 생성해 회원가입 신청(pending)을 저장해요. 이때 로그인하지 않아요.
+4. 총관리자는 GET /admin/registrations에서 신청자 정보와 담당 공원을 함께 확인하고 승인·반려해요.
+5. pending/rejected 계정은 로그인과 업무 API 모두 403이에요. approved일 때만 JWT를 발급해요.
+6. 승인 후 로그인 응답의 routeSetupDone=false면 초기 설정, true면 운영 화면으로 이동해요.
+
+승인 대상은 공원 단독 신청이 아니라 **담당 공원을 지정한 관리자의 회원가입 신청**이에요.
+관리자당 담당 공원이 하나이므로 기존 parks의 status/approved_by/approved_at을 가입 신청 심사 상태로 재사용해요.
+응답의 registrationStatus가 가입 승인 상태이며 parkStatus는 이전 앱 호환용이에요. 중복 상태 컬럼이나 추가 DB 마이그레이션은 필요하지 않아요.
 
 기존 isFirstLogin은 호환용으로 유지해요. 총관리자는 false,
 하위관리자는 승인된 공원에서 설정을 끝냈을 때만 false예요.
-앱은 isFirstLogin 하나보다 **role → parkStatus → routeSetupDone** 순으로 판단해야 해요.
-승인 상태 확인에는 GET /park 또는 GET /me를 사용해요. 실시간 푸시·자동 갱신 기능은 별도예요.
-승인 전 순찰 API는 서버에서도 403 park_not_approved를 반환해요.
+앱은 isFirstLogin 하나보다 **role → registrationStatus → routeSetupDone** 순으로 판단해야 해요.
+승인 전 로그인은 403 registration_pending, 반려는 403 registration_rejected예요. 알림·이메일 발송은 별도예요.
 
 ## 총관리자 API
 
 | API | 설명 |
 | --- | --- |
+| GET /admin/registrations?status=pending | 회원가입 신청 목록. 신청자 아이디·이름·이메일·전화번호와 지정 공원 포함 |
+| POST /admin/registrations/{userId}/approve | 가입 승인. `{}` 가능, robotIds는 선택 |
+| POST /admin/registrations/{userId}/reject | `{reason:"반려 사유"}`로 가입 반려 |
 | GET /admin/park-requests?status=pending&limit=20&offset=0 | 신청 목록. status 생략 시 전체 |
 | POST /admin/robots | 로봇 등록 `{name,serialNo}`. 성공 201 |
 | GET /admin/robots?unassigned=true&limit=20&offset=0 | 미할당 로봇 목록. unassigned 생략 시 전체 |
@@ -49,14 +55,15 @@ agent_runs의 관리자 경로 변경 로그는 로봇 실행이 아니므로 ro
 | POST /admin/parks/{id}/reject | `{reason:"반려 사유"}`로 반려 |
 | GET /robots | 하위관리자 본인의 승인된 공원에 할당된 로봇 목록 |
 
-신청 목록은 공원 정보 외에 userId/applicantName/createdAt과 승인 메타데이터를 반환해요.
+기존 /admin/park-requests 및 /admin/parks/{id}/approve·reject는 호환 경로예요. 신규 관리 화면은 userId 기준 /admin/registrations를 사용해요.
+신청 목록은 공원 정보 외에 userId/applicantName/applicantLoginId/applicantEmail/applicantPhone/registrationStatus/createdAt과 승인 메타데이터를 반환해요.
 GET/PUT /park와 승인·반려 응답에는 아래 필드가 추가돼요.
 
 ```json
 {"status":"pending","approvedBy":null,"approvedAt":null,"rejectReason":null,"routeSetupDone":false}
 ```
 
-승인에는 로봇 1~100대가 필요하고 중복 ID는 거부해요.
+가입 승인은 로봇 없이도 가능해요. robotIds를 함께 보내면 최대 100대까지 지정할 수 있고 중복 ID는 거부해요.
 선택한 모든 로봇이 존재하며 미할당이고 idle/offline일 때만 승인해요.
 이미 다른 공원에 할당된 로봇을 가져오거나 working/charging/error 로봇을 배치할 수 없어요.
 승인과 모든 로봇 할당을 같은 트랜잭션으로 처리하므로 일부만 저장되는 일은 없어요.
@@ -65,9 +72,7 @@ GET/PUT /park와 승인·반려 응답에는 아래 필드가 추가돼요.
 
 ## 신청 변경 규칙
 
-- pending에서 같은 공원을 다시 선택하면 신청을 유지해요.
-- rejected에서 다시 신청하면 pending으로 바뀌며 반려 사유를 비워요.
-- pending/rejected에서 다른 공원을 선택하면 기존 경로·지점·시간표와 완료 상태를 초기화해요.
+- pending/rejected 계정에는 로그인 토큰을 발급하지 않으므로 앱에서 PUT /park로 신청을 변경하거나 재신청하지 않아요. 반려·기존 미완료 계정은 총관리자에게 문의하도록 안내해요.
 - approved에서 같은 공원을 선택하면 상태를 유지해요.
 - approved에서 다른 공원으로 변경은 409 approved_park_change_forbidden이에요.
 - 승인·반려는 pending에서만 가능해요. 이미 승인된 공원을 반려해서 로봇을 남기는 동작은 허용하지 않아요.

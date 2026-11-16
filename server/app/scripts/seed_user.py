@@ -19,6 +19,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--name", required=True)
     parser.add_argument("--phone", required=True)
     parser.add_argument("--email", required=True)
+    parser.add_argument("--catalog-id", required=True, help="담당 공원 검색 목록 ID")
     args = parser.parse_args(argv)
     password = getpass("비밀번호: ")
     if password != getpass("비밀번호 확인: "):
@@ -37,7 +38,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except SQLAlchemyError:
         print("DB에 계정을 저장하지 못했어요. 연결 설정과 마이그레이션 상태를 확인해 주세요.")
         return 1
-    print("관리자 계정을 만들었어요. 이 계정으로 로그인할 수 있어요.")
+    print("담당 공원을 포함한 가입 신청을 만들었어요. 총관리자 승인 후 로그인할 수 있어요.")
     return 0
 
 

@@ -1,14 +1,14 @@
 # 공원 지정과 순찰 설정 (KAN-93)
 
-모든 API는 `Authorization: Bearer <accessToken>`이 필요해요.
+순찰 설정 API는 `Authorization: Bearer <accessToken>`이 필요해요. 가입 중 공원 카탈로그 검색(GET /parks)은 공개예요.
 앱은 Supabase에 직접 접근하지 않아요. 요청에 userId/parkId를 보내도 권한으로 사용하지 않고
 로그인한 관리자의 공원에만 접근해요.
 
 ## 프론트 연결 순서
 
-1. 기존 `GET /parks`로 검색하고 공원을 골라요.
-2. `PUT /park`에 `{"catalogId":"검색 결과 id"}`를 보내 공원을 신청해요.
-3. `GET /park`의 status가 approved가 된 뒤 지도에서 분리수거장·순찰 지점·시간표를 정해요.
+1. 회원가입 중 공개 `GET /parks`로 검색하고 담당 공원을 골라요.
+2. `POST /auth/register`에 계정 정보와 `catalogId`를 함께 보내 회원가입 승인을 신청해요.
+3. 총관리자가 가입을 승인한 뒤 로그인하고, `GET /park`로 지정 공원을 불러와 분리수거장·순찰 지점·시간표를 정해요.
 4. 완료 버튼에서 `PUT /route`에 아래 전체 설정을 보내요.
 5. 성공 후에만 완료 화면/홈으로 이동해요. 실패하면 입력을 유지하고 오류를 표시해요.
 6. 이후 경로 편집은 `GET /route`로 읽고 `PUT /route`로 저장해요.
@@ -33,7 +33,7 @@ parkName/bounds/area를 요청에 포함해도 `catalog_id`로 연결된 검색 
 초기 설정도 경로 편집도 전체 설정을 원자적으로 저장해요. 한 항목이라도 실패하면 모두 되돌려요.
 성공하면 `parks.route_setup_done=true`로 저장해 다음 로그인에서 `isFirstLogin=false`예요.
 승인·반려·로봇 할당과 역할별 앱 분기는 [ADMIN.md](ADMIN.md)를 확인해요.
-현재 로컬 C-03의 완료 버튼은 단계 이동만 하므로 프론트에서 위 호출을 연결해야 해요.
+현재 로컬 C-03의 완료 버튼은 PUT /route에 연결되어 있으며 서버 저장 성공 후에만 완료 화면으로 이동해요.
 
 ## API 목록
 

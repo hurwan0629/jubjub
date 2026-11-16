@@ -12,7 +12,7 @@ Identifier = Annotated[str, StringConstraints(pattern=r"^[1-9][0-9]{0,18}$")]
 
 
 class ApprovalInput(ParkSchema):
-    robot_ids: list[Identifier] = Field(min_length=1, max_length=100)
+    robot_ids: list[Identifier] = Field(default_factory=list, max_length=100)
 
     @field_validator("robot_ids")
     @classmethod
@@ -44,4 +44,8 @@ class RobotResponse(ParkSchema):
 class ParkRequestResponse(ManagedPark):
     user_id: str
     applicant_name: str
+    applicant_login_id: str
+    applicant_email: str
+    applicant_phone: str
+    registration_status: Literal["pending", "approved", "rejected"]
     created_at: datetime

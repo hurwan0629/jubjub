@@ -46,7 +46,10 @@ export function SettingsScreen({ navigation }: Props) {
   const handleChangePark = () => {
     setConfirmPark(false);
     navigation.popToTop(); // 경로 설정을 마치고 돌아오면 홈이 보이도록
-    navigation.navigate('RouteSetup');
+    navigation
+      .getParent()
+      ?.getParent()
+      ?.reset({ index: 0, routes: [{ name: 'Login' }] });
   };
 
   return (
@@ -134,9 +137,15 @@ export function SettingsScreen({ navigation }: Props) {
               <Icon source={icons.alertTriangleRed} size={28} />
             </View>
             <View style={s.dialogText}>
-              <Text variant="18-bold">기존 모든 설정이 지워집니다.</Text>
+              <Text variant="18-bold">
+                {profile?.parkStatus === 'approved'
+                  ? '공원 변경은 총관리자에게 요청해 주세요'
+                  : '공원을 다시 선택할까요?'}
+              </Text>
               <Text variant="13-regular" color="textSub" lineHeight="normal">
-                계속하시겠습니까?
+                {profile?.parkStatus === 'approved'
+                  ? '승인된 공원과 순찰 설정은 여기서 변경하지 않아요. 경로와 시간표는 지도 > 경로 편집에서 수정할 수 있어요.'
+                  : '다른 공원으로 신청하면 기존 순찰 설정이 초기화됩니다.'}
               </Text>
             </View>
             <View style={s.dialogActions}>
@@ -144,7 +153,11 @@ export function SettingsScreen({ navigation }: Props) {
                 <Button label="취소" variant="soft" onPress={() => setConfirmPark(false)} />
               </View>
               <View style={s.flex1}>
-                <Button label="확인" variant="danger" onPress={handleChangePark} />
+                <Button
+                  label="확인"
+                  variant="soft"
+                  onPress={profile?.parkStatus === 'approved' ? () => setConfirmPark(false) : handleChangePark}
+                />
               </View>
             </View>
           </View>

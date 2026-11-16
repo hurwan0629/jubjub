@@ -38,15 +38,22 @@ def _pending(db: Session, park_id: int) -> Park:
 @transaction()
 def list_requests(db: Session, user: User, status: str | None, limit: int, offset: int):
     require_super_admin(user)
-    statement = select(Park, User.name).join(User, Park.user_id == User.id)
+    statement = select(Park, User).join(User, Park.user_id == User.id).where(User.role == "manager")
     if status:
         statement = statement.where(Park.status == status)
     rows = db.execute(statement.order_by(Park.created_at, Park.id).limit(limit).offset(offset)).all()
     return [
         ParkRequestResponse(
-            **_managed(park).model_dump(), user_id=str(park.user_id), applicant_name=name, created_at=park.created_at
+            **_managed(park).model_dump(),
+            user_id=str(park.user_id),
+            applicant_name=applicant.name,
+            applicant_login_id=applicant.login_id,
+            applicant_email=applicant.email,
+            applicant_phone=applicant.phone,
+            registration_status=park.status,
+            created_at=park.created_at,
         )
-        for park, name in rows
+        for park, applicant in rows
     ]
 
 
@@ -127,3 +134,13 @@ def my_robots(db: Session, user: User):
     return [
         _robot_response(robot) for robot in db.scalars(select(Robot).where(Robot.park_id == park.id).order_by(Robot.id))
     ]
+
+
+def registration_park_id(db: Session, user: User, applicant_id: int) -> int:
+    require_super_admin(user)
+    park_id = db.scalar(
+        select(Park.id).join(User, Park.user_id == User.id).where(User.id == applicant_id, User.role == "manager")
+    )
+    if park_id is None:
+        raise AppError(404, "회원가입 신청을 찾을 수 없어요", code="registration_not_found")
+    return park_id

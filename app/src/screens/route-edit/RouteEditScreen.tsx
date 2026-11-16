@@ -33,13 +33,22 @@ const NOTICE_MS = 2500;
 const TOAST_MS = 1600;
 
 export function RouteEditScreen({ navigation }: Props) {
-  const { data } = useRouteConfig();
+  const { data, error, loading, reload } = useRouteConfig();
 
   return (
     <SafeAreaView style={s.screen} edges={['top']}>
       <Header title="순찰 경로 편집" onBack={() => navigation.goBack()} />
       {/* 불러온 경로를 고쳐 쓰는 편집기. 처음 불러온 값으로 한 번만 시작해요. */}
-      {data ? <RouteEditor initial={data} onDone={() => navigation.goBack()} /> : <View style={s.flex} />}
+      {data && !error ? (
+        <RouteEditor initial={data} onDone={() => navigation.goBack()} />
+      ) : (
+        <View style={s.padded}>
+          <Text variant="13-regular" color={error ? 'error' : 'textSub'}>
+            {loading ? '경로를 불러오고 있어요…' : error?.message}
+          </Text>
+          {error ? <Button label="다시 불러오기" onPress={reload} /> : null}
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -53,6 +62,7 @@ function RouteEditor({ initial, onDone }: { initial: RouteConfig; onDone: () => 
   const [blocked, setBlocked] = useState(false); // 공원 밖을 꾹 눌렀을 때 경고
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string>();
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
@@ -74,12 +84,16 @@ function RouteEditor({ initial, onDone }: { initial: RouteConfig; onDone: () => 
   ];
 
   const handleSave = async () => {
+    if (saving) return;
     setSaving(true);
+    setSaveError(undefined);
     try {
       await saveRouteConfig(draft);
       const next = nextPatrolTime(draft.schedule);
       setToast(next ? `경로를 저장했어요 · ${next} 순찰부터 적용돼요` : '경로를 저장했어요');
       later(onDone, TOAST_MS);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : '경로를 저장하지 못했어요. 다시 시도해 주세요');
     } finally {
       setSaving(false);
     }
@@ -172,12 +186,21 @@ function RouteEditor({ initial, onDone }: { initial: RouteConfig; onDone: () => 
       ) : null}
 
       {/* 취소 · 저장하기 */}
+      {saveError ? (
+        <Text variant="13-regular" color="error" style={s.padded} accessibilityLiveRegion="polite">
+          {saveError}
+        </Text>
+      ) : null}
       <View style={[s.footer, { paddingBottom: Math.max(insets.bottom, space[12]) }]}>
         <View style={s.cancel}>
-          <Button label="취소" variant="soft" onPress={onDone} />
+          <Button label="취소" variant="soft" disabled={saving} onPress={onDone} />
         </View>
         <View style={s.flex}>
-          <Button label="저장하기" disabled={saving || !!toast || draft.points.length === 0} onPress={handleSave} />
+          <Button
+            label={saving ? '저장 중…' : '저장하기'}
+            disabled={saving || !!toast || draft.points.length === 0 || draft.schedule.length === 0 || !draft.station}
+            onPress={handleSave}
+          />
         </View>
       </View>
 

@@ -1,4 +1,4 @@
-"""C-03 공원 검색 API예요. 인증된 공통 업무 라우터에 등록해요."""
+"""가입 신청 중에도 사용할 수 있는 공개 공원 목록 검색 API예요."""
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session

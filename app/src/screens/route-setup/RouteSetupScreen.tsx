@@ -3,18 +3,19 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { completeRouteSetup } from '@/api/auth';
-import type { LatLng, Park, PatrolPoint, PatrolSlot } from '@/api/types';
-import { Header } from '@/components';
+import { logout } from '@/api/account';
+import { saveRouteConfig } from '@/api/route';
+import type { LatLng, PatrolPoint, PatrolSlot } from '@/api/types';
+import { Button, Header, Text } from '@/components';
+import { useManagedPark } from '@/hooks/useOnboarding';
 import type { RootParams } from '@/navigation';
-import { colors } from '@/theme';
+import { colors, layout, space } from '@/theme';
 import { moveItem } from '@/utils/route';
 
 import { Footer, Progress } from './parts';
-import { StepDone, StepIntro, StepOrder, StepPark, StepPoints, StepRecycle, StepSchedule } from './steps';
+import { StepDone, StepIntro, StepOrder, StepPoints, StepRecycle, StepSchedule } from './steps';
 
-const LABELS = ['시작하기', '공원 찾기', '분리수거장 위치', '순찰 지점 찍기', '순서', '순찰 시간표', '설정 완료'];
-
+const LABELS = ['시작하기', '분리수거장 위치', '순찰 지점 찍기', '순서', '순찰 시간표', '설정 완료'];
 const DEFAULT_SLOTS: PatrolSlot[] = [
   { id: '1', time: '10:00', label: '매일 순찰', on: true, repeat: 'daily' },
   { id: '2', time: '13:00', label: '점심 시간 순찰', on: true, repeat: 'daily' },
@@ -22,91 +23,134 @@ const DEFAULT_SLOTS: PatrolSlot[] = [
   { id: '4', time: '21:10', label: '야간 점검', on: true, repeat: 'daily' },
 ];
 
-/** C-03 순찰 경로 처음 설정 (가입 후 첫 로그인 때만 보여요) */
+/** C-03 승인된 공원의 순찰 경로 처음 설정 (5단계). */
 export function RouteSetupScreen({ navigation }: NativeStackScreenProps<RootParams, 'RouteSetup'>) {
+  const { data: managed, error: loadError, loading, reload } = useManagedPark();
   const [step, setStep] = useState(1);
-  const [park, setPark] = useState<Park | null>(null);
   const [recycle, setRecycle] = useState<LatLng | null>(null);
   const [points, setPoints] = useState<PatrolPoint[]>([]);
   const [slots, setSlots] = useState<PatrolSlot[]>(DEFAULT_SLOTS);
-
-  // 첫 로그인에서 왔으면 홈 탭을 새로 띄우고, 설정 > 공원 변경하기에서 왔으면 원래 홈 탭으로 돌아가요
-  const goHome = () => navigation.popTo('Main');
-  const prev = () => (step === 1 ? goHome() : setStep(step - 1));
-  const next = () => {
-    // 마지막 단계(완료 화면)로 넘어가면 처음 설정을 끝낸 거예요. 다음 로그인부터 A-01 홈으로 가요
-    if (step + 1 === 7) completeRouteSetup().catch(() => {});
-    setStep(step + 1);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string>();
+  const park = managed ? { ...managed, id: managed.catalogId, distance: '' } : null;
+  const goHome = () => navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
+  const exit = async () => {
+    await logout();
+    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
   };
-  // 다른 공원을 고르면 그 공원 범위 밖의 위치가 남지 않도록 분리수거장 · 지점을 비워요
-  const pickPark = (p: Park | null) => {
-    if (p?.id !== park?.id) {
-      setRecycle(null);
-      setPoints([]);
+  const prev = () => {
+    if (saving) return;
+    setError(undefined);
+    if (step === 1) void exit();
+    else setStep(step - 1);
+  };
+  const next = async () => {
+    if (saving || !park) return;
+    setError(undefined);
+    if (step < 5) {
+      setStep(step + 1);
+      return;
     }
-    setPark(p);
+    if (!recycle) return;
+    setSaving(true);
+    try {
+      await saveRouteConfig({
+        parkName: park.name,
+        bounds: park.bounds,
+        area: park.area,
+        station: recycle,
+        points,
+        schedule: slots,
+      });
+      setStep(6);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '경로를 저장하지 못했어요. 다시 시도해 주세요');
+    } finally {
+      setSaving(false);
+    }
   };
-  // 3~5단계 지도는 고른 공원 경계 안에서만 위치를 찍어요 (2단계에서 공원을 골라야 다음으로 가요)
-  const removePoint = (i: number) => setPoints((ps) => ps.filter((_, j) => j !== i));
-  const movePoint = (from: number, to: number) => setPoints((ps) => moveItem(ps, from, to));
 
   let body: React.ReactNode;
   let footer: React.ReactNode;
-  switch (step) {
-    case 1:
-      body = <StepIntro />;
-      footer = <Footer nextLabel="시작하기" onNext={next} />;
-      break;
-    case 2:
-      body = <StepPark park={park} onPick={pickPark} />;
-      footer = (
-        <Footer onPrev={prev} nextLabel={park ? '이 공원으로 정할게요' : '다음'} nextDisabled={!park} onNext={next} />
-      );
-      break;
-    case 3:
-      body = park ? <StepRecycle bounds={park.bounds} area={park.area} recycle={recycle} onSet={setRecycle} /> : null;
-      footer = <Footer onPrev={prev} nextDisabled={!recycle} onNext={next} />;
-      break;
-    case 4:
-      body = park ? (
-        <StepPoints
-          bounds={park.bounds}
-          area={park.area}
-          points={points}
-          recycle={recycle}
-          onAdd={(p) => setPoints((ps) => [...ps, p])}
-          onRemove={removePoint}
-        />
-      ) : null;
-      footer = <Footer onPrev={prev} nextDisabled={points.length === 0} onNext={next} />;
-      break;
-    case 5:
-      body = park ? (
-        <StepOrder
-          bounds={park.bounds}
-          area={park.area}
-          points={points}
-          recycle={recycle}
-          onMove={movePoint}
-          onRemove={removePoint}
-        />
-      ) : null;
-      footer = <Footer onPrev={prev} nextDisabled={points.length === 0} onNext={next} />;
-      break;
-    case 6:
-      body = <StepSchedule slots={slots} onChange={setSlots} />;
-      footer = <Footer onPrev={prev} nextLabel="완료" onNext={next} />;
-      break;
-    default:
-      body = <StepDone park={park} points={points} recycle={recycle} slots={slots} />;
-      footer = <Footer nextLabel="홈으로 가기" onNext={goHome} />;
+  if (!park || managed?.status !== 'approved' || loadError) {
+    body = (
+      <View style={s.message}>
+        <Text variant="15-bold">
+          {loading ? '공원 정보를 불러오고 있어요…' : (loadError?.message ?? '공원 승인 후 순찰 경로를 정할 수 있어요')}
+        </Text>
+        {!loading ? (
+          <>
+            <Button label="다시 불러오기" onPress={reload} />
+            <Button label="승인 상태 확인" variant="soft" onPress={() => navigation.replace('ParkApproval')} />
+            <Button label="로그인 화면으로" variant="soft" onPress={exit} />
+          </>
+        ) : null}
+      </View>
+    );
+  } else {
+    switch (step) {
+      case 1:
+        body = <StepIntro />;
+        footer = <Footer nextLabel="시작하기" onNext={next} />;
+        break;
+      case 2:
+        body = <StepRecycle bounds={park.bounds} area={park.area} recycle={recycle} onSet={setRecycle} />;
+        footer = <Footer onPrev={prev} nextDisabled={!recycle} onNext={next} />;
+        break;
+      case 3:
+        body = (
+          <StepPoints
+            bounds={park.bounds}
+            area={park.area}
+            points={points}
+            recycle={recycle}
+            onAdd={(p) => setPoints((ps) => [...ps, p])}
+            onRemove={(i) => setPoints((ps) => ps.filter((_, j) => j !== i))}
+          />
+        );
+        footer = <Footer onPrev={prev} nextDisabled={points.length === 0} onNext={next} />;
+        break;
+      case 4:
+        body = (
+          <StepOrder
+            bounds={park.bounds}
+            area={park.area}
+            points={points}
+            recycle={recycle}
+            onMove={(from, to) => setPoints((ps) => moveItem(ps, from, to))}
+            onRemove={(i) => setPoints((ps) => ps.filter((_, j) => j !== i))}
+          />
+        );
+        footer = <Footer onPrev={prev} nextDisabled={points.length === 0} onNext={next} />;
+        break;
+      case 5:
+        body = <StepSchedule slots={slots} onChange={setSlots} />;
+        footer = (
+          <Footer
+            onPrev={saving ? undefined : prev}
+            nextLabel={saving ? '저장 중…' : '완료'}
+            nextDisabled={saving || slots.length === 0}
+            onNext={next}
+          />
+        );
+        break;
+      default:
+        body = <StepDone park={park} points={points} recycle={recycle} slots={slots} />;
+        footer = <Footer nextLabel="홈으로 가기" onNext={goHome} />;
+    }
   }
-
   return (
     <SafeAreaView style={s.screen} edges={['top']}>
-      <Header title="순찰 경로 정하기" onBack={step === 7 ? goHome : prev} />
+      <Header title="순찰 경로 정하기" onBack={saving ? undefined : step === 6 ? goHome : prev} />
       <Progress step={step} label={LABELS[step - 1]} />
-      <View style={s.flex}>{body}</View>
+      <View style={s.flex} pointerEvents={saving ? 'none' : 'auto'}>
+        {body}
+      </View>
+      {error ? (
+        <Text variant="13-regular" color="error" style={s.error} accessibilityLiveRegion="polite">
+          {error}
+        </Text>
+      ) : null}
       {footer}
     </SafeAreaView>
   );
@@ -115,4 +159,6 @@ export function RouteSetupScreen({ navigation }: NativeStackScreenProps<RootPara
 const s = StyleSheet.create({
   flex: { flex: 1 },
   screen: { flex: 1, backgroundColor: colors.bg },
+  message: { padding: layout.screenPadding, gap: space[16] },
+  error: { paddingHorizontal: layout.screenPadding, paddingVertical: space[8] },
 });
