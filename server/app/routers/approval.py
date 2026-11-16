@@ -17,11 +17,11 @@ ParkID = Annotated[int, Path(ge=1, le=9223372036854775807)]
 def registrations(
     db: DB,
     user: Admin,
-    status: Literal["pending", "approved", "rejected"] | None = "pending",
+    status: Literal["all", "pending", "approved", "rejected"] | None = "pending",
     limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0, le=10000),
+    offset: int = Query(0, ge=0, le=9223372036854775807),
 ):
-    return approval.list_requests(db, user, status, limit, offset)
+    return approval.list_requests(db, user, None if status == "all" else status, limit, offset)
 
 
 @router.post("/admin/registrations/{user_id}/approve", response_model=ManagedPark, summary="관리자 회원가입 승인")
@@ -32,6 +32,11 @@ def approve_registration(user_id: ParkID, body: ApprovalInput, db: DB, user: Adm
 @router.post("/admin/registrations/{user_id}/reject", response_model=ManagedPark, summary="관리자 회원가입 반려")
 def reject_registration(user_id: ParkID, body: RejectionInput, db: DB, user: Admin):
     return approval.reject(db, user, approval.registration_park_id(db, user, user_id), body)
+
+
+@router.post("/admin/registrations/{user_id}/revoke", response_model=ManagedPark, summary="가입 승인 취소와 로봇 회수")
+def revoke_registration(user_id: ParkID, body: RejectionInput, db: DB, user: Admin):
+    return approval.revoke(db, user, approval.registration_park_id(db, user, user_id), body)
 
 
 @router.get("/admin/park-requests", response_model=list[ParkRequestResponse])
@@ -66,7 +71,7 @@ def list_robots(
     user: Admin,
     unassigned: bool = False,
     limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0, le=10000),
+    offset: int = Query(0, ge=0, le=9223372036854775807),
 ):
     return approval.list_robots(db, user, unassigned, limit, offset)
 

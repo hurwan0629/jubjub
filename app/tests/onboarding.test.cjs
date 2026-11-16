@@ -58,8 +58,21 @@ test('승인 상태와 초기 설정 완료 여부에 따라 진입 화면을 �
   );
   assert.equal(
     auth.onboardingScreen({ role: 'super_admin', registrationStatus: 'approved', routeSetupDone: false }),
-    'ParkApproval',
+    'Login',
   );
+});
+
+test('총관리자는 앱에서 웹 로그인 안내를 받고 토큰을 보관하지 않는다', async () => {
+  status = 200;
+  response = { accessToken: 'admin-token', role: 'super_admin', registrationStatus: 'approved', routeSetupDone: false };
+  client.setAuthToken('previous-token');
+  await assert.rejects(
+    auth.login({ loginId: 'superadmin', password: 'password123' }),
+    (e) => e.code === 'web_login_required' && e.message.includes('웹페이지'),
+  );
+  response = {};
+  await client.request('/me');
+  assert.equal(calls.at(-1).headers.Authorization, undefined);
 });
 
 test('공원 신청은 인증 토큰과 catalogId를 전송한다', async () => {

@@ -23,13 +23,14 @@ parkkeeper-jupjup/
 ├─ docs/       기획, 회의록, 설계 문서
 ├─ robot/      JetHexa 제어 코드 (ROS) - 이동, 그리퍼, 수거통
 ├─ vision/     쓰레기 인식 모델 - 학습, 추론
-├─ app/        관리자 모바일 앱 (Expo · React Native) — 실행법 app/README.md, 코드 규칙 app/CONVENTIONS.md
+├─ app/        하위관리자 모바일 앱 (Expo · React Native) — 실행법 app/README.md, 코드 규칙 app/CONVENTIONS.md
+├─ web/        총관리자 웹 (React · TypeScript · Vite) — 실행법 web/README.md
 ├─ server/     API 서버 (FastAPI · Supabase PostgreSQL) — 실행법 server/README.md
 ├─ data/       데이터셋 안내 (실제 데이터는 git에 올리지 않음)
 └─ members/    팀원별 개인 작업 공간
 ```
 
-- **공용 폴더**(`robot/`, `vision/`, `app/`, `server/`, `docs/`): 팀이 함께 쓰는 통합 코드와 문서
+- **공용 폴더**(`robot/`, `vision/`, `app/`, `web/`, `server/`, `docs/`): 팀이 함께 쓰는 통합 코드와 문서
 - **개인 폴더**(`members/<이름>/`): 개인 실험, 연습, 조사 자료. 쓸 만한 코드는 PR로 공용 폴더에 옮깁니다.
 
 ## 작업 규칙

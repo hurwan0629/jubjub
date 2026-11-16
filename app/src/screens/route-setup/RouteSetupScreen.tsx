@@ -81,7 +81,6 @@ export function RouteSetupScreen({ navigation }: NativeStackScreenProps<RootPara
         {!loading ? (
           <>
             <Button label="다시 불러오기" onPress={reload} />
-            <Button label="승인 상태 확인" variant="soft" onPress={() => navigation.replace('ParkApproval')} />
             <Button label="로그인 화면으로" variant="soft" onPress={exit} />
           </>
         ) : null}

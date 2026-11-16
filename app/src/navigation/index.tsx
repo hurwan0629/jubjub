@@ -6,7 +6,6 @@ import { TabBar } from '@/components';
 import { useUnreadCount } from '@/hooks/useNotifications';
 import { AlertsScreen } from '@/screens/AlertsScreen';
 import { LoginScreen } from '@/screens/auth/LoginScreen';
-import { ParkApprovalScreen } from '@/screens/auth/ParkApprovalScreen';
 import { SignUpEmailScreen } from '@/screens/auth/SignUpEmailScreen';
 import { HomeScreen } from '@/screens/HomeScreen';
 import { MapScreen } from '@/screens/MapScreen';
@@ -33,7 +32,6 @@ export type RootParams = {
   Splash: undefined; // C-00 시작화면 (3초)
   Login: undefined; // C-01 로그인
   SignUpEmail: undefined; // C-04 회원가입 - 계정 정보
-  ParkApproval: undefined; // 총관리자 전용 관리 화면 준비 안내
   RouteSetup: undefined; // C-03 공원 승인 후 순찰 경로 처음 설정
   RouteEdit: undefined; // A-04 순찰 경로 편집 (A-02 지도 > 경로 편집)
   Main: undefined; // 하단 탭
@@ -73,7 +71,6 @@ export function RootNavigator() {
       <Stack.Screen name="Splash" component={SplashScreen} options={{ animation: 'none' }} />
       <Stack.Screen name="Login" component={LoginScreen} options={{ animation: 'fade' }} />
       <Stack.Screen name="SignUpEmail" component={SignUpEmailScreen} />
-      <Stack.Screen name="ParkApproval" component={ParkApprovalScreen} options={{ gestureEnabled: false }} />
       <Stack.Screen name="RouteSetup" component={RouteSetupScreen} />
       <Stack.Screen name="RouteEdit" component={RouteEditScreen} />
       <Stack.Screen name="Main" component={MainTabs} />
