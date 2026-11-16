@@ -61,6 +61,9 @@ python -c "import secrets; print(secrets.token_hex(32))"
 
 ## 로그인
 
+클라이언트는 역할별로 분리돼요. `app/`는 로그인 응답의 role이 super_admin이면 토큰을 저장하지 않고 웹 로그인 안내를 표시해요.
+`web/`는 super_admin만 웹 세션에 저장하며 manager 계정에는 모바일 앱 이용을 안내해요. 서버는 두 클라이언트에서 같은 /auth/login과 권한 검사 API를 사용해요.
+
 `POST /auth/login` (토큰 없이 호출)
 
 ```json

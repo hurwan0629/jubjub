@@ -119,6 +119,41 @@ def register_robot(db: Session, user: User, body: RobotInput):
     return _robot_response(robot)
 
 
+@transaction(write=True)
+def revoke(db: Session, user: User, park_id: int, body: RejectionInput):
+    require_super_admin(user)
+    park = db.scalar(
+        select(Park).where(Park.id == park_id).with_for_update(of=Park).execution_options(populate_existing=True)
+    )
+    if park is None:
+        raise AppError(404, "공원 신청을 찾을 수 없어요", code="park_request_not_found")
+    if park.status != "approved":
+        raise AppError(409, "승인된 관리자만 승인을 취소할 수 있어요", code="registration_not_approved")
+    robots = list(
+        db.scalars(
+            select(Robot)
+            .where(Robot.park_id == park.id)
+            .order_by(Robot.id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+    )
+    if any(robot.status not in ("idle", "offline") for robot in robots):
+        raise AppError(
+            409, "로봇을 대기 또는 오프라인 상태로 전환한 뒤 승인을 취소해 주세요", code="robot_not_available"
+        )
+    for robot in robots:
+        robot.park_id = None
+        robot.assigned_at = None
+    # 별도 DB 상태를 추가하지 않고 반려 상태와 사유로 업무 접근을 즉시 차단해요.
+    park.status = "rejected"
+    park.approved_by = None
+    park.approved_at = None
+    park.reject_reason = body.reason
+    db.flush()
+    return _managed(park)
+
+
 @transaction()
 def list_robots(db: Session, user: User, unassigned: bool, limit: int, offset: int):
     require_super_admin(user)

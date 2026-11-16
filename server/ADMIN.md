@@ -1,6 +1,9 @@
 # 총관리자 승인과 로봇 할당
 
-웹 UI는 별도 구현해요. 여기서는 웹·앱이 사용할 서버 API와 DB 구조를 제공해요.
+총관리자는 독립된 [web/ 프로젝트](../web/README.md)에 로그인하면 Figma Page 4의 관리자 보기 화면으로 이동해요.
+하위관리자 모바일 앱은 app/, 총관리자 웹은 web/, 공통 API는 server/로 분리돼요. app/에는 총관리자 화면이 없으며 총관리자가 로그인하면 웹 로그인 안내를 표시해요.
+가입 신청 목록·상태 필터·로봇 선택 후 승인·사유를 입력하는 반려와 승인 취소를 제공해요.
+공원별 보고와 독립 로봇 관리 화면은 별도 구현 범위예요.
 모든 요청에 Bearer JWT가 필요해요. `/admin/*`는 DB의 `users.role=super_admin`을 매번 검사해요.
 JWT에 역할을 고정하지 않으므로 역할 변경은 다음 요청부터 적용돼요.
 
@@ -45,9 +48,10 @@ agent_runs의 관리자 경로 변경 로그는 로봇 실행이 아니므로 ro
 
 | API | 설명 |
 | --- | --- |
-| GET /admin/registrations?status=pending | 회원가입 신청 목록. 신청자 아이디·이름·이메일·전화번호와 지정 공원 포함 |
+| GET /admin/registrations?status=pending | 회원가입 신청 목록. status=all은 전체, pending/approved/rejected는 상태별 조회. limit/offset 페이지네이션 지원 |
 | POST /admin/registrations/{userId}/approve | 가입 승인. `{}` 가능, robotIds는 선택 |
 | POST /admin/registrations/{userId}/reject | `{reason:"반려 사유"}`로 가입 반려 |
+| POST /admin/registrations/{userId}/revoke | `{reason:"승인 취소 사유"}`로 승인 취소 및 담당 로봇 회수 |
 | GET /admin/park-requests?status=pending&limit=20&offset=0 | 신청 목록. status 생략 시 전체 |
 | POST /admin/robots | 로봇 등록 `{name,serialNo}`. 성공 201 |
 | GET /admin/robots?unassigned=true&limit=20&offset=0 | 미할당 로봇 목록. unassigned 생략 시 전체 |
@@ -56,6 +60,11 @@ agent_runs의 관리자 경로 변경 로그는 로봇 실행이 아니므로 ro
 | GET /robots | 하위관리자 본인의 승인된 공원에 할당된 로봇 목록 |
 
 기존 /admin/park-requests 및 /admin/parks/{id}/approve·reject는 호환 경로예요. 신규 관리 화면은 userId 기준 /admin/registrations를 사용해요.
+
+승인 취소는 승인 상태인 관리자에게만 가능해요. 담당 로봇이 모두 idle/offline일 때 로봇의 park_id와 assigned_at을 비우고 신청을 rejected로 변경하며 취소 사유를 저장해요.
+working/charging/error 로봇이 있으면 409 robot_not_available로 전체 변경을 거부해요. 기존 경로·시간표는 삭제하지 않아요.
+취소 직후 해당 관리자의 로그인 및 기존 토큰을 사용하는 업무 API 접근은 403으로 차단돼요.
+가입 신청/로봇 전체 목록 API는 offset 10,000 이후도 조회할 수 있으며 한 페이지는 최대 100개예요.
 신청 목록은 공원 정보 외에 userId/applicantName/applicantLoginId/applicantEmail/applicantPhone/registrationStatus/createdAt과 승인 메타데이터를 반환해요.
 GET/PUT /park와 승인·반려 응답에는 아래 필드가 추가돼요.
 

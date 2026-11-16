@@ -82,13 +82,17 @@ export async function login(body: LoginRequest, signal?: AbortSignal): Promise<L
       )
     : await request<LoginResponse>('/auth/login', { method: 'POST', body: JSON.stringify(body), signal });
   if (signal?.aborted) throw new Error('로그인이 취소되었어요');
+  if (res.role === 'super_admin') {
+    setAuthToken(null);
+    throw new ApiError(403, '총관리자는 웹페이지에서 로그인해 주세요', 'web_login_required');
+  }
   setAuthToken(res.accessToken);
   return res;
 }
 
 /** 가입 승인 후에만 로그인하고 최초 순찰 설정으로 이동해요. */
 export function onboardingScreen(profile: Pick<LoginResponse, 'role' | 'registrationStatus' | 'routeSetupDone'>) {
-  if (profile.role === 'super_admin') return 'ParkApproval' as const;
+  if (profile.role === 'super_admin') return 'Login' as const;
   if (profile.registrationStatus !== 'approved') return 'Login' as const;
   return profile.routeSetupDone ? ('Main' as const) : ('RouteSetup' as const);
 }
