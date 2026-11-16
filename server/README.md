@@ -4,6 +4,8 @@
 
 - Jira: KAN-84 백엔드 에픽 / KAN-85 기본 세팅
 - 문서: Confluence "시스템 아키텍처 설계서", "DB 설계서 (ERD)"
+- 공원 지정·분리수거장·순찰 경로·시간표 API: [PATROL.md](PATROL.md)
+- 총관리자 승인·로봇 할당 API: [ADMIN.md](ADMIN.md)
 
 ## 처음 실행하기
 

@@ -17,6 +17,13 @@ DATASET = "osm-seoul"
 LICENSE = "ODbL-1.0"
 
 
+def _park_name(value: str | None) -> str:
+    name = (value or "").strip()
+    if not name or name.replace(" ", "").startswith("이름없는공원"):
+        raise ValueError("이름이 등록되지 않은 공원은 제외해요")
+    return name
+
+
 def _coordinates(geometry: list[dict]) -> list[tuple[float, float]]:
     return [(point["lon"], point["lat"]) for point in geometry]
 
@@ -113,7 +120,7 @@ def normalize_osm(raw: dict) -> dict:
             continue
         try:
             polygons = _polygons(element)
-            name = tags.get("name:ko") or tags.get("name") or "이름 없는 공원"
+            name = _park_name((tags.get("name:ko") or "").strip() or tags.get("name"))
             element_entries = []
             for number, polygon in enumerate(polygons, 1):
                 center = polygon.representative_point()
@@ -152,6 +159,7 @@ def normalize_osm(raw: dict) -> dict:
 
 
 def catalog_values(entry: dict) -> dict:
+    name = _park_name(entry.get("name"))
     area = ParkArea.model_validate(entry["area"])
     polygon = Polygon(
         [(point.longitude, point.latitude) for point in area.outer],
@@ -169,7 +177,7 @@ def catalog_values(entry: dict) -> dict:
     return {
         "source_key": entry["source_key"],
         "dataset": DATASET,
-        "name": entry["name"],
+        "name": name,
         "address": entry["address"],
         "source_url": entry["source_url"],
         "source_license": LICENSE,

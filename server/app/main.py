@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
 from app.core.errors import register_error_handlers
-from app.routers import api, auth, health
+from app.routers import api, auth, health, parks
 from app.schemas.common import ErrorResponse
 
 # 모든 API 문서(/docs)에 공통 에러 형식을 보여줘요
@@ -33,6 +33,7 @@ def create_app() -> FastAPI:
     # 공개 API예요. 업무 API는 routers/api.py에 등록해서 인증을 적용해요.
     app.include_router(health.router)
     app.include_router(auth.router)
+    app.include_router(parks.router)
     app.include_router(api.router)
 
     return app

@@ -3,7 +3,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { login } from '@/api/auth';
+import { login, onboardingScreen } from '@/api/auth';
 import { ApiError } from '@/api/client';
 import { Button, Icon, LinkRow, Text, TextField } from '@/components';
 import { icons } from '@/icons';
@@ -12,7 +12,7 @@ import { space } from '@/theme';
 
 import { AuthLayout } from './AuthLayout';
 
-/** C-01 로그인 → 가입 후 첫 로그인이면 C-03 순찰 경로 처음 설정, 아니면 A-01 홈 */
+/** C-01 가입 승인 후 로그인 → 최초 순찰 설정 또는 홈. 승인 대기·반려는 오류 안내. */
 export function LoginScreen({ navigation }: NativeStackScreenProps<RootParams, 'Login'>) {
   const [id, setId] = useState('');
   const [pw, setPw] = useState('');
@@ -25,11 +25,11 @@ export function LoginScreen({ navigation }: NativeStackScreenProps<RootParams, '
     setBusy(true);
     setError(undefined);
     try {
-      const { isFirstLogin } = await login({ loginId: id.trim(), password: pw });
+      const session = await login({ loginId: id.trim(), password: pw });
       // 뒤로 가기로 로그인 화면에 돌아오지 않게 바꿔 끼워요. Main의 첫 탭이 A-01 홈이에요.
-      navigation.replace(isFirstLogin ? 'RouteSetup' : 'Main');
+      navigation.replace(onboardingScreen(session));
     } catch (e) {
-      // 401 아이디 · 비밀번호 틀림, 0 서버 연결 실패, 503 서버 설정 문제: 서버가 보낸 문구를 그대로 보여 줘요
+      // 403 가입 승인 대기·반려도 서버가 보낸 문구를 그대로 보여 줘요.
       setError(e instanceof ApiError ? e.message : '로그인하지 못했어요. 잠시 후 다시 시도해 주세요');
     } finally {
       setBusy(false);

@@ -1,6 +1,7 @@
 """로그인·회원가입의 요청과 응답 모양을 정의해요."""
 
 import re
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, SecretStr, field_validator
 from pydantic.alias_generators import to_camel
@@ -16,11 +17,13 @@ class LoginRequest(AuthSchema):
 
 
 class RegisterRequest(AuthSchema):
+    model_config = ConfigDict(extra="forbid")
     login_id: str = Field(pattern=r"^[A-Za-z0-9]{4,16}$")
     password: SecretStr = Field(min_length=8, max_length=128)
     name: str = Field(min_length=1, max_length=100)
     phone: str = Field(min_length=9, max_length=30)
     email: EmailStr = Field(max_length=254)
+    catalog_id: str = Field(pattern=r"^[1-9][0-9]{0,18}$")
 
     @field_validator("password")
     @classmethod
@@ -56,11 +59,19 @@ class LoginResponse(AuthSchema):
     token_type: str = "bearer"
     expires_in: int
     is_first_login: bool
+    role: Literal["super_admin", "manager"]
+    park_status: Literal["pending", "approved", "rejected"] | None
+    route_setup_done: bool
+    registration_status: Literal["pending", "approved", "rejected"] | None
 
 
 class ProfileResponse(AuthSchema):
     name: str
     email: str
+    role: Literal["super_admin", "manager"] = "manager"
+    park_status: Literal["pending", "approved", "rejected"] | None = None
+    route_setup_done: bool = False
+    registration_status: Literal["pending", "approved", "rejected"] | None = None
 
 
 class RegisterResponse(ProfileResponse):

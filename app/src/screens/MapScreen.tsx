@@ -1,4 +1,4 @@
-// A-02 지도. 개발용 빌드에서는 네이버 지도, 웹 · Expo Go에서는 도식 지도를 보여 줘요.
+// A-02 지도. 웹에서는 OpenStreetMap, 개발용 빌드에서는 네이버 지도, Expo Go에서는 도식 지도를 보여 줘요.
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';

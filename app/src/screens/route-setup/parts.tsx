@@ -5,9 +5,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components';
 import { colors, layout, space } from '@/theme';
 
-export const STEP_COUNT = 6;
+export const STEP_COUNT = 5;
 
-/** 진행 단계: "N / 6 · 이름" + 막대 6칸 */
+/** 진행 단계: "N / 5 · 이름" + 막대 5칸 */
 export function Progress({ step, label }: { step: number; label: string }) {
   return (
     <View style={st.progress}>
