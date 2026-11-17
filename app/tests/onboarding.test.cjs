@@ -35,6 +35,75 @@ const routes = require('../src/api/route.ts');
 const calls = [];
 let response = {};
 let status = 200;
+
+test('route writes carry the original catalog and propagate a park change conflict', async () => {
+  response = {};
+  const config = { catalogId: 'original', station: null, points: [], schedule: [] };
+  await routes.saveRouteConfig(config);
+  assert.equal(JSON.parse(calls.at(-1).body).catalogId, 'original');
+  status = 409;
+  response = { message: 'Park changed', code: 'park_changed' };
+  try {
+    await assert.rejects(routes.saveRouteConfig(config), { status: 409, code: 'park_changed' });
+  } finally {
+    status = 200;
+  }
+});
+
+test('park change API sends only the requested park and reason', async () => {
+  response = [];
+  await parks.getParkChangeRequests();
+  assert.equal(calls.at(-1).url, 'http://localhost:8000/park-change-requests');
+  response = { id: '31', status: 'pending' };
+  await parks.requestParkChange('18', 'new workplace');
+  assert.equal(calls.at(-1).method, 'POST');
+  assert.deepEqual(JSON.parse(calls.at(-1).body), { catalogId: '18', reason: 'new workplace' });
+  await parks.cancelParkChange('31');
+  assert.equal(calls.at(-1).url, 'http://localhost:8000/park-change-requests/31/cancel');
+  assert.equal(calls.at(-1).method, 'POST');
+});
+
+test('mock park change remains pending and cancellation preserves the approved park and route', async () => {
+  // This runs after the API tests; isolate the mock account and restore the module cache.
+  const savedUrl = process.env.EXPO_PUBLIC_API_URL;
+  const cached = Object.entries(require.cache).filter(([key]) =>
+    key.includes(`${path.sep}src${path.sep}api${path.sep}`),
+  );
+  for (const [key] of cached) delete require.cache[key];
+  process.env.EXPO_PUBLIC_API_URL = '';
+  try {
+    const sessionApi = require('../src/api/mock/onboarding.ts');
+    const mockApi = require('../src/api/parks.ts');
+    await sessionApi.openMockSession('change-test');
+    const session = sessionApi.getMockSession();
+    session.park = {
+      id: 'current',
+      catalogId: 'hangang',
+      name: 'Current park',
+      status: 'approved',
+      routeSetupDone: true,
+    };
+    session.route = { parkName: 'Current park', points: [{ id: 'keep' }], schedule: [] };
+    session.profile.routeSetupDone = true;
+    session.parkChanges = [];
+    const parkBefore = JSON.stringify(session.park);
+    const routeBefore = JSON.stringify(session.route);
+    const change = await mockApi.requestParkChange('banpo', 'workplace changed');
+    assert.equal(change.status, 'pending');
+    await assert.rejects(mockApi.requestParkChange('banpo', 'duplicate'), { status: 409 });
+    assert.equal(JSON.stringify(session.park), parkBefore);
+    assert.equal(JSON.stringify(session.route), routeBefore);
+    assert.equal((await mockApi.cancelParkChange(change.id)).status, 'cancelled');
+    assert.equal(session.profile.routeSetupDone, true);
+    assert.equal(JSON.stringify(session.park), parkBefore);
+    assert.equal(JSON.stringify(session.route), routeBefore);
+  } finally {
+    process.env.EXPO_PUBLIC_API_URL = savedUrl;
+    for (const key of Object.keys(require.cache))
+      if (key.includes(`${path.sep}src${path.sep}api${path.sep}`)) delete require.cache[key];
+    for (const [key, value] of cached) require.cache[key] = value;
+  }
+});
 global.fetch = async (url, init) => {
   calls.push({ url, ...init });
   return new Response(JSON.stringify(response), { status });
@@ -105,6 +174,57 @@ test('경로는 실제 서버에 저장하며 요청에는 쓰기 가능한 필�
     schedule: draft.schedule,
   });
   assert.equal(saved.points[0].id, '12');
+});
+
+test('로봇별 경로 조회와 저장은 같은 robotId를 전달한다', async () => {
+  response = { robotId: '22', points: [], schedule: [] };
+  await routes.getRouteConfig('22');
+  assert.equal(calls.at(-1).url, 'http://localhost:8000/route?robotId=22');
+  await routes.saveRouteConfig({ robotId: '22', station: null, points: [], schedule: [] });
+  assert.equal(calls.at(-1).url, 'http://localhost:8000/route?robotId=22');
+  assert.deepEqual(JSON.parse(calls.at(-1).body), { station: null, points: [], schedule: [] });
+  response = [{ id: '22', name: '로봇 B' }];
+  assert.equal((await routes.getPatrolRobots())[0].id, '22');
+  assert.equal(calls.at(-1).url, 'http://localhost:8000/robots');
+});
+
+test('홈은 배정된 로봇의 이름과 상태를 각각 표시하고 가짜 배터리 비율을 만들지 않는다', async () => {
+  const robots = require('../src/api/robot.ts');
+  response = [
+    { id: '1', name: '로봇 1', status: 'working', batteryVoltage: 11.8, lastSeenAt: '2026-11-17T05:00:00Z' },
+    { id: '2', name: '로봇 2', status: 'charging', batteryVoltage: null, lastSeenAt: null },
+  ];
+  const home = await robots.getHomeRobots();
+  assert.deepEqual(
+    home.map((r) => [r.id, r.name, r.state]),
+    [
+      ['1', '로봇 1', 'patrolling'],
+      ['2', '로봇 2', 'charging'],
+    ],
+  );
+  assert.equal(home[0].battery, null);
+  assert.equal(home[0].batteryVoltage, 11.8);
+  assert.equal(home[1].battery, null);
+  assert.equal(calls.at(-1).url, 'http://localhost:8000/robots');
+  response = [];
+  assert.deepEqual(await robots.getHomeRobots(), []);
+});
+
+test('로봇 이름 변경은 선택한 로봇 ID와 이름만 전달한다', async () => {
+  response = { id: '22', name: '주비 2호' };
+  assert.equal((await routes.renamePatrolRobot('22', '주비 2호')).name, '주비 2호');
+  assert.equal(calls.at(-1).url, 'http://localhost:8000/robots/22');
+  assert.equal(calls.at(-1).method, 'PATCH');
+  assert.deepEqual(JSON.parse(calls.at(-1).body), { name: '주비 2호' });
+  assert.equal((await routes.getPatrolRobot('22')).id, '22');
+  assert.equal(calls.at(-1).url, 'http://localhost:8000/robots/22');
+  status = 403;
+  response = { code: 'forbidden', message: '변경할 수 없어요' };
+  try {
+    await assert.rejects(routes.renamePatrolRobot('22', '다른 이름'), { status: 403 });
+  } finally {
+    status = 200;
+  }
 });
 
 test('저장 실패를 성공으로 처리하지 않는다', async () => {
@@ -178,6 +298,28 @@ test('목업도 계정별 승인 대기와 설정을 보존하고 다른 계정�
     status: 409,
   });
   assert.equal(mockAuth.onboardingScreen(await mockAuth.login({ loginId: 'newmanager' })), 'Main');
+});
+
+test('두 로봇의 목업 경로와 이름도 서로 섞이지 않는다', async () => {
+  const mockSession = require('../src/api/mock/onboarding.ts');
+  const mockRoutes = require('../src/api/route.ts');
+  const session = mockSession.getMockSession();
+  session.robots = [
+    { id: '1', name: '로봇1' },
+    { id: '2', name: '로봇2' },
+  ];
+  const base = { parkName: '공원', station: { latitude: 37.5, longitude: 127 }, schedule: [] };
+  session.route = { ...base, points: [{ id: 'legacy', name: '기존 지점' }] };
+  session.robotRoutes = undefined;
+  assert.equal((await mockRoutes.getRouteConfig('1')).points[0]?.name, '기존 지점');
+  await mockRoutes.saveRouteConfig({ ...base, robotId: '1', points: [{ id: 'a', name: 'A' }] });
+  assert.deepEqual((await mockRoutes.getRouteConfig('2')).points, []);
+  await mockRoutes.saveRouteConfig({ ...base, robotId: '2', points: [{ id: 'b', name: 'B' }] });
+  assert.equal((await mockRoutes.getRouteConfig('1')).points[0].name, 'A');
+  assert.equal((await mockRoutes.getRouteConfig('2')).points[0].name, 'B');
+  await mockRoutes.renamePatrolRobot('1', '  주비1  ');
+  assert.equal((await mockRoutes.getPatrolRobot('1')).name, '주비1');
+  assert.equal((await mockRoutes.getPatrolRobot('2')).name, '로봇2');
 });
 
 test('취소한 로그인 응답은 기존 인증 토큰을 덮어쓰지 않는다', async () => {

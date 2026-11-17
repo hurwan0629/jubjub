@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import BigInteger, CheckConstraint, DateTime, ForeignKey, Identity, Integer, Text, func
+from sqlalchemy import REAL, BigInteger, CheckConstraint, DateTime, Double, ForeignKey, Identity, Integer, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
@@ -11,7 +11,9 @@ from app.core.db import Base
 class Robot(Base):
     __tablename__ = "robots"
     __table_args__ = (
-        CheckConstraint("status IN ('idle', 'working', 'charging', 'offline', 'error')", name="robot_status"),
+        CheckConstraint(
+            "status IN ('idle', 'working', 'emptying', 'charging', 'offline', 'error')", name="robot_status"
+        ),
         CheckConstraint(
             "(park_id IS NULL AND assigned_at IS NULL) OR (park_id IS NOT NULL AND assigned_at IS NOT NULL)",
             name="robot_assignment",
@@ -27,3 +29,9 @@ class Robot(Base):
     status: Mapped[str] = mapped_column(Text, server_default="offline")
     assigned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    slam_x: Mapped[float | None] = mapped_column(Double)
+    slam_y: Mapped[float | None] = mapped_column(Double)
+    lat: Mapped[float | None] = mapped_column(Double)
+    lng: Mapped[float | None] = mapped_column(Double)
+    battery_voltage: Mapped[float | None] = mapped_column(REAL)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

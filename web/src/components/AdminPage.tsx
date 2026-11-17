@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
+import { ParkChanges, ParkReports, RobotList } from './AdminOperations';
 import { Logo } from './Logo';
 import type { RegistrationStatus } from '../api/admin';
 import { useAdminRegistrations } from '../hooks/useAdminRegistrations';
@@ -13,6 +14,7 @@ const FILTERS = [
 ] as const;
 export function AdminPage({ onLogout }: { onLogout: () => void }) {
   const { data, loading, error, unauthorized, busy, reload, decide } = useAdminRegistrations();
+  const [tab, setTab] = useState<'managers' | 'reports' | 'robots'>('managers');
   const [filter, setFilter] = useState<'all' | RegistrationStatus>('all');
   const [target, setTarget] = useState<Decision>();
   const [notice, setNotice] = useState('');
@@ -49,6 +51,7 @@ export function AdminPage({ onLogout }: { onLogout: () => void }) {
             className="icon-button"
             aria-label="승인 대기 알림"
             onClick={() => {
+              setTab('managers');
               setFilter('pending');
               setNotice(`승인 대기 중인 신청이 ${count('pending')}건 있어요.`);
             }}
@@ -67,145 +70,156 @@ export function AdminPage({ onLogout }: { onLogout: () => void }) {
       <div className="workspace">
         <aside className="sidebar" aria-label="총관리자 메뉴">
           <p className="menu-label">메뉴</p>
-          <div className="menu-item active" aria-current="page">
-            <img src="/icons/users.svg" width="21.6" height="21.6" alt="" />
-            관리자 보기
-          </div>
-          <button className="menu-item" onClick={() => setNotice('공원별 보고 화면은 준비 중이에요.')}>
-            <img src="/icons/report.svg" width="21.6" height="21.6" alt="" />
-            공원별 보고
-          </button>
-          <button
-            className="menu-item"
-            onClick={() =>
-              setNotice(
-                `등록 로봇 ${data?.robots.length ?? 0}대 중 미할당 ${data?.robots.filter((r) => r.parkId === null).length ?? 0}대가 있어요. 가입 승인 창에서 배정할 수 있어요.`,
-              )
-            }
-          >
-            <img src="/icons/bot.svg" width="21.6" height="21.6" alt="" />
-            로봇 목록
-          </button>
+          {(
+            [
+              { id: 'managers', label: '관리자 보기', icon: 'users' },
+              { id: 'reports', label: '공원별 보고', icon: 'report' },
+              { id: 'robots', label: '로봇 목록', icon: 'bot' },
+            ] as const
+          ).map((item) => (
+            <button
+              key={item.id}
+              className={`menu-item ${tab === item.id ? 'active' : ''}`}
+              aria-current={tab === item.id ? 'page' : undefined}
+              onClick={() => setTab(item.id)}
+            >
+              <img src={`/icons/${item.icon}.svg`} width="21.6" height="21.6" alt="" />
+              {item.label}
+            </button>
+          ))}{' '}
         </aside>
         <main className="admin-main">
-          <h1>관리자 보기</h1>
-          <div className="banner">
-            <span>
-              <img src="/icons/banner-bot.svg" width="28.08" height="28.08" alt="" />
-            </span>
-            <strong>작업 중인 Jubi와 담당 관리자를 확인할 수 있습니다.</strong>
-          </div>
-          <section className="board" aria-label="가입 신청 관리">
-            <div className="toolbar">
-              <label htmlFor="status-filter">승인 상태</label>
-              <select id="status-filter" value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)}>
-                {FILTERS.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.label} {count(item.id)}
-                  </option>
-                ))}
-              </select>
-              <button className="refresh-button" onClick={() => void reload()} disabled={busy || loading}>
-                새로고침
-              </button>
-            </div>
-            {loading ? (
-              <p className="loading" role="status">
-                신청 목록을 불러오고 있어요…
-              </p>
-            ) : null}
-            {error ? (
-              <div className="error-panel" role="alert">
-                <p>{error}</p>
-                <button className="button soft" onClick={unauthorized ? onLogout : () => void reload()}>
-                  {unauthorized ? '다시 로그인' : '다시 시도'}
-                </button>
+          <h1>{tab === 'managers' ? '관리자 보기' : tab === 'reports' ? '공원별 보고' : '로봇 목록'}</h1>
+          {tab === 'reports' ? (
+            <ParkReports />
+          ) : tab === 'robots' ? (
+            <RobotList />
+          ) : (
+            <>
+              <div className="banner">
+                <span>
+                  <img src="/icons/banner-bot.svg" width="28.08" height="28.08" alt="" />
+                </span>
+                <strong>작업 중인 Jubi와 담당 관리자를 확인할 수 있습니다.</strong>
               </div>
-            ) : null}
-            {!unauthorized && data ? (
-              <div className="table-scroll">
-                <table>
-                  <caption className="sr-only">회원가입 신청자와 공원 및 승인 상태</caption>
-                  <thead>
-                    <tr>
-                      {['관리자', '아이디', '전화번호', '이메일', '담당 공원', '담당 로봇', '승인 여부'].map(
-                        (title) => (
-                          <th scope="col" key={title}>
-                            {title}
-                          </th>
-                        ),
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visible.map((row) => (
-                      <tr key={row.userId}>
-                        <th scope="row">{row.applicantName}</th>
-                        <td className="muted">{row.applicantLoginId}</td>
-                        <td>{row.applicantPhone || '미등록'}</td>
-                        <td>{row.applicantEmail}</td>
-                        <td>{row.name}</td>
-                        <td>
-                          {data.robots
-                            .filter((robot) => robot.parkId === row.id)
-                            .map((robot) => robot.name)
-                            .join(', ') || <span className="muted">배정 전</span>}
-                        </td>
-                        <td>
-                          <div className="row-actions">
-                            {row.registrationStatus === 'pending' ? (
-                              <>
-                                <button
-                                  className="approve-button"
-                                  aria-label={`${row.applicantName} 가입 승인`}
-                                  disabled={busy || loading || !!error}
-                                  onClick={() => setTarget({ action: 'approve', registration: row })}
-                                >
-                                  승인
-                                </button>
-                                <button
-                                  className="reject-button"
-                                  aria-label={`${row.applicantName} 가입 반려`}
-                                  disabled={busy || loading || !!error}
-                                  onClick={() => setTarget({ action: 'reject', registration: row })}
-                                >
-                                  반려
-                                </button>
-                              </>
-                            ) : row.registrationStatus === 'approved' ? (
-                              <button
-                                className="cancel-button"
-                                aria-label={`${row.applicantName} 승인 취소`}
-                                disabled={busy || loading || !!error}
-                                onClick={() => setTarget({ action: 'revoke', registration: row })}
-                              >
-                                승인 취소
-                              </button>
-                            ) : (
-                              <span className="error-text">반려</span>
-                            )}
-                          </div>
-                          {row.rejectReason ? (
-                            <small className="error-text reason">사유: {row.rejectReason}</small>
-                          ) : null}
-                        </td>
-                      </tr>
+              <section className="board" aria-label="가입 신청 관리">
+                <div className="toolbar">
+                  <label htmlFor="status-filter">승인 상태</label>
+                  <select
+                    id="status-filter"
+                    value={filter}
+                    onChange={(e) => setFilter(e.target.value as typeof filter)}
+                  >
+                    {FILTERS.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.label} {count(item.id)}
+                      </option>
                     ))}
-                  </tbody>
-                </table>
-                {visible.length === 0 ? (
-                  <div className="empty">
-                    <h2>
-                      {filter === 'all'
-                        ? '아직 회원가입 신청이 없어요'
-                        : `${FILTERS.find((f) => f.id === filter)?.label} 상태의 신청이 없어요`}
-                    </h2>
-                    <p>새 신청이 접수되면 여기에서 확인할 수 있어요.</p>
+                  </select>
+                  <button className="refresh-button" onClick={() => void reload()} disabled={busy || loading}>
+                    새로고침
+                  </button>
+                </div>
+                {loading ? (
+                  <p className="loading" role="status">
+                    신청 목록을 불러오고 있어요…
+                  </p>
+                ) : null}
+                {error ? (
+                  <div className="error-panel" role="alert">
+                    <p>{error}</p>
+                    <button className="button soft" onClick={unauthorized ? onLogout : () => void reload()}>
+                      {unauthorized ? '다시 로그인' : '다시 시도'}
+                    </button>
                   </div>
                 ) : null}
-              </div>
-            ) : null}
-          </section>
+                {!unauthorized && data ? (
+                  <div className="table-scroll">
+                    <table>
+                      <caption className="sr-only">회원가입 신청자와 공원 및 승인 상태</caption>
+                      <thead>
+                        <tr>
+                          {['관리자', '아이디', '전화번호', '이메일', '담당 공원', '담당 로봇', '승인 여부'].map(
+                            (title) => (
+                              <th scope="col" key={title}>
+                                {title}
+                              </th>
+                            ),
+                          )}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {visible.map((row) => (
+                          <tr key={row.userId}>
+                            <th scope="row">{row.applicantName}</th>
+                            <td className="muted">{row.applicantLoginId}</td>
+                            <td>{row.applicantPhone || '미등록'}</td>
+                            <td>{row.applicantEmail}</td>
+                            <td>{row.name}</td>
+                            <td>
+                              {data.robots
+                                .filter((robot) => robot.parkId === row.id)
+                                .map((robot) => robot.name)
+                                .join(', ') || <span className="muted">배정 전</span>}
+                            </td>
+                            <td>
+                              <div className="row-actions">
+                                {row.registrationStatus === 'pending' ? (
+                                  <>
+                                    <button
+                                      className="approve-button"
+                                      aria-label={`${row.applicantName} 가입 승인`}
+                                      disabled={busy || loading || !!error}
+                                      onClick={() => setTarget({ action: 'approve', registration: row })}
+                                    >
+                                      승인
+                                    </button>
+                                    <button
+                                      className="reject-button"
+                                      aria-label={`${row.applicantName} 가입 반려`}
+                                      disabled={busy || loading || !!error}
+                                      onClick={() => setTarget({ action: 'reject', registration: row })}
+                                    >
+                                      반려
+                                    </button>
+                                  </>
+                                ) : row.registrationStatus === 'approved' ? (
+                                  <button
+                                    className="cancel-button"
+                                    aria-label={`${row.applicantName} 승인 취소`}
+                                    disabled={busy || loading || !!error}
+                                    onClick={() => setTarget({ action: 'revoke', registration: row })}
+                                  >
+                                    승인 취소
+                                  </button>
+                                ) : (
+                                  <span className="error-text">반려</span>
+                                )}
+                              </div>
+                              {row.rejectReason ? (
+                                <small className="error-text reason">사유: {row.rejectReason}</small>
+                              ) : null}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {visible.length === 0 ? (
+                      <div className="empty">
+                        <h2>
+                          {filter === 'all'
+                            ? '아직 회원가입 신청이 없어요'
+                            : `${FILTERS.find((f) => f.id === filter)?.label} 상태의 신청이 없어요`}
+                        </h2>
+                        <p>새 신청이 접수되면 여기에서 확인할 수 있어요.</p>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </section>
+              <ParkChanges onChanged={() => void reload()} />
+            </>
+          )}
         </main>
       </div>
       {notice ? (

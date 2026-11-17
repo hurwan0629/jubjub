@@ -1,9 +1,17 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import type { ManagedPark, Profile, RouteConfig } from '../types';
+import type { AssignedRobot, LatLng, ManagedPark, ParkChange, Profile, RouteConfig } from '../types';
 import { mockProfile } from './account';
 
-type Session = { profile: Profile; park: ManagedPark | null; route: RouteConfig | null };
+type Session = {
+  parkChanges?: ParkChange[];
+  profile: Profile;
+  park: ManagedPark | null;
+  route: RouteConfig | null;
+  robots?: AssignedRobot[];
+  robotRoutes?: Record<string, RouteConfig>;
+  station?: LatLng | null;
+};
 let loginId = '';
 const key = () => `jubjub:onboarding:${loginId}`;
 export const hasMockAccount = async (id: string) =>

@@ -35,6 +35,13 @@ export type RobotStatus = {
   updatedAt: string; // ISO 시각
 };
 
+/** 홈에서 선택한 로봇의 상태. 전압만 받은 경우 배터리 비율은 비워 둬요. */
+export type HomeRobotStatus = Omit<RobotStatus, 'battery'> & {
+  id: string;
+  battery: number | null;
+  batteryVoltage: number | null;
+};
+
 /** POST /auth/register 요청 (server/AUTH.md). 비밀번호 확인 · 개인정보 동의는 앱에서만 확인하고 보내지 않아요. */
 export type SignUpRequest = {
   loginId: string; // 영문 · 숫자 4~16자 (대소문자 구분)
@@ -119,12 +126,28 @@ export type PatrolSlot = {
 
 /** GET · PUT /route : 지금 쓰는 순찰 경로 (A-04 경로 편집) */
 export type RouteConfig = {
+  catalogId?: string;
+  robotId?: string | null;
   parkName: string;
   bounds: ParkBounds;
   area: ParkArea;
   station: LatLng | null; // 분리수거장
   points: PatrolPoint[]; // 도는 순서대로
   schedule: PatrolSlot[];
+};
+
+export type AssignedRobot = {
+  id: string;
+  name: string;
+  serialNo: string;
+  parkId: string | null;
+  status: 'idle' | 'working' | 'emptying' | 'charging' | 'offline' | 'error';
+  slamX: number | null;
+  slamY: number | null;
+  lat: number | null;
+  lng: number | null;
+  batteryVoltage: number | null;
+  lastSeenAt: string | null;
 };
 
 /** 지도 마커 종류 (A-02 지도 범례) */
@@ -225,4 +248,22 @@ export type DailyReport = {
   byMaterial: { slot: Slot; count: number }[];
   hourly: { range: string; count: number }[];
   unresolved: { kind: 'unpickable' | 'robotError' | 'missedPoint'; title: string; body: string }[];
+};
+export type ParkChange = {
+  id: string;
+  parkId: string;
+  userId: string;
+  applicantName: string;
+  applicantLoginId: string;
+  currentCatalogId: string;
+  currentParkName: string;
+  requestedCatalogId: string;
+  requestedParkName: string;
+  requestedParkAddress: string;
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  rejectReason: string | null;
+  createdAt: string;
+  reviewedAt: string | null;
+  conflictingManagerName: string | null;
 };

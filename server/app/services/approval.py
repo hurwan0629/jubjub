@@ -9,7 +9,7 @@ from app.core.errors import AppError
 from app.models import Park, Robot, User
 from app.schemas.approval import ApprovalInput, ParkRequestResponse, RejectionInput, RobotInput, RobotResponse
 from app.services.auth import require_super_admin
-from app.services.patrol import _managed, _park, transaction
+from app.services.patrol import _managed, _park, inherit_draft, transaction
 
 
 def _robot_response(robot: Robot) -> RobotResponse:
@@ -21,6 +21,12 @@ def _robot_response(robot: Robot) -> RobotResponse:
         status=robot.status,
         assigned_at=robot.assigned_at,
         created_at=robot.created_at,
+        slam_x=robot.slam_x,
+        slam_y=robot.slam_y,
+        lat=robot.lat,
+        lng=robot.lng,
+        battery_voltage=robot.battery_voltage,
+        last_seen_at=robot.last_seen_at,
     )
 
 
@@ -93,6 +99,7 @@ def approve(db: Session, user: User, park_id: int, body: ApprovalInput):
         robot.park_id = park.id
         robot.assigned_at = now
     db.flush()
+    inherit_draft(db, db.get(User, park.user_id), park, robots)
     return _managed(park)
 
 
@@ -156,11 +163,16 @@ def revoke(db: Session, user: User, park_id: int, body: RejectionInput):
 
 @transaction()
 def list_robots(db: Session, user: User, unassigned: bool, limit: int, offset: int):
+    from app.services.operations import admin_robot_response
+
     require_super_admin(user)
     statement = select(Robot)
     if unassigned:
         statement = statement.where(Robot.park_id.is_(None))
-    return [_robot_response(robot) for robot in db.scalars(statement.order_by(Robot.id).limit(limit).offset(offset))]
+    return [
+        admin_robot_response(db, robot)
+        for robot in db.scalars(statement.order_by(Robot.id).limit(limit).offset(offset))
+    ]
 
 
 @transaction()
@@ -169,6 +181,30 @@ def my_robots(db: Session, user: User):
     return [
         _robot_response(robot) for robot in db.scalars(select(Robot).where(Robot.park_id == park.id).order_by(Robot.id))
     ]
+
+
+def _my_robot(db: Session, user: User, robot_id: int, *, lock: bool = False) -> Robot:
+    park = _park(db, user)
+    statement = select(Robot).where(Robot.id == robot_id, Robot.park_id == park.id)
+    if lock:
+        statement = statement.with_for_update().execution_options(populate_existing=True)
+    robot = db.scalar(statement)
+    if robot is None:
+        raise AppError(404, "이 공원에 배정된 로봇을 찾을 수 없어요", code="robot_not_found")
+    return robot
+
+
+@transaction()
+def my_robot(db: Session, user: User, robot_id: int):
+    return _robot_response(_my_robot(db, user, robot_id))
+
+
+@transaction(write=True)
+def rename_robot(db: Session, user: User, robot_id: int, name: str):
+    robot = _my_robot(db, user, robot_id, lock=True)
+    robot.name = name
+    db.flush()
+    return _robot_response(robot)
 
 
 def registration_park_id(db: Session, user: User, applicant_id: int) -> int:

@@ -1,4 +1,4 @@
-const assert = require('node:assert/strict');
+﻿const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const { test } = require('node:test');
 const ts = require('typescript');
@@ -95,6 +95,39 @@ test('반려·승인 취소 사유를 전송하고 서버 실패를 성공으로
   response = { code: 'park_request_not_pending', message: '이미 처리된 신청이에요' };
   try {
     await assert.rejects(admin.approveRegistration('42', []), (e) => e.code === response.code);
+  } finally {
+    status = 200;
+    response = {};
+  }
+});
+
+test('admin operations use real paginated endpoints and preserve mutation errors', async () => {
+  response = [];
+  status = 200;
+  const signal = new AbortController().signal;
+  await admin.getAdminParks(signal);
+  assert.match(calls.at(-1).url, /admin\/parks\?limit=100&offset=0$/);
+  assert.equal(calls.at(-1).signal, signal);
+  await admin.getParkChanges(signal);
+  assert.match(calls.at(-1).url, /park-change-requests\?status=all&limit=100&offset=0$/);
+  await admin.getParkReports('park/a', '2026-11-17', signal);
+  assert.match(calls.at(-1).url, /parks\/park%2Fa\/reports\?date=2026-11-17$/);
+  await admin.getParkReports('park/a', '2026-11-17', signal, 'catalog/a');
+  assert.match(calls.at(-1).url, /date=2026-11-17&catalogId=catalog%2Fa$/);
+  response = {};
+  await admin.createAdminRobot('Jubi', 'SN-01');
+  assert.deepEqual(JSON.parse(calls.at(-1).body), { name: 'Jubi', serialNo: 'SN-01' });
+  await admin.assignRobot('robot/a', null);
+  assert.equal(calls.at(-1).method, 'PATCH');
+  assert.deepEqual(JSON.parse(calls.at(-1).body), { parkId: null });
+  await admin.approveParkChange('change/a');
+  assert.match(calls.at(-1).url, /change%2Fa\/approve$/);
+  await admin.rejectParkChange('1', '중복 담당');
+  assert.deepEqual(JSON.parse(calls.at(-1).body), { reason: '중복 담당' });
+  status = 409;
+  response = { message: '작업 중', code: 'robot_busy' };
+  try {
+    await assert.rejects(admin.assignRobot('1', '2'), (e) => e.code === 'robot_busy');
   } finally {
     status = 200;
     response = {};

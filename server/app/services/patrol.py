@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
-from app.models import User
+from app.models import Robot, User
 from app.models.park_catalog import ParkCatalogEntry
 from app.models.patrol import AgentRun, AgentStep, Park, PatrolPoint, Route, RoutePoint, Schedule
 from app.schemas.parks import LatLng
@@ -71,7 +71,7 @@ def transaction(*, write=False):
 
 def _park(db: Session, user: User) -> Park:
     require_manager(user)
-    park = db.scalar(select(Park).where(Park.user_id == user.id))
+    park = db.scalar(select(Park).where(Park.user_id == user.id).execution_options(populate_existing=True))
     if park is None:
         raise AppError(409, "먼저 관리할 공원을 선택해 주세요", code="park_required")
     if park.status != "approved":
@@ -83,6 +83,18 @@ def _position(point: PatrolPoint | None) -> LatLng | None:
     return LatLng(latitude=point.lat, longitude=point.lng) if point else None
 
 
+def _ensure_catalog(db: Session, park: Park, expected: str | int | None):
+    from app.models.operations import ParkChangeRequest
+
+    changed = expected is None and db.scalar(
+        select(ParkChangeRequest.id)
+        .where(ParkChangeRequest.park_id == park.id, ParkChangeRequest.status == "approved")
+        .limit(1)
+    )
+    if changed or (expected is not None and str(expected) != str(park.catalog_id)):
+        raise AppError(409, "담당 공원이 변경됐어요. 새 공원 설정을 다시 불러와 주세요", code="park_changed")
+
+
 def _station(db: Session, park: Park) -> PatrolPoint | None:
     return db.scalar(
         select(PatrolPoint).where(
@@ -91,8 +103,22 @@ def _station(db: Session, park: Park) -> PatrolPoint | None:
     )
 
 
-def _route(db: Session, park: Park) -> Route | None:
-    return db.scalar(select(Route).where(Route.park_id == park.id, Route.is_active.is_(True)))
+def _robot_id(db: Session, park: Park, robot_id: int | None) -> int | None:
+    if robot_id is not None:
+        robot = db.get(Robot, robot_id, populate_existing=True)
+        if robot is None or robot.park_id != park.id:
+            raise AppError(404, "이 공원에 배정된 로봇을 찾을 수 없어요", code="robot_not_found")
+        return robot.id
+    ids = list(db.scalars(select(Robot.id).where(Robot.park_id == park.id).order_by(Robot.id)))
+    if len(ids) > 1:
+        raise AppError(422, "경로를 설정할 로봇을 선택해 주세요", code="robot_required")
+    return ids[0] if ids else None
+
+
+def _route(db: Session, park: Park, robot_id: int | None = None) -> Route | None:
+    return db.scalar(
+        select(Route).where(Route.park_id == park.id, Route.robot_id == robot_id, Route.is_active.is_(True))
+    )
 
 
 def _points(db: Session, route: Route | None) -> list[PatrolPoint]:
@@ -156,6 +182,7 @@ def _managed(park: Park) -> ManagedPark:
         approved_at=park.approved_at,
         reject_reason=park.reject_reason,
         route_setup_done=park.route_setup_done,
+        anchor_points=park.anchor_points,
     )
 
 
@@ -169,10 +196,9 @@ def _hide_points(db: Session, park: Park, kind: str | None = None):
 
 
 def _deactivate(db: Session, park: Park):
-    route = _route(db, park)
-    if route:
+    for route in db.scalars(select(Route).where(Route.park_id == park.id, Route.is_active.is_(True))):
         route.is_active = False
-        db.flush()
+    db.flush()
 
 
 def _save_station(db: Session, park: Park, position: LatLng) -> PatrolPoint:
@@ -189,14 +215,18 @@ def _save_station(db: Session, park: Park, position: LatLng) -> PatrolPoint:
     return point
 
 
-def _save_route(db: Session, user: User, park: Park, body: RouteInput) -> Route:
+def _save_route(db: Session, user: User, park: Park, body: RouteInput, robot_id: int | None = None) -> Route:
     station = _station(db, park)
     if station is None:
         raise AppError(409, "먼저 분리수거장 위치를 등록해 주세요", code="station_required")
     _validate_points(park, _position(station), body)
-    _deactivate(db, park)
-    _hide_points(db, park, "patrol")
-    route = Route(park_id=park.id, station_id=station.id, is_active=True, created_by=user.id)
+    previous = _route(db, park, robot_id)
+    if previous:
+        previous.is_active = False
+        for point in _points(db, previous):
+            point.deleted_at = datetime.now(UTC)
+        db.flush()
+    route = Route(park_id=park.id, robot_id=robot_id, station_id=station.id, is_active=True, created_by=user.id)
     db.add(route)
     db.flush()
     for seq, item in enumerate(body.points):
@@ -208,6 +238,7 @@ def _save_route(db: Session, user: User, park: Park, body: RouteInput) -> Route:
         db.add(RoutePoint(route_id=route.id, seq=seq, point_id=point.id))
     run = AgentRun(
         park_id=park.id,
+        robot_id=robot_id,
         trigger="adminRequest",
         status="done",
         plan="관리자 경로 수정",
@@ -233,14 +264,18 @@ def _save_route(db: Session, user: User, park: Park, body: RouteInput) -> Route:
     return route
 
 
-def _schedule_response(db: Session, park: Park) -> list[ScheduleResponse]:
+def _schedule_response(db: Session, park: Park, robot_id: int | None = None) -> list[ScheduleResponse]:
     return [
         ScheduleResponse(id=str(s.id), time=s.run_at.strftime("%H:%M"), label=s.label, on=s.enabled, repeat=s.repeat)
-        for s in db.scalars(select(Schedule).where(Schedule.park_id == park.id).order_by(Schedule.run_at, Schedule.id))
+        for s in db.scalars(
+            select(Schedule)
+            .where(Schedule.park_id == park.id, Schedule.robot_id == robot_id)
+            .order_by(Schedule.run_at, Schedule.id)
+        )
     ]
 
 
-def _save_schedules(db: Session, park: Park, body: list[ScheduleInput]):
+def _save_schedules(db: Session, park: Park, body: list[ScheduleInput], robot_id: int | None = None):
     # daily와 weekdays/weekends의 같은 시각도 중복 실행되므로 함께 거부해요.
     seen: dict[str, set[str]] = {}
     for slot in body:
@@ -248,12 +283,13 @@ def _save_schedules(db: Session, park: Park, body: list[ScheduleInput]):
         if slot.repeat in repeats or (repeats and (slot.repeat == "daily" or "daily" in repeats)):
             raise AppError(422, "겹치는 순찰 시각은 한 번만 지정해 주세요", code="duplicate_schedule")
         repeats.add(slot.repeat)
-    db.execute(delete(Schedule).where(Schedule.park_id == park.id))
+    db.execute(delete(Schedule).where(Schedule.park_id == park.id, Schedule.robot_id == robot_id))
     db.flush()
     for slot in body:
         db.add(
             Schedule(
                 park_id=park.id,
+                robot_id=robot_id,
                 run_at=time.fromisoformat(slot.time),
                 enabled=slot.on,
                 label=slot.label,
@@ -263,10 +299,12 @@ def _save_schedules(db: Session, park: Park, body: list[ScheduleInput]):
     db.flush()
 
 
-def _route_response(db: Session, park: Park) -> RouteResponse:
-    route = _route(db, park)
+def _route_response(db: Session, park: Park, robot_id: int | None = None) -> RouteResponse:
+    route = _route(db, park, robot_id)
     station = db.get(PatrolPoint, route.station_id) if route else _station(db, park)
     return RouteResponse(
+        catalog_id=str(park.catalog_id),
+        robot_id=str(robot_id) if robot_id is not None else None,
         id=str(route.id) if route else None,
         start=_position(station),
         end=_position(station),
@@ -274,15 +312,17 @@ def _route_response(db: Session, park: Park) -> RouteResponse:
     )
 
 
-def _config(db: Session, park: Park) -> ConfigResponse:
-    route = _route_response(db, park)
+def _config(db: Session, park: Park, robot_id: int | None = None) -> ConfigResponse:
+    route = _route_response(db, park, robot_id)
     return ConfigResponse(
+        catalog_id=str(park.catalog_id),
+        robot_id=str(robot_id) if robot_id is not None else None,
         park_name=park.catalog.name,
         bounds=park.catalog.bounds,
         area=park.catalog.area,
         station=_position(_station(db, park)),
         points=route.points,
-        schedule=_schedule_response(db, park),
+        schedule=_schedule_response(db, park, robot_id),
     )
 
 
@@ -330,6 +370,7 @@ def select_park(db: Session, user: User, body: ParkSelection):
     park.reject_reason = None
     if not same_catalog:
         park.route_setup_done = False
+        park.anchor_points = []
     db.flush()
     return _managed(park)
 
@@ -339,74 +380,136 @@ def get_station(db: Session, user: User):
     return _position(_station(db, _park(db, user)))
 
 
-@transaction(write=True)
-def save_station(db: Session, user: User, body: LatLng):
-    park = _park(db, user)
-    old = _station(db, park)
-    route = _route(db, park)
-    items = _points(db, route)
-    if items:
-        _validate_points(
-            park,
-            body,
-            RouteInput(points=[PointResponse(id=str(p.id), name=p.name, position=_position(p)) for p in items]),
+def _route_input(db: Session, route: Route) -> RouteInput:
+    return RouteInput(
+        points=[PointResponse(id=str(p.id), name=p.name, position=_position(p)) for p in _points(db, route)]
+    )
+
+
+def _move_station(
+    db: Session, user: User, park: Park, position: LatLng, replacement: tuple[int | None, RouteInput] | None = None
+):
+    current = _station(db, park)
+    if current and _position(current) == position:
+        _inside(park, position)
+        return
+    assigned = select(Robot.id).where(Robot.park_id == park.id)
+    routes = list(
+        db.scalars(
+            select(Route).where(
+                Route.park_id == park.id,
+                Route.is_active.is_(True),
+                Route.robot_id.in_(assigned) | Route.robot_id.is_(None),
+            )
         )
-    station = _save_station(db, park, body)
-    if route and (old is None or station.id != old.id):
-        _save_route(
-            db,
-            user,
-            park,
-            RouteInput(points=[PointResponse(id=str(p.id), name=p.name, position=_position(p)) for p in items]),
-        )
-    return _position(station)
+    )
+    updates = [(r.robot_id, _route_input(db, r)) for r in routes]
+    # 대상 로봇은 새 지점으로, 다른 로봇은 기존 지점으로 검증해요.
+    if replacement is not None:
+        updates = [(rid, body) for rid, body in updates if rid != replacement[0]]
+        updates.append(replacement)
+    _inside(park, position)
+    for _, body in updates:
+        _validate_points(park, position, body)
+    _save_station(db, park, position)
+    for rid, body in updates:
+        if replacement is None or rid != replacement[0]:
+            _save_route(db, user, park, body, rid)
 
 
-@transaction()
-def get_routes(db: Session, user: User):
-    return _route_response(db, _park(db, user))
-
-
-@transaction(write=True)
-def save_routes(db: Session, user: User, body: RouteInput):
-    park = _park(db, user)
-    _save_route(db, user, park, body)
-    return _route_response(db, park)
-
-
-@transaction()
-def get_schedules(db: Session, user: User):
-    return _schedule_response(db, _park(db, user))
+def _has_complete_config(db: Session, park: Park) -> bool:
+    # 배정된 로봇 하나 이상의 설정이 완성되면 초기 진입을 완료해요.
+    ids = list(db.scalars(select(Robot.id).where(Robot.park_id == park.id))) or [None]
+    return _station(db, park) is not None and any(
+        _route(db, park, rid) is not None and bool(_schedule_response(db, park, rid)) for rid in ids
+    )
 
 
 @transaction(write=True)
-def save_schedules(db: Session, user: User, body: list[ScheduleInput]):
+def save_station(db: Session, user: User, body: LatLng, catalog_id: int | None = None):
     park = _park(db, user)
-    _save_schedules(db, park, body)
-    if not body:
-        park.route_setup_done = False
-    return _schedule_response(db, park)
+    _ensure_catalog(db, park, catalog_id)
+    _move_station(db, user, park, body)
+    return _position(_station(db, park))
 
 
 @transaction()
-def get_config(db: Session, user: User):
-    return _config(db, _park(db, user))
+def get_routes(db: Session, user: User, robot_id: int | None = None):
+    park = _park(db, user)
+    return _route_response(db, park, _robot_id(db, park, robot_id))
 
 
 @transaction(write=True)
-def save_config(db: Session, user: User, body: ConfigInput):
+def save_routes(db: Session, user: User, body: RouteInput, robot_id: int | None = None):
     park = _park(db, user)
-    _save_station(db, park, body.station)
-    _save_route(db, user, park, body)
-    _save_schedules(db, park, body.schedule)
+    _ensure_catalog(db, park, body.catalog_id)
+    rid = _robot_id(db, park, robot_id)
+    _save_route(db, user, park, body, rid)
+    return _route_response(db, park, rid)
+
+
+@transaction()
+def get_schedules(db: Session, user: User, robot_id: int | None = None):
+    park = _park(db, user)
+    return _schedule_response(db, park, _robot_id(db, park, robot_id))
+
+
+@transaction(write=True)
+def save_schedules(
+    db: Session, user: User, body: list[ScheduleInput], robot_id: int | None = None, catalog_id: int | None = None
+):
+    park = _park(db, user)
+    _ensure_catalog(db, park, catalog_id)
+    rid = _robot_id(db, park, robot_id)
+    _save_schedules(db, park, body, rid)
+    if park.route_setup_done:
+        park.route_setup_done = _has_complete_config(db, park)
+    return _schedule_response(db, park, rid)
+
+
+@transaction()
+def get_config(db: Session, user: User, robot_id: int | None = None):
+    park = _park(db, user)
+    return _config(db, park, _robot_id(db, park, robot_id))
+
+
+@transaction(write=True)
+def save_config(db: Session, user: User, body: ConfigInput, robot_id: int | None = None):
+    park = _park(db, user)
+    _ensure_catalog(db, park, body.catalog_id)
+    rid = _robot_id(db, park, robot_id)
+    _move_station(db, user, park, body.station, (rid, body))
+    _save_route(db, user, park, body, rid)
+    _save_schedules(db, park, body.schedule, rid)
     park.route_setup_done = True
-    return _config(db, park)
+    return _config(db, park, rid)
 
 
 @transaction(write=True)
-def complete_setup(db: Session, user: User):
+def complete_setup(db: Session, user: User, robot_id: int | None = None, catalog_id: int | None = None):
     park = _park(db, user)
-    if _station(db, park) is None or _route(db, park) is None or not _schedule_response(db, park):
+    _ensure_catalog(db, park, catalog_id)
+    rid = _robot_id(db, park, robot_id)
+    if _station(db, park) is None or _route(db, park, rid) is None or not _schedule_response(db, park, rid):
         raise AppError(409, "분리수거장·순찰 지점·시간표를 먼저 저장해 주세요", code="setup_incomplete")
     park.route_setup_done = True
     return SetupResponse(route_setup_done=True)
+
+
+def inherit_draft(db: Session, user: User, park: Park, robots: list[Robot]):
+    """로봇 미배정 초안을 첫 배정 시 독립된 설정으로 복사해요."""
+    draft = _route(db, park)
+    schedules = _schedule_response(db, park)
+    for robot in robots:
+        if draft and _route(db, park, robot.id) is None:
+            _save_route(db, user, park, _route_input(db, draft), robot.id)
+        if schedules and not _schedule_response(db, park, robot.id):
+            _save_schedules(db, park, schedules, robot.id)
+    if draft and robots:
+        draft.is_active = False
+        for point in _points(db, draft):
+            point.deleted_at = datetime.now(UTC)
+        db.execute(delete(Schedule).where(Schedule.park_id == park.id, Schedule.robot_id.is_(None)))
+        db.flush()
+    if park.route_setup_done:
+        park.route_setup_done = _has_complete_config(db, park)

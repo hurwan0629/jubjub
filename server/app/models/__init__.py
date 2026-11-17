@@ -5,6 +5,7 @@
 """
 
 from app.core.db import Base
+from app.models.operations import DailyReport, ParkChangeRequest
 from app.models.park_catalog import ParkCatalogEntry
 from app.models.patrol import AgentRun, AgentStep, Park, PatrolPoint, Route, RoutePoint, Schedule
 from app.models.robot import Robot
@@ -22,4 +23,6 @@ __all__ = [
     "AgentRun",
     "AgentStep",
     "Robot",
+    "DailyReport",
+    "ParkChangeRequest",
 ]

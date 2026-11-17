@@ -5,7 +5,14 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Path, Query
 
 from app.routers.patrol import DB, Admin
-from app.schemas.approval import ApprovalInput, ParkRequestResponse, RejectionInput, RobotInput, RobotResponse
+from app.schemas.approval import (
+    ApprovalInput,
+    ParkRequestResponse,
+    RejectionInput,
+    RobotInput,
+    RobotNameInput,
+    RobotResponse,
+)
 from app.schemas.patrol import ManagedPark
 from app.services import approval
 
@@ -79,3 +86,13 @@ def list_robots(
 @router.get("/robots", response_model=list[RobotResponse])
 def my_robots(db: DB, user: Admin):
     return approval.my_robots(db, user)
+
+
+@router.get("/robots/{robot_id}", response_model=RobotResponse, summary="내 공원 로봇 조회")
+def my_robot(robot_id: ParkID, db: DB, user: Admin):
+    return approval.my_robot(db, user, robot_id)
+
+
+@router.patch("/robots/{robot_id}", response_model=RobotResponse, summary="내 공원 로봇 이름 수정")
+def rename_robot(robot_id: ParkID, body: RobotNameInput, db: DB, user: Admin):
+    return approval.rename_robot(db, user, robot_id, body.name)
