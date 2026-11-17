@@ -138,7 +138,7 @@ async def main():
   capture_task = None
 
   try:
-    async for ws in connect(SERVER_URL, proxu=None):
+    async for ws in connect(SERVER_URL, proxy=None):
       print("Connected:", SERVER_URL)
 
       async for raw in ws:

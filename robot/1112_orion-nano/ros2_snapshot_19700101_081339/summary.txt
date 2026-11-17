@@ -1,0 +1,1286 @@
+
+===== 시스템 =====
+$ hostname; uname -a
+ubuntu
+Linux ubuntu 5.15.148-tegra #1 SMP PREEMPT Tue Jan 7 17:14:38 PST 2025 aarch64 aarch64 aarch64 GNU/Linux
+
+$ head -4 /etc/os-release
+PRETTY_NAME="Ubuntu 22.04.5 LTS"
+NAME="Ubuntu"
+VERSION_ID="22.04"
+VERSION="22.04.5 LTS (Jammy Jellyfish)"
+
+$ cat /etc/nv_tegra_release 2>/dev/null || echo 'Jetson 아님(또는 파일 없음)'
+# R36 (release), REVISION: 4.3, GCID: 38968081, BOARD: generic, EABI: aarch64, DATE: Wed Jan  8 01:49:37 UTC 2025
+# KERNEL_VARIANT: oot
+TARGET_USERSPACE_LIB_DIR=nvidia
+TARGET_USERSPACE_LIB_DIR_PATH=usr/lib/aarch64-linux-gnu/nvidia
+
+$ nproc; free -h; df -h /
+6
+               total        used        free      shared  buff/cache   available
+Mem:           3.5Gi       2.5Gi       175Mi        19Mi       853Mi       803Mi
+Swap:          9.8Gi       945Mi       8.8Gi
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/nvme0n1p1   66G   61G  1.9G  98% /
+
+$ timeout 3 tegrastats 2>/dev/null | head -2
+01-01-1970 08:13:40 RAM 2664/3602MB (lfb 9x4MB) SWAP 946/9993MB (cached 0MB) CPU [25%@729,21%@729,22%@729,20%@729,19%@1036,20%@1036] GR3D_FREQ 0% cpu@49.281C soc2@48.187C soc0@48.062C gpu@48.687C tj@51.25C soc1@51.312C VDD_IN 5112mW/5112mW VDD_CPU_GPU_CV 734mW/734mW VDD_SOC 1469mW/1469mW
+01-01-1970 08:13:41 RAM 2663/3602MB (lfb 9x4MB) SWAP 946/9993MB (cached 0MB) CPU [28%@729,19%@729,22%@729,19%@729,17%@729,16%@729] GR3D_FREQ 0% cpu@49.156C soc2@48.156C soc0@48.218C gpu@48.906C tj@51.343C soc1@51.343C VDD_IN 5030mW/5071mW VDD_CPU_GPU_CV 694mW/714mW VDD_SOC 1472mW/1471mW
+
+$ nvcc --version 2>/dev/null | tail -1; python3 --version
+Build cuda_12.6.r12.6/compiler.34714021_0
+Python 3.10.12
+
+$ python3 -c 'import torch;print("torch",torch.__version__,"cuda",torch.cuda.is_available())' 2>&1
+torch 2.7.0 cuda True
+
+
+===== 네트워크 =====
+$ ip -br addr
+lo               UNKNOWN        127.0.0.1/8 ::1/128 
+wlan0            UP             192.168.149.1/24 fe80::a0bf:b056:d6b2:110f/64 
+can0             DOWN           
+eth0             DOWN           
+l4tbr0           DOWN           192.168.55.1/24 fe80::1/128 
+usb0             DOWN           
+usb1             DOWN           
+docker0          DOWN           172.17.0.1/16 
+
+$ iwgetid 2>/dev/null || nmcli -t -f active,ssid dev wifi 2>/dev/null | grep '^yes'
+yes:HW-25057205
+
+
+===== 장치 (카메라/시리얼/USB) =====
+$ ls -l /dev/video* /dev/ttyUSB* /dev/ttyACM* /dev/ttyTHS* /dev/rrc /dev/lidar 2>/dev/null
+lrwxrwxrwx 1 root root         7  1月  1 08:00 /dev/rrc -> ttyACM0
+crwxrwxrwx 1 root users   166, 0  1月  1 08:01 /dev/ttyACM0
+crw-rw---- 1 root dialout 240, 1  8月 26  2025 /dev/ttyTHS1
+crw-rw---- 1 root dialout 240, 2  8月 26  2025 /dev/ttyTHS2
+
+$ lsusb
+Bus 002 Device 001: ID 1d6b:0003 Linux Foundation 3.0 root hub
+Bus 001 Device 003: ID 0bda:c822 Realtek Semiconductor Corp. Bluetooth Radio 
+Bus 001 Device 011: ID 2bc5:0559 Orbbec 3D Technology International, Inc Orbbec DaBai DCW RGB Camera
+Bus 001 Device 009: ID 2bc5:0659 Orbbec 3D Technology International, Inc ORBBEC Depth Sensor
+Bus 001 Device 006: ID 1a40:0101 Terminus Technology Inc. Hub
+Bus 001 Device 008: ID 1a86:7523 QinHeng Electronics CH340 serial converter
+Bus 001 Device 013: ID 1b3f:2008 Generalplus Technology Inc. USB Audio Device
+Bus 001 Device 012: ID 2207:0001 Fuzhou Rockchip Electronics Company XFM-DP-V0.0.18
+Bus 001 Device 010: ID 1a86:7523 QinHeng Electronics CH340 serial converter
+Bus 001 Device 007: ID 1a86:8091 QinHeng Electronics USB HUB
+Bus 001 Device 005: ID 1a86:8091 QinHeng Electronics USB HUB
+Bus 001 Device 004: ID 1a86:55d4 QinHeng Electronics USB Single Serial
+Bus 001 Device 002: ID 1a40:0101 Terminus Technology Inc. Hub
+Bus 001 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+
+
+===== ROS 환경변수 =====
+$ env | grep -E '^(ROS|RMW|AMENT_PREFIX|CYCLONE|FASTRTPS|LIDAR|MACHINE|CAMERA|DEPTH)' | sort
+AMENT_PREFIX_PATH=/home/ubuntu/third_party/orbbec_ws/install/orbbec_description:/home/ubuntu/third_party/orbbec_ws/install/orbbec_camera:/home/ubuntu/third_party/orbbec_ws/install/orbbec_camera_msgs:/home/ubuntu/third_party/third_party_ws/install/ydlidar_ros2_driver:/home/ubuntu/third_party/third_party_ws/install/web_video_server:/home/ubuntu/third_party/third_party_ws/install/teb_local_planner:/home/ubuntu/third_party/third_party_ws/install/teb_msgs:/home/ubuntu/third_party/third_party_ws/install/sllidar_ros2:/home/ubuntu/third_party/third_party_ws/install/rf2o_laser_odometry:/home/ubuntu/third_party/third_party_ws/install/ldlidar_stl_ros2:/home/ubuntu/third_party/third_party_ws/install/laser_filters:/home/ubuntu/third_party/third_party_ws/install/imu_calib:/home/ubuntu/third_party/third_party_ws/install/image_geometry:/home/ubuntu/third_party/third_party_ws/install/costmap_converter:/home/ubuntu/third_party/third_party_ws/install/cv_bridge:/home/ubuntu/third_party/third_party_ws/install/costmap_converter_msgs:/home/ubuntu/third_party/third_party_ws/install/ascamera_listener:/home/ubuntu/third_party/third_party_ws/install/apriltag_msgs:/home/ubuntu/ros2_ws/install/xf_mic_asr_offline:/home/ubuntu/ros2_ws/install/xf_mic_asr_offline_msgs:/home/ubuntu/ros2_ws/install/slam:/home/ubuntu/ros2_ws/install/servo_controller_msgs:/home/ubuntu/ros2_ws/install/servo_controller:/home/ubuntu/ros2_ws/install/sdk:/home/ubuntu/ros2_ws/install/ros_robot_controller_msgs:/home/ubuntu/ros2_ws/install/ros_robot_controller:/home/ubuntu/ros2_ws/install/peripherals:/home/ubuntu/ros2_ws/install/navigation:/home/ubuntu/ros2_ws/install/large_models_msgs:/home/ubuntu/ros2_ws/install/large_models_examples:/home/ubuntu/ros2_ws/install/large_models:/home/ubuntu/ros2_ws/install/kinematics_msgs:/home/ubuntu/ros2_ws/install/kinematics:/home/ubuntu/ros2_ws/install/jetrover_description:/home/ubuntu/ros2_ws/install/interfaces:/home/ubuntu/ros2_ws/install/example:/home/ubuntu/ros2_ws/install/controller:/home/ubuntu/ros2_ws/install/calibration:/home/ubuntu/ros2_ws/install/bringup:/home/ubuntu/ros2_ws/install/app:/opt/ros/humble
+CYCLONEDDS_URI=file:///etc/cyclonedds/config.xml
+DEPTH_CAMERA_TYPE=Dabai
+LIDAR_TYPE=A1
+MACHINE_TYPE=JetRover_Mecanum
+ROS_DISTRO=humble
+ROSDISTRO_INDEX_URL=https://mirrors.tuna.tsinghua.edu.cn/rosdistro/index-v4.yaml
+ROS_DOMAIN_ID=0
+ROS_LOCALHOST_ONLY=0
+ROS_PACKAGE_PATH=/home/ubuntu/third_party/third_party_ws/install/async_web_server_cpp/share
+ROS_PYTHON_VERSION=3
+ROS_VERSION=2
+
+
+===== 자동 실행 중인 것 (제조사 서비스 / docker / 프로세스) =====
+$ systemctl list-units --type=service --state=running --no-pager | grep -viE 'systemd|dbus|network|ssh|cron|snap|udisks|polkit|avahi|cups|bluetooth|wpa|accounts|rsyslog|ModemManager|getty|user@'
+  UNIT                          LOAD   ACTIVE SUB     DESCRIPTION
+  button_scan.service           loaded active running button_scan.service
+  colord.service                loaded active running Manage, Install and Generate Color Profiles
+  containerd.service            loaded active running containerd container runtime
+  docker.service                loaded active running Docker Application Container Engine
+  find_device.service           loaded active running find_device.service
+  fwupd.service                 loaded active running Firmware update daemon
+  gdm.service                   loaded active running GNOME Display Manager
+  haveged.service               loaded active running Entropy Daemon based on the HAVEGE algorithm
+  jtop.service                  loaded active running jtop service
+  kerneloops.service            loaded active running Tool to automatically collect and submit kernel crash signatures
+  lpd.service                   loaded active running LSB: BSD lpr/lpd line printer spooling system
+  nv-tee-supplicant.service     loaded active running OP-TEE Client Supplicant
+  nvargus-daemon.service        loaded active running Argus daemon
+  nvfancontrol.service          loaded active running nvfancontrol service
+  nvidia-pva-allowd.service     loaded active running service for managing PVA allowlists
+  nvmemwarning.service          loaded active running Display Low memory warning
+  nvphs.service                 loaded active running PHS daemon
+  nvs-service.service           loaded active running NVS-SERVICE Embedded Sensor HAL Daemon
+  nxserver.service              loaded active running NoMachine Server daemon
+  packagekit.service            loaded active running PackageKit Daemon
+  power-profiles-daemon.service loaded active running Power Profiles daemon
+  remote.service                loaded active running remote.service
+  rpcbind.service               loaded active running RPC bind portmap service
+  rtkit-daemon.service          loaded active running RealtimeKit Scheduling Policy Service
+  seatd.service                 loaded active running Seat management daemon
+  start_app_node.service        loaded active running start node
+  switcheroo-control.service    loaded active running Switcheroo Control Proxy service
+  upower.service                loaded active running Daemon for power management
+  wifi.service                  loaded active running wifi.service
+
+LOAD   = Reflects whether the unit definition was properly loaded.
+ACTIVE = The high-level unit activation state, i.e. generalization of SUB.
+SUB    = The low-level unit activation state, values depend on unit type.
+50 loaded units listed.
+
+$ docker ps 2>/dev/null
+
+$ ps -eo pid,etime,cmd | grep -E 'ros2|launch|_node' | grep -v grep
+    706       13:11 /usr/bin/python3 /opt/ros/humble/bin/ros2 launch bringup bringup.launch.py
+   1962       13:07 /home/ubuntu/third_party/third_party_ws/install/imu_calib/lib/imu_calib/apply_calib --ros-args -r __node:=imu_calib --params-file /tmp/launch_params_krw2x5w6 -r raw:=ros_robot_controller/imu_raw -r corrected:=imu_corrected
+   1964       13:07 /opt/ros/humble/lib/imu_filter_madgwick/imu_filter_madgwick_node --ros-args -r __node:=imu_filter --params-file /tmp/launch_params_3flw6zb0 -r /tf:=tf -r /imu/data_raw:=imu_corrected -r imu/data:=imu
+   1966       13:07 /usr/bin/python3 /opt/ros/humble/lib/joint_state_publisher/joint_state_publisher --ros-args -r __node:=joint_state_publisher --params-file /tmp/launch_params_w7epyyum
+   1968       13:07 /opt/ros/humble/lib/robot_state_publisher/robot_state_publisher /home/ubuntu/ros2_ws/src/simulations/jetrover_description/urdf/jetrover.xacro --ros-args -r __node:=robot_state_publisher --params-file /tmp/launch_params_yapk1dck -r /tf:=tf -r /tf_static:=tf_static
+   1970       13:07 /usr/bin/python3 /home/ubuntu/ros2_ws/install/ros_robot_controller/lib/ros_robot_controller/ros_robot_controller --ros-args --params-file /tmp/launch_params_hx13uejp
+   1972       13:07 /usr/bin/python3 /home/ubuntu/ros2_ws/install/controller/lib/controller/odom_publisher --ros-args -r __node:=odom_publisher --params-file /home/ubuntu/ros2_ws/src/driver/controller/config/calibrate_params.yaml --params-file /tmp/launch_params_vwb4a6xf
+   1974       13:07 /opt/ros/humble/lib/robot_localization/ekf_node --ros-args -r __node:=ekf_filter_node --params-file /tmp/tmp0an_nemp --params-file /tmp/launch_params_z6e2q6hv -r /tf:=tf -r /tf_static:=tf_static -r odometry/filtered:=odom -r cmd_vel:=controller/cmd_vel
+   1976       13:07 /usr/bin/python3 /home/ubuntu/ros2_ws/install/servo_controller/lib/servo_controller/servo_controller --ros-args --params-file /home/ubuntu/ros2_ws/src/driver/servo_controller/config/servo_controller.yaml --params-file /tmp/launch_params_jh7ru8ng
+   1978       13:07 /opt/ros/humble/lib/rclcpp_components/component_container --ros-args -r __node:=camera_container -r __ns:=/depth_cam
+   1991       13:07 /home/ubuntu/third_party/third_party_ws/install/laser_filters/lib/laser_filters/scan_to_scan_filter_chain --ros-args --params-file /home/ubuntu/ros2_ws/src/peripherals/config/lidar_filters_config_a1.yaml -r scan:=scan_raw -r scan_filtered:=scan
+   2012       13:07 /usr/bin/python3 /opt/ros/humble/bin/ros2 launch rosbridge_server rosbridge_websocket_launch.xml
+   2025       13:07 /usr/bin/python3 /home/ubuntu/ros2_ws/install/app/lib/app/lidar_controller --ros-args
+   2027       13:07 /usr/bin/python3 /home/ubuntu/ros2_ws/install/app/lib/app/line_following --ros-args --params-file /tmp/launch_params_y4lwm6tn
+   2048       13:07 /usr/bin/python3 /home/ubuntu/ros2_ws/install/app/lib/app/object_tracking --ros-args --params-file /tmp/launch_params_71nprocf
+   2054       13:07 /usr/bin/python3 /home/ubuntu/ros2_ws/install/app/lib/app/ar_app --ros-args --params-file /tmp/launch_params_5mv6ngdc
+   2066       13:07 /usr/bin/python3 /home/ubuntu/ros2_ws/install/app/lib/app/hand_trajectory --ros-args --params-file /tmp/launch_params_dv92k5_2
+   2077       13:07 /usr/bin/python3 /home/ubuntu/ros2_ws/install/app/lib/app/hand_gesture --ros-args
+   2082       13:06 /usr/bin/python3 /home/ubuntu/ros2_ws/install/peripherals/lib/peripherals/joystick_control --ros-args -r __node:=joystick_control --params-file /tmp/launch_params_mnx8j_vm -r controller/cmd_vel:=controller/cmd_vel
+   2086       13:06 /usr/bin/python3 /home/ubuntu/ros2_ws/install/controller/lib/controller/init_pose --ros-args -r __node:=init_pose --params-file /tmp/tmpg8gflh0d
+   2199       13:06 /usr/libexec/at-spi-bus-launcher
+   2796       13:01 python3 /opt/ros/humble/lib/rosbridge_server/rosbridge_websocket --ros-args -r __node:=rosbridge_websocket --params-file /tmp/launch_params_i_tcu0_p --params-file /tmp/launch_params_gdpl3be2 --params-file /tmp/launch_params_ezda07n0 --params-file /tmp/launch_params_uvhahbja --params-file /tmp/launch_params__m_fmjqw --params-file /tmp/launch_params_w8kxe_vp --params-file /tmp/launch_params_2fraypnc --params-file /tmp/launch_params_w5xkfurn --params-file /tmp/launch_params_9_zy3d8x --params-file /tmp/launch_params_5u76qnic --params-file /tmp/launch_params_43vs2ln1 --params-file /tmp/launch_params_ecbt3qsr --params-file /tmp/launch_params_t6u9uo56 --params-file /tmp/launch_params_ypg9_6bk --params-file /tmp/launch_params_03iafiwl --params-file /tmp/launch_params_azdeh9h2
+   2798       13:01 python3 /opt/ros/humble/lib/rosapi/rosapi_node --ros-args -r __node:=rosapi --params-file /tmp/launch_params_vkivb3fl --params-file /tmp/launch_params_26qsqers --params-file /tmp/launch_params_ubzufs5l --params-file /tmp/launch_params_y4kx1_y9
+   4330       09:28 /usr/bin/python3 -c from ros2cli.daemon.daemonize import main; main() --name ros2-daemon --ros-domain-id 0 --rmw-implementation rmw_fastrtps_cpp
+   4961       00:08 bash ros2_snapshot.sh
+
+
+===== ros2 doctor =====
+$ ros2 doctor --report 2>/dev/null | head -80
+
+
+===== 노드 =====
+$ ros2 node list
+/ar_app
+/arm_controller
+/controller_manager
+/depth_cam/camera_container
+/depth_cam/depth_cam
+/ekf_filter_node
+/gripper_controller
+/hand_gesture
+/hand_trajectory
+/imu_calib
+/imu_filter
+/init_pose
+/joint_state_publisher
+/joystick_control
+/launch_ros_706
+/lidar_app
+/line_following
+/object_tracking
+/odom_publisher
+/robot_state_publisher
+/ros_robot_controller
+/rosapi
+/rosapi_params
+/rosbridge_websocket
+/scan_to_scan_filter_chain
+/servo_manager
+/transform_listener_impl_aaaadaf31660
+/web_video_server
+
+
+===== 토픽 (타입) =====
+$ ros2 topic list -t
+/ar_app/image_result [sensor_msgs/msg/Image]
+/client_count [std_msgs/msg/Int32]
+/cmd_vel [geometry_msgs/msg/Twist]
+/connected_clients [rosbridge_msgs/msg/ConnectedClients]
+/controller/cmd_vel [geometry_msgs/msg/Twist]
+/controller_manager/joint_states [sensor_msgs/msg/JointState]
+/controller_manager/servo_states [servo_controller_msgs/msg/ServoStateList]
+/depth_cam/color/image_raw/theora [theora_image_transport/msg/Packet]
+/depth_cam/depth/camera_info [sensor_msgs/msg/CameraInfo]
+/depth_cam/depth/image_raw [sensor_msgs/msg/Image]
+/depth_cam/depth/image_raw/compressed [sensor_msgs/msg/CompressedImage]
+/depth_cam/depth/image_raw/compressedDepth [sensor_msgs/msg/CompressedImage]
+/depth_cam/depth/image_raw/theora [theora_image_transport/msg/Packet]
+/depth_cam/depth/points [sensor_msgs/msg/PointCloud2]
+/depth_cam/depth_filter_status [std_msgs/msg/String]
+/depth_cam/depth_to_color [orbbec_camera_msgs/msg/Extrinsics]
+/depth_cam/depth_to_ir [orbbec_camera_msgs/msg/Extrinsics]
+/depth_cam/ir/camera_info [sensor_msgs/msg/CameraInfo]
+/depth_cam/ir/image_raw [sensor_msgs/msg/Image]
+/depth_cam/ir/image_raw/compressed [sensor_msgs/msg/CompressedImage]
+/depth_cam/ir/image_raw/compressedDepth [sensor_msgs/msg/CompressedImage]
+/depth_cam/ir/image_raw/theora [theora_image_transport/msg/Packet]
+/depth_cam/rgb/camera_info [sensor_msgs/msg/CameraInfo]
+/depth_cam/rgb/image_raw [sensor_msgs/msg/Image]
+/depth_cam/rgb/image_raw/compressed [sensor_msgs/msg/CompressedImage]
+/depth_cam/rgb/image_raw/compressedDepth [sensor_msgs/msg/CompressedImage]
+/diagnostics [diagnostic_msgs/msg/DiagnosticArray]
+/hand_trajectory/image_result [sensor_msgs/msg/Image]
+/hand_trajectory/points [interfaces/msg/Points]
+/imu [sensor_msgs/msg/Imu]
+/imu_corrected [sensor_msgs/msg/Imu]
+/joint_controller [sensor_msgs/msg/JointState]
+/joint_states [sensor_msgs/msg/JointState]
+/line_following/image_result [sensor_msgs/msg/Image]
+/object_tracking/image_result [sensor_msgs/msg/Image]
+/odom [nav_msgs/msg/Odometry]
+/odom_raw [nav_msgs/msg/Odometry]
+/parameter_events [rcl_interfaces/msg/ParameterEvent]
+/robot_description [std_msgs/msg/String]
+/ros_robot_controller/battery [std_msgs/msg/UInt16]
+/ros_robot_controller/bus_servo/set_position [ros_robot_controller_msgs/msg/ServosPosition]
+/ros_robot_controller/bus_servo/set_state [ros_robot_controller_msgs/msg/SetBusServoState]
+/ros_robot_controller/button [ros_robot_controller_msgs/msg/ButtonState]
+/ros_robot_controller/enable_reception [std_msgs/msg/Bool]
+/ros_robot_controller/imu_raw [sensor_msgs/msg/Imu]
+/ros_robot_controller/joy [sensor_msgs/msg/Joy]
+/ros_robot_controller/pwm_servo/set_state [ros_robot_controller_msgs/msg/SetPWMServoState]
+/ros_robot_controller/sbus [ros_robot_controller_msgs/msg/Sbus]
+/ros_robot_controller/set_buzzer [ros_robot_controller_msgs/msg/BuzzerState]
+/ros_robot_controller/set_led [ros_robot_controller_msgs/msg/LedState]
+/ros_robot_controller/set_motor [ros_robot_controller_msgs/msg/MotorsState]
+/ros_robot_controller/set_oled [ros_robot_controller_msgs/msg/OLEDState]
+/rosout [rcl_interfaces/msg/Log]
+/scan [sensor_msgs/msg/LaserScan]
+/scan_raw [sensor_msgs/msg/LaserScan]
+/servo_controller [servo_controller_msgs/msg/ServosPosition]
+/set_odom [geometry_msgs/msg/Pose2D]
+/set_pose [geometry_msgs/msg/PoseWithCovarianceStamped]
+/tf [tf2_msgs/msg/TFMessage]
+/tf_static [tf2_msgs/msg/TFMessage]
+
+
+===== 서비스 (타입) =====
+$ ros2 service list -t
+/ar_app/describe_parameters [rcl_interfaces/srv/DescribeParameters]
+/ar_app/enter [std_srvs/srv/Trigger]
+/ar_app/exit [std_srvs/srv/Trigger]
+/ar_app/get_parameter_types [rcl_interfaces/srv/GetParameterTypes]
+/ar_app/get_parameters [rcl_interfaces/srv/GetParameters]
+/ar_app/heartbeat [std_srvs/srv/SetBool]
+/ar_app/init_finish [std_srvs/srv/Trigger]
+/ar_app/list_parameters [rcl_interfaces/srv/ListParameters]
+/ar_app/set_model [interfaces/srv/SetString]
+/ar_app/set_parameters [rcl_interfaces/srv/SetParameters]
+/ar_app/set_parameters_atomically [rcl_interfaces/srv/SetParametersAtomically]
+/arm_controller/describe_parameters [rcl_interfaces/srv/DescribeParameters]
+/arm_controller/get_parameter_types [rcl_interfaces/srv/GetParameterTypes]
+/arm_controller/get_parameters [rcl_interfaces/srv/GetParameters]
+/arm_controller/list_parameters [rcl_interfaces/srv/ListParameters]
+/arm_controller/set_parameters [rcl_interfaces/srv/SetParameters]
+/arm_controller/set_parameters_atomically [rcl_interfaces/srv/SetParametersAtomically]
+/controller/load_calibrate_param [std_srvs/srv/Trigger]
+/controller_manager/describe_parameters [rcl_interfaces/srv/DescribeParameters]
+/controller_manager/get_parameter_types [rcl_interfaces/srv/GetParameterTypes]
+/controller_manager/get_parameters [rcl_interfaces/srv/GetParameters]
+/controller_manager/init_finish [std_srvs/srv/Trigger]
+/controller_manager/list_parameters [rcl_interfaces/srv/ListParameters]
+/controller_manager/set_parameters [rcl_interfaces/srv/SetParameters]
+/controller_manager/set_parameters_atomically [rcl_interfaces/srv/SetParametersAtomically]
+/depth_cam/depth_cam/describe_parameters [rcl_interfaces/srv/DescribeParameters]
+/depth_cam/depth_cam/get_parameter_types [rcl_interfaces/srv/GetParameterTypes]
+/depth_cam/depth_cam/get_parameters [rcl_interfaces/srv/GetParameters]
+/depth_cam/depth_cam/list_parameters [rcl_interfaces/srv/ListParameters]
+/depth_cam/depth_cam/set_parameters [rcl_interfaces/srv/SetParameters]
+/depth_cam/depth_cam/set_parameters_atomically [rcl_interfaces/srv/SetParametersAtomically]
+/depth_cam/get_auto_white_balance [orbbec_camera_msgs/srv/GetInt32]
+/depth_cam/get_color_exposure [orbbec_camera_msgs/srv/GetInt32]
+/depth_cam/get_color_gain [orbbec_camera_msgs/srv/GetInt32]
+/depth_cam/get_depth_exposure [orbbec_camera_msgs/srv/GetInt32]
+/depth_cam/get_depth_gain [orbbec_camera_msgs/srv/GetInt32]
+/depth_cam/get_device_info [orbbec_camera_msgs/srv/GetDeviceInfo]
+/depth_cam/get_ir_exposure [orbbec_camera_msgs/srv/GetInt32]
+/depth_cam/get_ir_gain [orbbec_camera_msgs/srv/GetInt32]
+/depth_cam/get_ldp_measure_distance [orbbec_camera_msgs/srv/GetInt32]
+/depth_cam/get_ldp_status [orbbec_camera_msgs/srv/GetBool]
+/depth_cam/get_sdk_version [orbbec_camera_msgs/srv/GetString]
+/depth_cam/get_white_balance [orbbec_camera_msgs/srv/GetInt32]
+/depth_cam/reboot_device [std_srvs/srv/Empty]
+/depth_cam/save_images [std_srvs/srv/Empty]
+/depth_cam/save_point_cloud [std_srvs/srv/Empty]
+/depth_cam/set_auto_white_balance [std_srvs/srv/SetBool]
+/depth_cam/set_color_auto_exposure [std_srvs/srv/SetBool]
+/depth_cam/set_color_exposure [orbbec_camera_msgs/srv/SetInt32]
+/depth_cam/set_color_gain [orbbec_camera_msgs/srv/SetInt32]
+/depth_cam/set_color_mirror [std_srvs/srv/SetBool]
+/depth_cam/set_depth_auto_exposure [std_srvs/srv/SetBool]
+/depth_cam/set_depth_exposure [orbbec_camera_msgs/srv/SetInt32]
+/depth_cam/set_depth_gain [orbbec_camera_msgs/srv/SetInt32]
+/depth_cam/set_depth_mirror [std_srvs/srv/SetBool]
+/depth_cam/set_fan_work_mode [orbbec_camera_msgs/srv/SetInt32]
+/depth_cam/set_floor_enable [std_srvs/srv/SetBool]
+/depth_cam/set_ir_auto_exposure [std_srvs/srv/SetBool]
+/depth_cam/set_ir_exposure [orbbec_camera_msgs/srv/SetInt32]
+/depth_cam/set_ir_gain [orbbec_camera_msgs/srv/SetInt32]
+/depth_cam/set_ir_long_exposure [std_srvs/srv/SetBool]
+/depth_cam/set_ir_mirror [std_srvs/srv/SetBool]
+/depth_cam/set_laser_enable [std_srvs/srv/SetBool]
+/depth_cam/set_ldp_enable [std_srvs/srv/SetBool]
+/depth_cam/set_white_balance [orbbec_camera_msgs/srv/SetInt32]
+/depth_cam/switch_ir [orbbec_camera_msgs/srv/SetString]
+/depth_cam/toggle_color [std_srvs/srv/SetBool]
+/depth_cam/toggle_depth [std_srvs/srv/SetBool]
+/depth_cam/toggle_ir [std_srvs/srv/SetBool]
+/ekf_filter_node/describe_parameters [rcl_interfaces/srv/DescribeParameters]
+/ekf_filter_node/get_parameter_types [rcl_interfaces/srv/GetParameterTypes]
+/ekf_filter_node/get_parameters [rcl_interfaces/srv/GetParameters]
+/ekf_filter_node/list_parameters [rcl_interfaces/srv/ListParameters]
+/ekf_filter_node/set_parameters [rcl_interfaces/srv/SetParameters]
+/ekf_filter_node/set_parameters_atomically [rcl_interfaces/srv/SetParametersAtomically]
+/enable [std_srvs/srv/Empty]
+/gripper_controller/describe_parameters [rcl_interfaces/srv/DescribeParameters]
+/gripper_controller/get_parameter_types [rcl_interfaces/srv/GetParameterTypes]
+/gripper_controller/get_parameters [rcl_interfaces/srv/GetParameters]
+/gripper_controller/list_parameters [rcl_interfaces/srv/ListParameters]
+/gripper_controller/set_parameters [rcl_interfaces/srv/SetParameters]
+/gripper_controller/set_parameters_atomically [rcl_interfaces/srv/SetParametersAtomically]
+/hand_gesture/describe_parameters [rcl_interfaces/srv/DescribeParameters]
+/hand_gesture/enter [std_srvs/srv/Trigger]
+/hand_gesture/exit [std_srvs/srv/Trigger]
+/hand_gesture/get_parameter_types [rcl_interfaces/srv/GetParameterTypes]
+/hand_gesture/get_parameters [rcl_interfaces/srv/GetParameters]
+/hand_gesture/heartbeat [std_srvs/srv/SetBool]
+/hand_gesture/init_finish [std_srvs/srv/Trigger]
+/hand_gesture/list_parameters [rcl_interfaces/srv/ListParameters]
+/hand_gesture/set_parameters [rcl_interfaces/srv/SetParameters]
+/hand_gesture/set_parameters_atomically [rcl_interfaces/srv/SetParametersAtomically]
+/hand_gesture/set_running [std_srvs/srv/SetBool]
+/hand_trajectory/describe_parameters [rcl_interfaces/srv/DescribeParameters]
+/hand_trajectory/enter [std_srvs/srv/Trigger]
+/hand_trajectory/exit [std_srvs/srv/Trigger]
+/hand_trajectory/get_parameter_types [rcl_interfaces/srv/GetParameterTypes]
+/hand_trajectory/get_parameters [rcl_interfaces/srv/GetParameters]
+/hand_trajectory/init_finish [std_srvs/srv/Trigger]
+/hand_trajectory/list_parameters [rcl_interfaces/srv/ListParameters]
+/hand_trajectory/set_parameters [rcl_interfaces/srv/SetParameters]
+/hand_trajectory/set_parameters_atomically [rcl_interfaces/srv/SetParametersAtomically]
+/hand_trajectory/start [std_srvs/srv/Trigger]
+/hand_trajectory/stop [std_srvs/srv/Trigger]
+/imu_calib/describe_parameters [rcl_interfaces/srv/DescribeParameters]
+/imu_calib/get_parameter_types [rcl_interfaces/srv/GetParameterTypes]
+/imu_calib/get_parameters [rcl_interfaces/srv/GetParameters]
+/imu_calib/list_parameters [rcl_interfaces/srv/ListParameters]
+/imu_calib/set_parameters [rcl_interfaces/srv/SetParameters]
+/imu_calib/set_parameters_atomically [rcl_interfaces/srv/SetParametersAtomically]
+/imu_filter/describe_parameters [rcl_interfaces/srv/DescribeParameters]
+/imu_filter/get_parameter_types [rcl_interfaces/srv/GetParameterTypes]
+/imu_filter/get_parameters [rcl_interfaces/srv/GetParameters]
+/imu_filter/list_parameters [rcl_interfaces/srv/ListParameters]
+/imu_filter/set_parameters [rcl_interfaces/srv/SetParameters]
+/imu_filter/set_parameters_atomically [rcl_interfaces/srv/SetParametersAtomically]
+/init_pose/describe_parameters [rcl_interfaces/srv/DescribeParameters]
+/init_pose/get_parameter_types [rcl_interfaces/srv/GetParameterTypes]
+/init_pose/get_parameters [rcl_interfaces/srv/GetParameters]
+/init_pose/init_finish [std_srvs/srv/Trigger]
+/init_pose/list_parameters [rcl_interfaces/srv/ListParameters]
+/init_pose/set_parameters [rcl_interfaces/srv/SetParameters]
+/init_pose/set_parameters_atomically [rcl_interfaces/srv/SetParametersAtomically]
+/joint_state_publisher/describe_parameters [rcl_interfaces/srv/DescribeParameters]
+/joint_state_publisher/get_parameter_types [rcl_interfaces/srv/GetParameterTypes]
+/joint_state_publisher/get_parameters [rcl_interfaces/srv/GetParameters]
+/joint_state_publisher/list_parameters [rcl_interfaces/srv/ListParameters]
+/joint_state_publisher/set_parameters [rcl_interfaces/srv/SetParameters]
+/joint_state_publisher/set_parameters_atomically [rcl_interfaces/srv/SetParametersAtomically]
+/joystick_control/describe_parameters [rcl_interfaces/srv/DescribeParameters]
+/joystick_control/get_parameter_types [rcl_interfaces/srv/GetParameterTypes]
+/joystick_control/get_parameters [rcl_interfaces/srv/GetParameters]
+/joystick_control/init_finish [std_srvs/srv/Trigger]
+/joystick_control/list_parameters [rcl_interfaces/srv/ListParameters]
+/joystick_control/set_parameters [rcl_interfaces/srv/SetParameters]
+/joystick_control/set_parameters_atomically [rcl_interfaces/srv/SetParametersAtomically]
+/launch_ros_706/describe_parameters [rcl_interfaces/srv/DescribeParameters]
+/launch_ros_706/get_parameter_types [rcl_interfaces/srv/GetParameterTypes]
+/launch_ros_706/get_parameters [rcl_interfaces/srv/GetParameters]
+/launch_ros_706/list_parameters [rcl_interfaces/srv/ListParameters]
+/launch_ros_706/set_parameters [rcl_interfaces/srv/SetParameters]
+/launch_ros_706/set_parameters_atomically [rcl_interfaces/srv/SetParametersAtomically]
+/lidar_app/describe_parameters [rcl_interfaces/srv/DescribeParameters]
+/lidar_app/enter [std_srvs/srv/Trigger]
+/lidar_app/exit [std_srvs/srv/Trigger]
+/lidar_app/get_parameter_types [rcl_interfaces/srv/GetParameterTypes]
+/lidar_app/get_parameters [rcl_interfaces/srv/GetParameters]
+/lidar_app/heartbeat [std_srvs/srv/SetBool]
+/lidar_app/init_finish [std_srvs/srv/Trigger]
+/lidar_app/list_parameters [rcl_interfaces/srv/ListParameters]
+/lidar_app/set_param [interfaces/srv/SetFloat64List]
+/lidar_app/set_parameters [rcl_interfaces/srv/SetParameters]
+/lidar_app/set_parameters_atomically [rcl_interfaces/srv/SetParametersAtomically]
+/lidar_app/set_running [interfaces/srv/SetInt64]
+/line_following/describe_parameters [rcl_interfaces/srv/DescribeParameters]
+/line_following/enter [std_srvs/srv/Trigger]
+/line_following/exit [std_srvs/srv/Trigger]
+/line_following/get_parameter_types [rcl_interfaces/srv/GetParameterTypes]
+/line_following/get_parameters [rcl_interfaces/srv/GetParameters]
+/line_following/get_target_color [std_srvs/srv/Trigger]
+/line_following/heartbeat [std_srvs/srv/SetBool]
+/line_following/init_finish [std_srvs/srv/Trigger]
+/line_following/list_parameters [rcl_interfaces/srv/ListParameters]
+/line_following/set_color [interfaces/srv/SetString]
+/line_following/set_parameters [rcl_interfaces/srv/SetParameters]
+/line_following/set_parameters_atomically [rcl_interfaces/srv/SetParametersAtomically]
+/line_following/set_running [std_srvs/srv/SetBool]
+/line_following/set_target_color [interfaces/srv/SetPoint]
+/line_following/set_threshold [interfaces/srv/SetFloat64]
+/object_tracking/describe_parameters [rcl_interfaces/srv/DescribeParameters]
+/object_tracking/enter [std_srvs/srv/Trigger]
+/object_tracking/exit [std_srvs/srv/Trigger]
+/object_tracking/get_parameter_types [rcl_interfaces/srv/GetParameterTypes]
+/object_tracking/get_parameters [rcl_interfaces/srv/GetParameters]
+/object_tracking/get_target_color [std_srvs/srv/Trigger]
+/object_tracking/heartbeat [std_srvs/srv/SetBool]
+/object_tracking/init_finish [std_srvs/srv/Trigger]
+/object_tracking/list_parameters [rcl_interfaces/srv/ListParameters]
+/object_tracking/set_color [interfaces/srv/SetString]
+/object_tracking/set_parameters [rcl_interfaces/srv/SetParameters]
+/object_tracking/set_parameters_atomically [rcl_interfaces/srv/SetParametersAtomically]
+/object_tracking/set_running [std_srvs/srv/SetBool]
+/object_tracking/set_target_color [interfaces/srv/SetPoint]
+/object_tracking/set_threshold [interfaces/srv/SetFloat64]
+/odom_publisher/describe_parameters [rcl_interfaces/srv/DescribeParameters]
+/odom_publisher/get_parameter_types [rcl_interfaces/srv/GetParameterTypes]
+/odom_publisher/get_parameters [rcl_interfaces/srv/GetParameters]
+/odom_publisher/init_finish [std_srvs/srv/Trigger]
+/odom_publisher/list_parameters [rcl_interfaces/srv/ListParameters]
+/odom_publisher/set_parameters [rcl_interfaces/srv/SetParameters]
+/odom_publisher/set_parameters_atomically [rcl_interfaces/srv/SetParametersAtomically]
+/robot_state_publisher/describe_parameters [rcl_interfaces/srv/DescribeParameters]
+/robot_state_publisher/get_parameter_types [rcl_interfaces/srv/GetParameterTypes]
+/robot_state_publisher/get_parameters [rcl_interfaces/srv/GetParameters]
+/robot_state_publisher/list_parameters [rcl_interfaces/srv/ListParameters]
+/robot_state_publisher/set_parameters [rcl_interfaces/srv/SetParameters]
+/robot_state_publisher/set_parameters_atomically [rcl_interfaces/srv/SetParametersAtomically]
+/ros_robot_controller/bus_servo/get_state [ros_robot_controller_msgs/srv/GetBusServoState]
+/ros_robot_controller/describe_parameters [rcl_interfaces/srv/DescribeParameters]
+/ros_robot_controller/get_parameter_types [rcl_interfaces/srv/GetParameterTypes]
+/ros_robot_controller/get_parameters [rcl_interfaces/srv/GetParameters]
+/ros_robot_controller/init_finish [std_srvs/srv/Trigger]
+/ros_robot_controller/list_parameters [rcl_interfaces/srv/ListParameters]
+/ros_robot_controller/pwm_servo/get_state [ros_robot_controller_msgs/srv/GetPWMServoState]
+/ros_robot_controller/set_parameters [rcl_interfaces/srv/SetParameters]
+/ros_robot_controller/set_parameters_atomically [rcl_interfaces/srv/SetParametersAtomically]
+/rosapi/action_servers [rosapi_msgs/srv/GetActionServers]
+/rosapi/delete_param [rosapi_msgs/srv/DeleteParam]
+/rosapi/describe_parameters [rcl_interfaces/srv/DescribeParameters]
+/rosapi/get_param [rosapi_msgs/srv/GetParam]
+/rosapi/get_param_names [rosapi_msgs/srv/GetParamNames]
+/rosapi/get_parameter_types [rcl_interfaces/srv/GetParameterTypes]
+/rosapi/get_parameters [rcl_interfaces/srv/GetParameters]
+/rosapi/get_ros_version [rosapi_msgs/srv/GetROSVersion]
+/rosapi/get_time [rosapi_msgs/srv/GetTime]
+/rosapi/has_param [rosapi_msgs/srv/HasParam]
+/rosapi/interfaces [rosapi_msgs/srv/Interfaces]
+/rosapi/list_parameters [rcl_interfaces/srv/ListParameters]
+/rosapi/message_details [rosapi_msgs/srv/MessageDetails]
+/rosapi/node_details [rosapi_msgs/srv/NodeDetails]
+/rosapi/nodes [rosapi_msgs/srv/Nodes]
+/rosapi/publishers [rosapi_msgs/srv/Publishers]
+/rosapi/service_node [rosapi_msgs/srv/ServiceNode]
+/rosapi/service_providers [rosapi_msgs/srv/ServiceProviders]
+/rosapi/service_request_details [rosapi_msgs/srv/ServiceRequestDetails]
+/rosapi/service_response_details [rosapi_msgs/srv/ServiceResponseDetails]
+/rosapi/service_type [rosapi_msgs/srv/ServiceType]
+/rosapi/services [rosapi_msgs/srv/Services]
+/rosapi/services_for_type [rosapi_msgs/srv/ServicesForType]
+/rosapi/set_param [rosapi_msgs/srv/SetParam]
+/rosapi/set_parameters [rcl_interfaces/srv/SetParameters]
+/rosapi/set_parameters_atomically [rcl_interfaces/srv/SetParametersAtomically]
+/rosapi/subscribers [rosapi_msgs/srv/Subscribers]
+/rosapi/topic_type [rosapi_msgs/srv/TopicType]
+/rosapi/topics [rosapi_msgs/srv/Topics]
+/rosapi/topics_and_raw_types [rosapi_msgs/srv/TopicsAndRawTypes]
+/rosapi/topics_for_type [rosapi_msgs/srv/TopicsForType]
+/rosbridge_websocket/describe_parameters [rcl_interfaces/srv/DescribeParameters]
+/rosbridge_websocket/get_parameter_types [rcl_interfaces/srv/GetParameterTypes]
+/rosbridge_websocket/get_parameters [rcl_interfaces/srv/GetParameters]
+/rosbridge_websocket/list_parameters [rcl_interfaces/srv/ListParameters]
+/rosbridge_websocket/set_parameters [rcl_interfaces/srv/SetParameters]
+/rosbridge_websocket/set_parameters_atomically [rcl_interfaces/srv/SetParametersAtomically]
+/scan_to_scan_filter_chain/describe_parameters [rcl_interfaces/srv/DescribeParameters]
+/scan_to_scan_filter_chain/get_parameter_types [rcl_interfaces/srv/GetParameterTypes]
+/scan_to_scan_filter_chain/get_parameters [rcl_interfaces/srv/GetParameters]
+/scan_to_scan_filter_chain/list_parameters [rcl_interfaces/srv/ListParameters]
+/scan_to_scan_filter_chain/set_parameters [rcl_interfaces/srv/SetParameters]
+/scan_to_scan_filter_chain/set_parameters_atomically [rcl_interfaces/srv/SetParametersAtomically]
+/servo_manager/describe_parameters [rcl_interfaces/srv/DescribeParameters]
+/servo_manager/get_parameter_types [rcl_interfaces/srv/GetParameterTypes]
+/servo_manager/get_parameters [rcl_interfaces/srv/GetParameters]
+/servo_manager/list_parameters [rcl_interfaces/srv/ListParameters]
+/servo_manager/set_parameters [rcl_interfaces/srv/SetParameters]
+/servo_manager/set_parameters_atomically [rcl_interfaces/srv/SetParametersAtomically]
+/set_pose [robot_localization/srv/SetPose]
+/toggle [robot_localization/srv/ToggleFilterProcessing]
+/web_video_server/describe_parameters [rcl_interfaces/srv/DescribeParameters]
+/web_video_server/get_parameter_types [rcl_interfaces/srv/GetParameterTypes]
+/web_video_server/get_parameters [rcl_interfaces/srv/GetParameters]
+/web_video_server/list_parameters [rcl_interfaces/srv/ListParameters]
+/web_video_server/set_parameters [rcl_interfaces/srv/SetParameters]
+/web_video_server/set_parameters_atomically [rcl_interfaces/srv/SetParametersAtomically]
+
+
+===== 액션 (타입) =====
+$ ros2 action list -t
+/arm_controller/follow_joint_trajectory [control_msgs/action/FollowJointTrajectory]
+/gripper_controller/follow_joint_trajectory [control_msgs/action/FollowJointTrajectory]
+
+
+===== 설치된 패키지 =====
+$ ros2 pkg list
+action_msgs
+action_tutorials_cpp
+action_tutorials_interfaces
+action_tutorials_py
+actionlib_msgs
+ament_cmake
+ament_cmake_auto
+ament_cmake_copyright
+ament_cmake_core
+ament_cmake_cppcheck
+ament_cmake_cpplint
+ament_cmake_export_definitions
+ament_cmake_export_dependencies
+ament_cmake_export_include_directories
+ament_cmake_export_interfaces
+ament_cmake_export_libraries
+ament_cmake_export_link_flags
+ament_cmake_export_targets
+ament_cmake_flake8
+ament_cmake_gen_version_h
+ament_cmake_gmock
+ament_cmake_gtest
+ament_cmake_include_directories
+ament_cmake_libraries
+ament_cmake_lint_cmake
+ament_cmake_pep257
+ament_cmake_pytest
+ament_cmake_python
+ament_cmake_ros
+ament_cmake_target_dependencies
+ament_cmake_test
+ament_cmake_uncrustify
+ament_cmake_version
+ament_cmake_xmllint
+ament_copyright
+ament_cppcheck
+ament_cpplint
+ament_flake8
+ament_index_cpp
+ament_index_python
+ament_lint
+ament_lint_auto
+ament_lint_cmake
+ament_lint_common
+ament_package
+ament_pep257
+ament_uncrustify
+ament_xmllint
+angles
+app
+apriltag_msgs
+aruco_msgs
+aruco_opencv_msgs
+ascamera_listener
+behaviortree_cpp_v3
+bond
+bondcpp
+bringup
+builtin_interfaces
+calibration
+camera_calibration_parsers
+camera_info_manager
+class_loader
+common_interfaces
+composition
+composition_interfaces
+compressed_depth_image_transport
+compressed_image_transport
+console_bridge_vendor
+control_msgs
+controller
+costmap_converter
+costmap_converter_msgs
+costmap_queue
+cv_bridge
+demo_nodes_cpp
+demo_nodes_cpp_native
+demo_nodes_py
+depthimage_to_laserscan
+desktop
+diagnostic_msgs
+diagnostic_updater
+domain_coordinator
+dummy_map_server
+dummy_robot_bringup
+dummy_sensors
+dwb_core
+dwb_critics
+dwb_msgs
+dwb_plugins
+eigen3_cmake_module
+example
+example_interfaces
+examples_rclcpp_minimal_action_client
+examples_rclcpp_minimal_action_server
+examples_rclcpp_minimal_client
+examples_rclcpp_minimal_composition
+examples_rclcpp_minimal_publisher
+examples_rclcpp_minimal_service
+examples_rclcpp_minimal_subscriber
+examples_rclcpp_minimal_timer
+examples_rclcpp_multithreaded_executor
+examples_rclpy_executors
+examples_rclpy_minimal_action_client
+examples_rclpy_minimal_action_server
+examples_rclpy_minimal_client
+examples_rclpy_minimal_publisher
+examples_rclpy_minimal_service
+examples_rclpy_minimal_subscriber
+fastrtps_cmake_module
+filters
+geographic_msgs
+geometry2
+geometry_msgs
+grid_map_core
+grid_map_cv
+grid_map_msgs
+grid_map_ros
+image_geometry
+image_publisher
+image_tools
+image_transport
+image_transport_plugins
+imu_calib
+imu_complementary_filter
+imu_filter_madgwick
+interactive_markers
+interfaces
+intra_process_demo
+jetrover_description
+joint_state_publisher
+joint_state_publisher_gui
+joy
+kdl_parser
+keyboard_handler
+kinematics
+kinematics_msgs
+large_models
+large_models_examples
+large_models_msgs
+laser_filters
+laser_geometry
+launch
+launch_ros
+launch_testing
+launch_testing_ament_cmake
+launch_testing_ros
+launch_xml
+launch_yaml
+ldlidar_stl_ros2
+libcurl_vendor
+libstatistics_collector
+libyaml_vendor
+lifecycle
+lifecycle_msgs
+logging_demo
+map_msgs
+message_filters
+nav2_amcl
+nav2_behavior_tree
+nav2_behaviors
+nav2_bringup
+nav2_bt_navigator
+nav2_collision_monitor
+nav2_common
+nav2_constrained_smoother
+nav2_controller
+nav2_core
+nav2_costmap_2d
+nav2_dwb_controller
+nav2_lifecycle_manager
+nav2_map_server
+nav2_mppi_controller
+nav2_msgs
+nav2_navfn_planner
+nav2_planner
+nav2_regulated_pure_pursuit_controller
+nav2_rotation_shim_controller
+nav2_rviz_plugins
+nav2_simple_commander
+nav2_smac_planner
+nav2_smoother
+nav2_theta_star_planner
+nav2_util
+nav2_velocity_smoother
+nav2_voxel_grid
+nav2_waypoint_follower
+nav_2d_msgs
+nav_2d_utils
+nav_msgs
+navigation
+navigation2
+octomap_msgs
+ompl
+orbbec_camera
+orbbec_camera_msgs
+orbbec_description
+orocos_kdl_vendor
+osrf_pycommon
+pcl_conversions
+pcl_msgs
+pcl_ros
+pendulum_control
+pendulum_msgs
+peripherals
+pluginlib
+pybind11_vendor
+python_cmake_module
+python_orocos_kdl_vendor
+python_qt_binding
+qt_dotgraph
+qt_gui
+qt_gui_cpp
+qt_gui_py_common
+quality_of_service_demo_cpp
+quality_of_service_demo_py
+rcl
+rcl_action
+rcl_interfaces
+rcl_lifecycle
+rcl_logging_interface
+rcl_logging_spdlog
+rcl_yaml_param_parser
+rclcpp
+rclcpp_action
+rclcpp_components
+rclcpp_lifecycle
+rclpy
+rcpputils
+rcutils
+realsense2_camera
+realsense2_camera_msgs
+resource_retriever
+rf2o_laser_odometry
+rmw
+rmw_cyclonedds_cpp
+rmw_dds_common
+rmw_fastrtps_cpp
+rmw_fastrtps_shared_cpp
+rmw_implementation
+rmw_implementation_cmake
+robot_localization
+robot_state_publisher
+ros2action
+ros2bag
+ros2cli
+ros2cli_common_extensions
+ros2component
+ros2doctor
+ros2interface
+ros2launch
+ros2lifecycle
+ros2multicast
+ros2node
+ros2param
+ros2pkg
+ros2run
+ros2service
+ros2topic
+ros_base
+ros_core
+ros_environment
+ros_robot_controller
+ros_robot_controller_msgs
+ros_workspace
+rosapi
+rosapi_msgs
+rosbag2
+rosbag2_compression
+rosbag2_compression_zstd
+rosbag2_cpp
+rosbag2_interfaces
+rosbag2_py
+rosbag2_storage
+rosbag2_storage_default_plugins
+rosbag2_transport
+rosbridge_library
+rosbridge_msgs
+rosbridge_server
+rosgraph_msgs
+rosidl_adapter
+rosidl_cli
+rosidl_cmake
+rosidl_default_generators
+rosidl_default_runtime
+rosidl_generator_c
+rosidl_generator_cpp
+rosidl_generator_py
+rosidl_parser
+rosidl_runtime_c
+rosidl_runtime_cpp
+rosidl_runtime_py
+rosidl_typesupport_c
+rosidl_typesupport_cpp
+rosidl_typesupport_fastrtps_c
+rosidl_typesupport_fastrtps_cpp
+rosidl_typesupport_interface
+rosidl_typesupport_introspection_c
+rosidl_typesupport_introspection_cpp
+rpyutils
+rqt
+rqt_action
+rqt_bag
+rqt_bag_plugins
+rqt_common_plugins
+rqt_console
+rqt_graph
+rqt_gui
+rqt_gui_cpp
+rqt_gui_py
+rqt_image_view
+rqt_msg
+rqt_plot
+rqt_publisher
+rqt_py_common
+rqt_py_console
+rqt_reconfigure
+rqt_service_caller
+rqt_shell
+rqt_srv
+rqt_topic
+rtabmap_conversions
+rtabmap_demos
+rtabmap_examples
+rtabmap_launch
+rtabmap_msgs
+rtabmap_odom
+rtabmap_python
+rtabmap_ros
+rtabmap_rviz_plugins
+rtabmap_slam
+rtabmap_sync
+rtabmap_util
+rtabmap_viz
+rttest
+rviz2
+rviz_assimp_vendor
+rviz_common
+rviz_default_plugins
+rviz_ogre_vendor
+rviz_rendering
+sdk
+sdl2_vendor
+sensor_msgs
+sensor_msgs_py
+servo_controller
+servo_controller_msgs
+shape_msgs
+shared_queues_vendor
+slam
+slam_toolbox
+sllidar_ros2
+smclib
+spdlog_vendor
+sqlite3_vendor
+sros2
+sros2_cmake
+statistics_msgs
+std_msgs
+std_srvs
+stereo_msgs
+tango_icons_vendor
+teb_local_planner
+teb_msgs
+teleop_twist_joy
+teleop_twist_keyboard
+tf2
+tf2_bullet
+tf2_eigen
+tf2_eigen_kdl
+tf2_geometry_msgs
+tf2_kdl
+tf2_msgs
+tf2_py
+tf2_ros
+tf2_ros_py
+tf2_sensor_msgs
+tf2_tools
+theora_image_transport
+tinyxml2_vendor
+tinyxml_vendor
+tlsf
+tlsf_cpp
+topic_monitor
+tracetools
+trajectory_msgs
+turtlesim
+uncrustify_vendor
+unique_identifier_msgs
+urdf
+urdf_parser_plugin
+usb_cam
+velodyne
+velodyne_driver
+velodyne_laserscan
+velodyne_msgs
+velodyne_pointcloud
+visualization_msgs
+web_video_server
+xacro
+xf_mic_asr_offline
+xf_mic_asr_offline_msgs
+yaml_cpp_vendor
+ydlidar_ros2_driver
+zstd_vendor
+
+
+===== 커스텀 인터페이스 (msg/srv/action) =====
+$ ros2 interface list | grep -vE '^ *(std_msgs|geometry_msgs|sensor_msgs|nav_msgs|builtin_interfaces|rcl_interfaces|action_msgs|unique_identifier_msgs|lifecycle_msgs|statistics_msgs|rosgraph_msgs|type_description_interfaces|service_msgs|diagnostic_msgs|shape_msgs|stereo_msgs|trajectory_msgs|visualization_msgs|tf2_msgs|actionlib_msgs|std_srvs|composition_interfaces|example_interfaces|test_msgs|pcl_msgs)/'
+Messages:
+    apriltag_msgs/msg/AprilTagDetection
+    apriltag_msgs/msg/AprilTagDetectionArray
+    aruco_msgs/msg/Marker
+    aruco_msgs/msg/MarkerArray
+    aruco_opencv_msgs/msg/ArucoDetection
+    aruco_opencv_msgs/msg/BoardPose
+    aruco_opencv_msgs/msg/MarkerPose
+    bond/msg/Constants
+    bond/msg/Status
+    control_msgs/msg/AdmittanceControllerState
+    control_msgs/msg/DynamicInterfaceGroupValues
+    control_msgs/msg/DynamicJointState
+    control_msgs/msg/GripperCommand
+    control_msgs/msg/InterfaceValue
+    control_msgs/msg/JointComponentTolerance
+    control_msgs/msg/JointControllerState
+    control_msgs/msg/JointJog
+    control_msgs/msg/JointTolerance
+    control_msgs/msg/JointTrajectoryControllerState
+    control_msgs/msg/MecanumDriveControllerState
+    control_msgs/msg/MultiDOFCommand
+    control_msgs/msg/MultiDOFStateStamped
+    control_msgs/msg/PidState
+    control_msgs/msg/SingleDOFState
+    control_msgs/msg/SingleDOFStateStamped
+    control_msgs/msg/SteeringControllerStatus
+    costmap_converter_msgs/msg/ObstacleArrayMsg
+    costmap_converter_msgs/msg/ObstacleMsg
+    dwb_msgs/msg/CriticScore
+    dwb_msgs/msg/LocalPlanEvaluation
+    dwb_msgs/msg/Trajectory2D
+    dwb_msgs/msg/TrajectoryScore
+    geographic_msgs/msg/BoundingBox
+    geographic_msgs/msg/GeoPath
+    geographic_msgs/msg/GeoPoint
+    geographic_msgs/msg/GeoPointStamped
+    geographic_msgs/msg/GeoPose
+    geographic_msgs/msg/GeoPoseStamped
+    geographic_msgs/msg/GeoPoseWithCovariance
+    geographic_msgs/msg/GeoPoseWithCovarianceStamped
+    geographic_msgs/msg/GeographicMap
+    geographic_msgs/msg/GeographicMapChanges
+    geographic_msgs/msg/KeyValue
+    geographic_msgs/msg/MapFeature
+    geographic_msgs/msg/RouteNetwork
+    geographic_msgs/msg/RoutePath
+    geographic_msgs/msg/RouteSegment
+    geographic_msgs/msg/WayPoint
+    grid_map_msgs/msg/GridMap
+    grid_map_msgs/msg/GridMapInfo
+    interfaces/msg/ColorDetect
+    interfaces/msg/ColorInfo
+    interfaces/msg/ColorsInfo
+    interfaces/msg/LineROI
+    interfaces/msg/ObjectInfo
+    interfaces/msg/ObjectsInfo
+    interfaces/msg/PixelPosition
+    interfaces/msg/Point2D
+    interfaces/msg/Points
+    interfaces/msg/Pose2D
+    interfaces/msg/ROI
+    kinematics_msgs/msg/JointRange
+    kinematics_msgs/msg/JointsRange
+    kinematics_msgs/msg/Link
+    large_models_msgs/msg/AgentResult
+    large_models_msgs/msg/Tools
+    large_models_msgs/msg/Transport
+    map_msgs/msg/OccupancyGridUpdate
+    map_msgs/msg/PointCloud2Update
+    map_msgs/msg/ProjectedMap
+    map_msgs/msg/ProjectedMapInfo
+    nav2_msgs/msg/BehaviorTreeLog
+    nav2_msgs/msg/BehaviorTreeStatusChange
+    nav2_msgs/msg/CollisionMonitorState
+    nav2_msgs/msg/Costmap
+    nav2_msgs/msg/CostmapFilterInfo
+    nav2_msgs/msg/CostmapMetaData
+    nav2_msgs/msg/EdgeCost
+    nav2_msgs/msg/Particle
+    nav2_msgs/msg/ParticleCloud
+    nav2_msgs/msg/Route
+    nav2_msgs/msg/RouteEdge
+    nav2_msgs/msg/RouteNode
+    nav2_msgs/msg/SpeedLimit
+    nav2_msgs/msg/VoxelGrid
+    nav_2d_msgs/msg/Path2D
+    nav_2d_msgs/msg/Pose2D32
+    nav_2d_msgs/msg/Pose2DStamped
+    nav_2d_msgs/msg/Twist2D
+    nav_2d_msgs/msg/Twist2D32
+    nav_2d_msgs/msg/Twist2DStamped
+    octomap_msgs/msg/Octomap
+    octomap_msgs/msg/OctomapWithPose
+    orbbec_camera_msgs/msg/DeviceInfo
+    orbbec_camera_msgs/msg/Extrinsics
+    orbbec_camera_msgs/msg/IMUInfo
+    orbbec_camera_msgs/msg/Metadata
+    orbbec_camera_msgs/msg/RGBD
+    pendulum_msgs/msg/JointCommand
+    pendulum_msgs/msg/JointState
+    pendulum_msgs/msg/RttestResults
+    realsense2_camera_msgs/msg/Extrinsics
+    realsense2_camera_msgs/msg/IMUInfo
+    realsense2_camera_msgs/msg/Metadata
+    realsense2_camera_msgs/msg/RGBD
+    rmw_dds_common/msg/Gid
+    rmw_dds_common/msg/NodeEntitiesInfo
+    rmw_dds_common/msg/ParticipantEntitiesInfo
+    ros_robot_controller_msgs/msg/BusServoState
+    ros_robot_controller_msgs/msg/ButtonState
+    ros_robot_controller_msgs/msg/BuzzerState
+    ros_robot_controller_msgs/msg/GetBusServoCmd
+    ros_robot_controller_msgs/msg/GetPWMServoCmd
+    ros_robot_controller_msgs/msg/LedState
+    ros_robot_controller_msgs/msg/MotorState
+    ros_robot_controller_msgs/msg/MotorsState
+    ros_robot_controller_msgs/msg/OLEDState
+    ros_robot_controller_msgs/msg/PWMServoState
+    ros_robot_controller_msgs/msg/Sbus
+    ros_robot_controller_msgs/msg/ServoPosition
+    ros_robot_controller_msgs/msg/ServosPosition
+    ros_robot_controller_msgs/msg/SetBusServoState
+    ros_robot_controller_msgs/msg/SetPWMServoState
+    rosapi_msgs/msg/TypeDef
+    rosbag2_interfaces/msg/ReadSplitEvent
+    rosbag2_interfaces/msg/WriteSplitEvent
+    rosbridge_msgs/msg/ConnectedClient
+    rosbridge_msgs/msg/ConnectedClients
+    rtabmap_msgs/msg/CameraModel
+    rtabmap_msgs/msg/CameraModels
+    rtabmap_msgs/msg/EnvSensor
+    rtabmap_msgs/msg/GPS
+    rtabmap_msgs/msg/GlobalDescriptor
+    rtabmap_msgs/msg/Goal
+    rtabmap_msgs/msg/Info
+    rtabmap_msgs/msg/KeyPoint
+    rtabmap_msgs/msg/LandmarkDetection
+    rtabmap_msgs/msg/LandmarkDetections
+    rtabmap_msgs/msg/Link
+    rtabmap_msgs/msg/MapData
+    rtabmap_msgs/msg/MapGraph
+    rtabmap_msgs/msg/Node
+    rtabmap_msgs/msg/OdomInfo
+    rtabmap_msgs/msg/Path
+    rtabmap_msgs/msg/Point2f
+    rtabmap_msgs/msg/Point3f
+    rtabmap_msgs/msg/RGBDImage
+    rtabmap_msgs/msg/RGBDImages
+    rtabmap_msgs/msg/ScanDescriptor
+    rtabmap_msgs/msg/SensorData
+    rtabmap_msgs/msg/UserData
+    servo_controller_msgs/msg/ServoPosition
+    servo_controller_msgs/msg/ServoState
+    servo_controller_msgs/msg/ServoStateList
+    servo_controller_msgs/msg/ServosPosition
+    teb_msgs/msg/FeedbackMsg
+    teb_msgs/msg/TrajectoryMsg
+    teb_msgs/msg/TrajectoryPointMsg
+    theora_image_transport/msg/Packet
+    turtlesim/msg/Color
+    turtlesim/msg/Pose
+    velodyne_msgs/msg/VelodynePacket
+    velodyne_msgs/msg/VelodyneScan
+Services:
+    control_msgs/srv/QueryCalibrationState
+    control_msgs/srv/QueryTrajectoryState
+    dwb_msgs/srv/DebugLocalPlan
+    dwb_msgs/srv/GenerateTrajectory
+    dwb_msgs/srv/GenerateTwists
+    dwb_msgs/srv/GetCriticScore
+    dwb_msgs/srv/ScoreTrajectory
+    geographic_msgs/srv/GetGeoPath
+    geographic_msgs/srv/GetGeographicMap
+    geographic_msgs/srv/GetRoutePlan
+    geographic_msgs/srv/UpdateGeographicMap
+    grid_map_msgs/srv/GetGridMap
+    grid_map_msgs/srv/GetGridMapInfo
+    grid_map_msgs/srv/ProcessFile
+    grid_map_msgs/srv/SetGridMap
+    interfaces/srv/GetPose
+    interfaces/srv/SetBox
+    interfaces/srv/SetCircleROI
+    interfaces/srv/SetColorDetectParam
+    interfaces/srv/SetColorRGBA
+    interfaces/srv/SetFloat64
+    interfaces/srv/SetFloat64List
+    interfaces/srv/SetInt64
+    interfaces/srv/SetLineROI
+    interfaces/srv/SetPoint
+    interfaces/srv/SetPose
+    interfaces/srv/SetPose2D
+    interfaces/srv/SetString
+    interfaces/srv/SetStringBool
+    interfaces/srv/SetStringList
+    kinematics_msgs/srv/GetJointRange
+    kinematics_msgs/srv/GetLink
+    kinematics_msgs/srv/GetRobotPose
+    kinematics_msgs/srv/SetJointRange
+    kinematics_msgs/srv/SetJointValue
+    kinematics_msgs/srv/SetLink
+    kinematics_msgs/srv/SetRobotPose
+    large_models_msgs/srv/SetBox
+    large_models_msgs/srv/SetContent
+    large_models_msgs/srv/SetInt32
+    large_models_msgs/srv/SetModel
+    large_models_msgs/srv/SetString
+    large_models_msgs/srv/SetTools
+    large_models_msgs/srv/SetTransportObject
+    logging_demo/srv/ConfigLogger
+    map_msgs/srv/GetMapROI
+    map_msgs/srv/GetPointMap
+    map_msgs/srv/GetPointMapROI
+    map_msgs/srv/ProjectedMapsInfo
+    map_msgs/srv/SaveMap
+    map_msgs/srv/SetMapProjections
+    nav2_msgs/srv/ClearCostmapAroundRobot
+    nav2_msgs/srv/ClearCostmapExceptRegion
+    nav2_msgs/srv/ClearEntireCostmap
+    nav2_msgs/srv/DynamicEdges
+    nav2_msgs/srv/GetCostmap
+    nav2_msgs/srv/IsPathValid
+    nav2_msgs/srv/LoadMap
+    nav2_msgs/srv/ManageLifecycleNodes
+    nav2_msgs/srv/SaveMap
+    nav2_msgs/srv/SetInitialPose
+    nav2_msgs/srv/SetRouteGraph
+    octomap_msgs/srv/BoundingBoxQuery
+    octomap_msgs/srv/GetOctomap
+    orbbec_camera_msgs/srv/GetBool
+    orbbec_camera_msgs/srv/GetCameraInfo
+    orbbec_camera_msgs/srv/GetDeviceInfo
+    orbbec_camera_msgs/srv/GetInt32
+    orbbec_camera_msgs/srv/GetString
+    orbbec_camera_msgs/srv/SetInt32
+    orbbec_camera_msgs/srv/SetString
+    realsense2_camera_msgs/srv/CalibConfigRead
+    realsense2_camera_msgs/srv/CalibConfigWrite
+    realsense2_camera_msgs/srv/DeviceInfo
+    robot_localization/srv/FromLL
+    robot_localization/srv/GetState
+    robot_localization/srv/SetDatum
+    robot_localization/srv/SetPose
+    robot_localization/srv/ToLL
+    robot_localization/srv/ToggleFilterProcessing
+    ros_robot_controller_msgs/srv/GetBusServoState
+    ros_robot_controller_msgs/srv/GetPWMServoState
+    rosapi_msgs/srv/DeleteParam
+    rosapi_msgs/srv/GetActionServers
+    rosapi_msgs/srv/GetParam
+    rosapi_msgs/srv/GetParamNames
+    rosapi_msgs/srv/GetROSVersion
+    rosapi_msgs/srv/GetTime
+    rosapi_msgs/srv/HasParam
+    rosapi_msgs/srv/Interfaces
+    rosapi_msgs/srv/MessageDetails
+    rosapi_msgs/srv/NodeDetails
+    rosapi_msgs/srv/Nodes
+    rosapi_msgs/srv/Publishers
+    rosapi_msgs/srv/ServiceNode
+    rosapi_msgs/srv/ServiceProviders
+    rosapi_msgs/srv/ServiceRequestDetails
+    rosapi_msgs/srv/ServiceResponseDetails
+    rosapi_msgs/srv/ServiceType
+    rosapi_msgs/srv/Services
+    rosapi_msgs/srv/ServicesForType
+    rosapi_msgs/srv/SetParam
+    rosapi_msgs/srv/Subscribers
+    rosapi_msgs/srv/TopicType
+    rosapi_msgs/srv/Topics
+    rosapi_msgs/srv/TopicsAndRawTypes
+    rosapi_msgs/srv/TopicsForType
+    rosbag2_interfaces/srv/Burst
+    rosbag2_interfaces/srv/GetRate
+    rosbag2_interfaces/srv/IsPaused
+    rosbag2_interfaces/srv/Pause
+    rosbag2_interfaces/srv/PlayNext
+    rosbag2_interfaces/srv/Resume
+    rosbag2_interfaces/srv/Seek
+    rosbag2_interfaces/srv/SetRate
+    rosbag2_interfaces/srv/Snapshot
+    rosbag2_interfaces/srv/TogglePaused
+    rtabmap_msgs/srv/AddLink
+    rtabmap_msgs/srv/CleanupLocalGrids
+    rtabmap_msgs/srv/DetectMoreLoopClosures
+    rtabmap_msgs/srv/GetMap
+    rtabmap_msgs/srv/GetMap2
+    rtabmap_msgs/srv/GetNodeData
+    rtabmap_msgs/srv/GetNodesInRadius
+    rtabmap_msgs/srv/GetPlan
+    rtabmap_msgs/srv/GlobalBundleAdjustment
+    rtabmap_msgs/srv/ListLabels
+    rtabmap_msgs/srv/LoadDatabase
+    rtabmap_msgs/srv/PublishMap
+    rtabmap_msgs/srv/RemoveLabel
+    rtabmap_msgs/srv/ResetPose
+    rtabmap_msgs/srv/SetGoal
+    rtabmap_msgs/srv/SetLabel
+    slam_toolbox/srv/AddSubmap
+    slam_toolbox/srv/Clear
+    slam_toolbox/srv/ClearQueue
+    slam_toolbox/srv/DeserializePoseGraph
+    slam_toolbox/srv/LoopClosure
+    slam_toolbox/srv/MergeMaps
+    slam_toolbox/srv/Pause
+    slam_toolbox/srv/SaveMap
+    slam_toolbox/srv/SerializePoseGraph
+    slam_toolbox/srv/ToggleInteractive
+    turtlesim/srv/Kill
+    turtlesim/srv/SetPen
+    turtlesim/srv/Spawn
+    turtlesim/srv/TeleportAbsolute
+    turtlesim/srv/TeleportRelative
+    xf_mic_asr_offline_msgs/srv/GetOfflineResult
+    xf_mic_asr_offline_msgs/srv/SetString
+Actions:
+    action_tutorials_interfaces/action/Fibonacci
+    control_msgs/action/FollowJointTrajectory
+    control_msgs/action/GripperCommand
+    control_msgs/action/JointTrajectory
+    control_msgs/action/ParallelGripperCommand
+    control_msgs/action/PointHead
+    control_msgs/action/SingleJointPosition
+    nav2_msgs/action/AssistedTeleop
+    nav2_msgs/action/BackUp
+    nav2_msgs/action/ComputeAndTrackRoute
+    nav2_msgs/action/ComputePathThroughPoses
+    nav2_msgs/action/ComputePathToPose
+    nav2_msgs/action/ComputeRoute
+    nav2_msgs/action/DriveOnHeading
+    nav2_msgs/action/DummyBehavior
+    nav2_msgs/action/FollowPath
+    nav2_msgs/action/FollowWaypoints
+    nav2_msgs/action/NavigateThroughPoses
+    nav2_msgs/action/NavigateToPose
+    nav2_msgs/action/SmoothPath
+    nav2_msgs/action/Spin
+    nav2_msgs/action/Wait
+    realsense2_camera_msgs/action/TriggeredCalibration
+    turtlesim/action/RotateAbsolute
+

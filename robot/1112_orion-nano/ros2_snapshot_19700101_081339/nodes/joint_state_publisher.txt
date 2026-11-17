@@ -1,0 +1,38 @@
+# /joint_state_publisher
+## node info
+/joint_state_publisher
+  Subscribers:
+    /controller_manager/joint_states: sensor_msgs/msg/JointState
+    /robot_description: std_msgs/msg/String
+  Publishers:
+    /joint_states: sensor_msgs/msg/JointState
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /rosout: rcl_interfaces/msg/Log
+  Service Servers:
+    /joint_state_publisher/describe_parameters: rcl_interfaces/srv/DescribeParameters
+    /joint_state_publisher/get_parameter_types: rcl_interfaces/srv/GetParameterTypes
+    /joint_state_publisher/get_parameters: rcl_interfaces/srv/GetParameters
+    /joint_state_publisher/list_parameters: rcl_interfaces/srv/ListParameters
+    /joint_state_publisher/set_parameters: rcl_interfaces/srv/SetParameters
+    /joint_state_publisher/set_parameters_atomically: rcl_interfaces/srv/SetParametersAtomically
+  Service Clients:
+
+  Action Servers:
+
+  Action Clients:
+
+
+## param dump
+/joint_state_publisher:
+  ros__parameters:
+    delta: 0.0
+    publish_default_efforts: false
+    publish_default_positions: true
+    publish_default_velocities: false
+    rate: 20.0
+    source_list:
+    - /controller_manager/joint_states
+    use_mimic_tags: true
+    use_sim_time: false
+    use_smallest_joint_limits: true
+

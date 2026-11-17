@@ -1,0 +1,64 @@
+# /depth_cam/depth/image_raw/compressedDepth    [sensor_msgs/msg/CompressedImage]
+
+## info -v  (pub/sub 노드, QoS: reliability/durability)
+Type: sensor_msgs/msg/CompressedImage
+
+Publisher count: 1
+
+Node name: depth_cam
+Node namespace: /depth_cam
+Topic type: sensor_msgs/msg/CompressedImage
+Endpoint type: PUBLISHER
+GID: 01.0f.7f.01.ba.07.61.13.00.00.00.00.00.00.6d.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 0
+
+
+## 메시지 구조 (ros2 interface show)
+# This message contains a compressed image.
+
+std_msgs/Header header # Header timestamp should be acquisition time of image
+	builtin_interfaces/Time stamp
+		int32 sec
+		uint32 nanosec
+	string frame_id
+                             # Header frame_id should be optical frame of camera
+                             # origin of frame should be optical center of cameara
+                             # +x should point to the right in the image
+                             # +y should point down in the image
+                             # +z should point into to plane of the image
+
+string format                # Specifies the format of the data
+                             #   Acceptable values:
+                             #     jpeg, png, tiff
+
+uint8[] data                 # Compressed image buffer
+
+## 주기 (hz, 약 4초)
+WARNING: topic [/depth_cam/depth/image_raw/compressedDepth] does not appear to be published yet
+average rate: 31.135
+	min: 0.010s max: 0.042s std dev: 0.00698s window: 32
+Exception ignored in: <object repr() failed>
+Traceback (most recent call last):
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/task.py", line 54, in __del__
+    def __del__(self):
+KeyboardInterrupt: 
+failed to initialize wait set: the given context is not valid, either rcl_init() was not called or rcl_shutdown() was called., at ./src/rcl/wait.c:130
+
+## 샘플 1개 (배열 생략)
+header:
+  stamp:
+    sec: 968
+    nanosec: 449935000
+  frame_id: depth_cam_color_optical_frame
+format: 16UC1; compressedDepth
+data: '<sequence type: uint8, length: 72534>'
+---

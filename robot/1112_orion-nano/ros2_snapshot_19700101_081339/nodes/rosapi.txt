@@ -1,0 +1,57 @@
+# /rosapi
+## node info
+/rosapi
+  Subscribers:
+
+  Publishers:
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /rosout: rcl_interfaces/msg/Log
+  Service Servers:
+    /rosapi/action_servers: rosapi_msgs/srv/GetActionServers
+    /rosapi/delete_param: rosapi_msgs/srv/DeleteParam
+    /rosapi/describe_parameters: rcl_interfaces/srv/DescribeParameters
+    /rosapi/get_param: rosapi_msgs/srv/GetParam
+    /rosapi/get_param_names: rosapi_msgs/srv/GetParamNames
+    /rosapi/get_parameter_types: rcl_interfaces/srv/GetParameterTypes
+    /rosapi/get_parameters: rcl_interfaces/srv/GetParameters
+    /rosapi/get_ros_version: rosapi_msgs/srv/GetROSVersion
+    /rosapi/get_time: rosapi_msgs/srv/GetTime
+    /rosapi/has_param: rosapi_msgs/srv/HasParam
+    /rosapi/interfaces: rosapi_msgs/srv/Interfaces
+    /rosapi/list_parameters: rcl_interfaces/srv/ListParameters
+    /rosapi/message_details: rosapi_msgs/srv/MessageDetails
+    /rosapi/node_details: rosapi_msgs/srv/NodeDetails
+    /rosapi/nodes: rosapi_msgs/srv/Nodes
+    /rosapi/publishers: rosapi_msgs/srv/Publishers
+    /rosapi/service_node: rosapi_msgs/srv/ServiceNode
+    /rosapi/service_providers: rosapi_msgs/srv/ServiceProviders
+    /rosapi/service_request_details: rosapi_msgs/srv/ServiceRequestDetails
+    /rosapi/service_response_details: rosapi_msgs/srv/ServiceResponseDetails
+    /rosapi/service_type: rosapi_msgs/srv/ServiceType
+    /rosapi/services: rosapi_msgs/srv/Services
+    /rosapi/services_for_type: rosapi_msgs/srv/ServicesForType
+    /rosapi/set_param: rosapi_msgs/srv/SetParam
+    /rosapi/set_parameters: rcl_interfaces/srv/SetParameters
+    /rosapi/set_parameters_atomically: rcl_interfaces/srv/SetParametersAtomically
+    /rosapi/subscribers: rosapi_msgs/srv/Subscribers
+    /rosapi/topic_type: rosapi_msgs/srv/TopicType
+    /rosapi/topics: rosapi_msgs/srv/Topics
+    /rosapi/topics_and_raw_types: rosapi_msgs/srv/TopicsAndRawTypes
+    /rosapi/topics_for_type: rosapi_msgs/srv/TopicsForType
+  Service Clients:
+
+  Action Servers:
+
+  Action Clients:
+
+
+## param dump
+/rosapi:
+  ros__parameters:
+    params_glob: ''
+    params_timeout: 5.0
+    services_glob: ''
+    topics_glob: ''
+    use_private_service_names: false
+    use_sim_time: false
+

@@ -1,0 +1,65 @@
+# /imu_filter
+## node info
+/imu_filter
+  Subscribers:
+    /imu_corrected: sensor_msgs/msg/Imu
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+  Publishers:
+    /imu: sensor_msgs/msg/Imu
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /rosout: rcl_interfaces/msg/Log
+    /tf: tf2_msgs/msg/TFMessage
+  Service Servers:
+    /imu_filter/describe_parameters: rcl_interfaces/srv/DescribeParameters
+    /imu_filter/get_parameter_types: rcl_interfaces/srv/GetParameterTypes
+    /imu_filter/get_parameters: rcl_interfaces/srv/GetParameters
+    /imu_filter/list_parameters: rcl_interfaces/srv/ListParameters
+    /imu_filter/set_parameters: rcl_interfaces/srv/SetParameters
+    /imu_filter/set_parameters_atomically: rcl_interfaces/srv/SetParametersAtomically
+  Service Clients:
+    /imu_filter/describe_parameters: rcl_interfaces/srv/DescribeParameters
+    /imu_filter/get_parameter_types: rcl_interfaces/srv/GetParameterTypes
+    /imu_filter/get_parameters: rcl_interfaces/srv/GetParameters
+    /imu_filter/list_parameters: rcl_interfaces/srv/ListParameters
+    /imu_filter/set_parameters: rcl_interfaces/srv/SetParameters
+    /imu_filter/set_parameters_atomically: rcl_interfaces/srv/SetParametersAtomically
+  Action Servers:
+
+  Action Clients:
+
+
+## param dump
+/imu_filter:
+  ros__parameters:
+    constant_dt: 0.0
+    declination: 0.0
+    fixed_frame: imu_link
+    gain: 0.1
+    mag_bias_x: 0.0
+    mag_bias_y: 0.0
+    mag_bias_z: 0.0
+    orientation_stddev: 0.05
+    publish_debug_topics: false
+    publish_tf: false
+    qos_overrides:
+      /parameter_events:
+        publisher:
+          depth: 1000
+          durability: volatile
+          history: keep_last
+          reliability: reliable
+      /tf:
+        publisher:
+          depth: 100
+          durability: volatile
+          history: keep_last
+          reliability: reliable
+    remove_gravity_vector: false
+    reverse_tf: false
+    stateless: false
+    use_mag: false
+    use_sim_time: false
+    world_frame: enu
+    yaw_offset: 0.0
+    zeta: 0.0
+

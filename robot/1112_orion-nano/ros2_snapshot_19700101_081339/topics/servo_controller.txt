@@ -1,0 +1,133 @@
+# /servo_controller    [servo_controller_msgs/msg/ServosPosition]
+
+## info -v  (pub/sub 노드, QoS: reliability/durability)
+Type: servo_controller_msgs/msg/ServosPosition
+
+Publisher count: 7
+
+Node name: lidar_app
+Node namespace: /
+Topic type: servo_controller_msgs/msg/ServosPosition
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.30.08.d8.f4.00.00.00.00.00.00.1c.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: line_following
+Node namespace: /
+Topic type: servo_controller_msgs/msg/ServosPosition
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.35.08.17.2f.00.00.00.00.00.00.21.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: object_tracking
+Node namespace: /
+Topic type: servo_controller_msgs/msg/ServosPosition
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.44.08.fc.a5.00.00.00.00.00.00.21.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: hand_gesture
+Node namespace: /
+Topic type: servo_controller_msgs/msg/ServosPosition
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.5f.08.d7.05.00.00.00.00.00.00.18.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: hand_gesture
+Node namespace: /
+Topic type: servo_controller_msgs/msg/ServosPosition
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.5f.08.d7.05.00.00.00.00.00.00.1c.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: joystick_control
+Node namespace: /
+Topic type: servo_controller_msgs/msg/ServosPosition
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.6a.08.44.45.00.00.00.00.00.00.11.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: init_pose
+Node namespace: /
+Topic type: servo_controller_msgs/msg/ServosPosition
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.6f.08.40.27.00.00.00.00.00.00.11.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 1
+
+Node name: controller_manager
+Node namespace: /
+Topic type: servo_controller_msgs/msg/ServosPosition
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.64.5b.c8.07.c7.9a.00.00.00.00.00.00.50.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+
+## 메시지 구조 (ros2 interface show)
+float64 duration
+string position_unit
+servo_controller_msgs/ServoPosition[] position
+	uint16 id
+	float32 position
+
+## 주기 (hz, 약 3초)
+WARNING: topic [/servo_controller] does not appear to be published yet
+
+## 샘플 1개 (배열 생략)

@@ -1,0 +1,78 @@
+# /tf_static    [tf2_msgs/msg/TFMessage]
+
+## info -v  (pub/sub 노드, QoS: reliability/durability)
+Type: tf2_msgs/msg/TFMessage
+
+Publisher count: 2
+
+Node name: robot_state_publisher
+Node namespace: /
+Topic type: tf2_msgs/msg/TFMessage
+Endpoint type: PUBLISHER
+GID: 01.0f.7f.01.ad.07.91.e2.00.00.00.00.00.00.13.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: depth_cam
+Node namespace: /depth_cam
+Topic type: tf2_msgs/msg/TFMessage
+Endpoint type: PUBLISHER
+GID: 01.0f.7f.01.d3.07.5a.38.00.00.00.00.00.00.7a.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 1
+
+Node name: transform_listener_impl_aaaab9382fb0
+Node namespace: /
+Topic type: tf2_msgs/msg/TFMessage
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.7f.01.c0.07.b2.85.00.00.00.00.00.00.15.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+
+## 메시지 구조 (ros2 interface show)
+geometry_msgs/TransformStamped[] transforms
+	#
+	#
+	std_msgs/Header header
+		builtin_interfaces/Time stamp
+			int32 sec
+			uint32 nanosec
+		string frame_id
+	string child_frame_id
+	Transform transform
+		Vector3 translation
+			float64 x
+			float64 y
+			float64 z
+		Quaternion rotation
+			float64 x 0
+			float64 y 0
+			float64 z 0
+			float64 w 1
+
+## 주기 (hz, 약 3초)
+
+## 샘플 1개 (배열 생략)
+transforms: '<sequence type: geometry_msgs/msg/TransformStamped, length: 17>'
+---

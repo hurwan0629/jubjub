@@ -1,0 +1,83 @@
+# /depth_cam/depth_cam
+## node info
+/depth_cam/depth_cam
+  Subscribers:
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+  Publishers:
+    /depth_cam/color/image_raw/theora: theora_image_transport/msg/Packet
+    /depth_cam/depth/camera_info: sensor_msgs/msg/CameraInfo
+    /depth_cam/depth/image_raw: sensor_msgs/msg/Image
+    /depth_cam/depth/image_raw/compressed: sensor_msgs/msg/CompressedImage
+    /depth_cam/depth/image_raw/compressedDepth: sensor_msgs/msg/CompressedImage
+    /depth_cam/depth/image_raw/theora: theora_image_transport/msg/Packet
+    /depth_cam/depth/points: sensor_msgs/msg/PointCloud2
+    /depth_cam/depth_filter_status: std_msgs/msg/String
+    /depth_cam/depth_to_color: orbbec_camera_msgs/msg/Extrinsics
+    /depth_cam/depth_to_ir: orbbec_camera_msgs/msg/Extrinsics
+    /depth_cam/ir/camera_info: sensor_msgs/msg/CameraInfo
+    /depth_cam/ir/image_raw: sensor_msgs/msg/Image
+    /depth_cam/ir/image_raw/compressed: sensor_msgs/msg/CompressedImage
+    /depth_cam/ir/image_raw/compressedDepth: sensor_msgs/msg/CompressedImage
+    /depth_cam/ir/image_raw/theora: theora_image_transport/msg/Packet
+    /depth_cam/rgb/camera_info: sensor_msgs/msg/CameraInfo
+    /depth_cam/rgb/image_raw: sensor_msgs/msg/Image
+    /depth_cam/rgb/image_raw/compressed: sensor_msgs/msg/CompressedImage
+    /depth_cam/rgb/image_raw/compressedDepth: sensor_msgs/msg/CompressedImage
+    /diagnostics: diagnostic_msgs/msg/DiagnosticArray
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /rosout: rcl_interfaces/msg/Log
+    /tf: tf2_msgs/msg/TFMessage
+    /tf_static: tf2_msgs/msg/TFMessage
+  Service Servers:
+    /depth_cam/depth_cam/describe_parameters: rcl_interfaces/srv/DescribeParameters
+    /depth_cam/depth_cam/get_parameter_types: rcl_interfaces/srv/GetParameterTypes
+    /depth_cam/depth_cam/get_parameters: rcl_interfaces/srv/GetParameters
+    /depth_cam/depth_cam/list_parameters: rcl_interfaces/srv/ListParameters
+    /depth_cam/depth_cam/set_parameters: rcl_interfaces/srv/SetParameters
+    /depth_cam/depth_cam/set_parameters_atomically: rcl_interfaces/srv/SetParametersAtomically
+    /depth_cam/get_auto_white_balance: orbbec_camera_msgs/srv/GetInt32
+    /depth_cam/get_color_exposure: orbbec_camera_msgs/srv/GetInt32
+    /depth_cam/get_color_gain: orbbec_camera_msgs/srv/GetInt32
+    /depth_cam/get_depth_exposure: orbbec_camera_msgs/srv/GetInt32
+    /depth_cam/get_depth_gain: orbbec_camera_msgs/srv/GetInt32
+    /depth_cam/get_device_info: orbbec_camera_msgs/srv/GetDeviceInfo
+    /depth_cam/get_ir_exposure: orbbec_camera_msgs/srv/GetInt32
+    /depth_cam/get_ir_gain: orbbec_camera_msgs/srv/GetInt32
+    /depth_cam/get_ldp_measure_distance: orbbec_camera_msgs/srv/GetInt32
+    /depth_cam/get_ldp_status: orbbec_camera_msgs/srv/GetBool
+    /depth_cam/get_sdk_version: orbbec_camera_msgs/srv/GetString
+    /depth_cam/get_white_balance: orbbec_camera_msgs/srv/GetInt32
+    /depth_cam/reboot_device: std_srvs/srv/Empty
+    /depth_cam/save_images: std_srvs/srv/Empty
+    /depth_cam/save_point_cloud: std_srvs/srv/Empty
+    /depth_cam/set_auto_white_balance: std_srvs/srv/SetBool
+    /depth_cam/set_color_auto_exposure: std_srvs/srv/SetBool
+    /depth_cam/set_color_exposure: orbbec_camera_msgs/srv/SetInt32
+    /depth_cam/set_color_gain: orbbec_camera_msgs/srv/SetInt32
+    /depth_cam/set_color_mirror: std_srvs/srv/SetBool
+    /depth_cam/set_depth_auto_exposure: std_srvs/srv/SetBool
+    /depth_cam/set_depth_exposure: orbbec_camera_msgs/srv/SetInt32
+    /depth_cam/set_depth_gain: orbbec_camera_msgs/srv/SetInt32
+    /depth_cam/set_depth_mirror: std_srvs/srv/SetBool
+    /depth_cam/set_fan_work_mode: orbbec_camera_msgs/srv/SetInt32
+    /depth_cam/set_floor_enable: std_srvs/srv/SetBool
+    /depth_cam/set_ir_auto_exposure: std_srvs/srv/SetBool
+    /depth_cam/set_ir_exposure: orbbec_camera_msgs/srv/SetInt32
+    /depth_cam/set_ir_gain: orbbec_camera_msgs/srv/SetInt32
+    /depth_cam/set_ir_long_exposure: std_srvs/srv/SetBool
+    /depth_cam/set_ir_mirror: std_srvs/srv/SetBool
+    /depth_cam/set_laser_enable: std_srvs/srv/SetBool
+    /depth_cam/set_ldp_enable: std_srvs/srv/SetBool
+    /depth_cam/set_white_balance: orbbec_camera_msgs/srv/SetInt32
+    /depth_cam/switch_ir: orbbec_camera_msgs/srv/SetString
+    /depth_cam/toggle_color: std_srvs/srv/SetBool
+    /depth_cam/toggle_depth: std_srvs/srv/SetBool
+    /depth_cam/toggle_ir: std_srvs/srv/SetBool
+  Service Clients:
+
+  Action Servers:
+
+  Action Clients:
+
+
+## param dump

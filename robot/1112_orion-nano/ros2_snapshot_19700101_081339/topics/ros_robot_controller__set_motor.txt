@@ -1,0 +1,61 @@
+# /ros_robot_controller/set_motor    [ros_robot_controller_msgs/msg/MotorsState]
+
+## info -v  (pub/sub 노드, QoS: reliability/durability)
+Type: ros_robot_controller_msgs/msg/MotorsState
+
+Publisher count: 2
+
+Node name: hand_gesture
+Node namespace: /
+Topic type: ros_robot_controller_msgs/msg/MotorsState
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.5f.08.d7.05.00.00.00.00.00.00.1b.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: odom_publisher
+Node namespace: /
+Topic type: ros_robot_controller_msgs/msg/MotorsState
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.b6.07.58.b5.00.00.00.00.00.00.12.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 1
+
+Node name: ros_robot_controller
+Node namespace: /
+Topic type: ros_robot_controller_msgs/msg/MotorsState
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.64.5b.b0.07.d0.e1.00.00.00.00.00.00.19.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+
+## 메시지 구조 (ros2 interface show)
+ros_robot_controller_msgs/MotorState[] data
+	uint16 id
+	float64 rps
+
+## 주기 (hz, 약 3초)
+WARNING: topic [/ros_robot_controller/set_motor] does not appear to be published yet
+
+## 샘플 1개 (배열 생략)

@@ -1,0 +1,68 @@
+# /ros_robot_controller/joy    [sensor_msgs/msg/Joy]
+
+## info -v  (pub/sub 노드, QoS: reliability/durability)
+Type: sensor_msgs/msg/Joy
+
+Publisher count: 1
+
+Node name: ros_robot_controller
+Node namespace: /
+Topic type: sensor_msgs/msg/Joy
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.b0.07.d0.e1.00.00.00.00.00.00.12.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 1
+
+Node name: joystick_control
+Node namespace: /
+Topic type: sensor_msgs/msg/Joy
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.64.5b.6a.08.44.45.00.00.00.00.00.00.12.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+
+## 메시지 구조 (ros2 interface show)
+# Reports the state of a joystick's axes and buttons.
+
+# The timestamp is the time at which data is received from the joystick.
+std_msgs/Header header
+	builtin_interfaces/Time stamp
+		int32 sec
+		uint32 nanosec
+	string frame_id
+
+# The axes measurements from a joystick.
+float32[] axes
+
+# The buttons measurements from a joystick.
+int32[] buttons
+
+## 주기 (hz, 약 3초)
+WARNING: topic [/ros_robot_controller/joy] does not appear to be published yet
+average rate: 19.802
+	min: 0.025s max: 0.069s std dev: 0.01186s window: 21
+
+## 샘플 1개 (배열 생략)
+header:
+  stamp:
+    sec: 1768980832
+    nanosec: 759679016
+  frame_id: ''
+axes: '<sequence type: float, length: 8>'
+buttons: '<sequence type: int32, length: 16>'
+---

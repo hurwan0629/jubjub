@@ -1,0 +1,6 @@
+# 이름에 batt/volt/power/charge 가 들어간 토픽
+/ros_robot_controller/battery [std_msgs/msg/UInt16]
+
+## /ros_robot_controller/battery
+data: 11480
+---

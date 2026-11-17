@@ -1,0 +1,23 @@
+# /gripper_controller
+## node info
+/gripper_controller
+  Subscribers:
+
+  Publishers:
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /rosout: rcl_interfaces/msg/Log
+  Service Servers:
+    /gripper_controller/describe_parameters: rcl_interfaces/srv/DescribeParameters
+    /gripper_controller/get_parameter_types: rcl_interfaces/srv/GetParameterTypes
+    /gripper_controller/get_parameters: rcl_interfaces/srv/GetParameters
+    /gripper_controller/list_parameters: rcl_interfaces/srv/ListParameters
+    /gripper_controller/set_parameters: rcl_interfaces/srv/SetParameters
+    /gripper_controller/set_parameters_atomically: rcl_interfaces/srv/SetParametersAtomically
+  Service Clients:
+
+  Action Servers:
+    /gripper_controller/follow_joint_trajectory: control_msgs/action/FollowJointTrajectory
+  Action Clients:
+
+
+## param dump

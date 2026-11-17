@@ -1,0 +1,42 @@
+# /init_pose
+## node info
+/init_pose
+  Subscribers:
+
+  Publishers:
+    /joint_controller: sensor_msgs/msg/JointState
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /rosout: rcl_interfaces/msg/Log
+    /servo_controller: servo_controller_msgs/msg/ServosPosition
+  Service Servers:
+    /init_pose/describe_parameters: rcl_interfaces/srv/DescribeParameters
+    /init_pose/get_parameter_types: rcl_interfaces/srv/GetParameterTypes
+    /init_pose/get_parameters: rcl_interfaces/srv/GetParameters
+    /init_pose/init_finish: std_srvs/srv/Trigger
+    /init_pose/list_parameters: rcl_interfaces/srv/ListParameters
+    /init_pose/set_parameters: rcl_interfaces/srv/SetParameters
+    /init_pose/set_parameters_atomically: rcl_interfaces/srv/SetParametersAtomically
+  Service Clients:
+    /controller_manager/init_finish: std_srvs/srv/Trigger
+  Action Servers:
+
+  Action Clients:
+
+
+## param dump
+/init_pose:
+  ros__parameters:
+    action:
+      action_name: init
+    servo:
+      duration: 1
+      id1: 500
+      id10: 500
+      id2: 750
+      id3: 0
+      id4: 375
+      id5: 500
+      id9: 500
+    type: action
+    use_sim_time: false
+

@@ -1,0 +1,58 @@
+# /scan_to_scan_filter_chain
+## node info
+/scan_to_scan_filter_chain
+  Subscribers:
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /scan_raw: sensor_msgs/msg/LaserScan
+  Publishers:
+    /diagnostics: diagnostic_msgs/msg/DiagnosticArray
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /rosout: rcl_interfaces/msg/Log
+    /scan: sensor_msgs/msg/LaserScan
+  Service Servers:
+    /scan_to_scan_filter_chain/describe_parameters: rcl_interfaces/srv/DescribeParameters
+    /scan_to_scan_filter_chain/get_parameter_types: rcl_interfaces/srv/GetParameterTypes
+    /scan_to_scan_filter_chain/get_parameters: rcl_interfaces/srv/GetParameters
+    /scan_to_scan_filter_chain/list_parameters: rcl_interfaces/srv/ListParameters
+    /scan_to_scan_filter_chain/set_parameters: rcl_interfaces/srv/SetParameters
+    /scan_to_scan_filter_chain/set_parameters_atomically: rcl_interfaces/srv/SetParametersAtomically
+  Service Clients:
+
+  Action Servers:
+
+  Action Clients:
+
+
+## param dump
+/scan_to_scan_filter_chain:
+  ros__parameters:
+    diagnostic_updater:
+      period: 1.0
+      use_fqn: false
+    filter1:
+      name: scan
+      params:
+        lower_angle: -1.6
+        replace_with_nan: false
+        upper_angle: 1.6
+      type: laser_filters/LaserScanAngularBoundsFilterInPlace
+    filter2:
+      name: box_filter
+      params:
+        lower_replacement_value: -.inf
+        lower_threshold: 0.2
+        upper_replacement_value: .inf
+        upper_threshold: 12.0
+        use_message_range_limits: false
+      type: laser_filters/LaserScanRangeFilter
+    qos_overrides:
+      /parameter_events:
+        publisher:
+          depth: 1000
+          durability: volatile
+          history: keep_last
+          reliability: reliable
+    tf_message_filter_target_frame: ''
+    tf_message_filter_tolerance: 0.03
+    use_sim_time: false
+

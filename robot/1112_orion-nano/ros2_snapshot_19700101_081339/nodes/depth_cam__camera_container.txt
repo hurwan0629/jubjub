@@ -1,0 +1,18 @@
+# /depth_cam/camera_container
+## node info
+/depth_cam/camera_container
+  Subscribers:
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+  Publishers:
+    /rosout: rcl_interfaces/msg/Log
+  Service Servers:
+
+  Service Clients:
+
+  Action Servers:
+
+  Action Clients:
+
+
+## param dump
+failed to check service availability: rcl node's context is invalid, at ./src/rcl/node.c:428

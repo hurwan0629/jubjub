@@ -1,0 +1,56 @@
+# /depth_cam/ir/image_raw/theora    [theora_image_transport/msg/Packet]
+
+## info -v  (pub/sub 노드, QoS: reliability/durability)
+Type: theora_image_transport/msg/Packet
+
+Publisher count: 1
+
+Node name: depth_cam
+Node namespace: /depth_cam
+Topic type: theora_image_transport/msg/Packet
+Endpoint type: PUBLISHER
+GID: 01.0f.7f.01.ba.07.61.13.00.00.00.00.00.00.74.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 0
+
+
+## 메시지 구조 (ros2 interface show)
+# ROS message adaptation of the ogg_packet struct from libogg,
+# see http://www.xiph.org/ogg/doc/libogg/ogg_packet.html.
+
+std_msgs/Header header # Original sensor_msgs/Image header
+	builtin_interfaces/Time stamp
+		int32 sec
+		uint32 nanosec
+	string frame_id
+uint8[] data      # Raw Theora packet data (combines packet and bytes fields from ogg_packet)
+int32 b_o_s       # Flag indicating whether this packet begins a logical bitstream
+int32 e_o_s       # Flag indicating whether this packet ends a bitstream
+int64 granulepos  # A number indicating the position of this packet in the decoded data
+int64 packetno    # Sequential number of this packet in the ogg bitstream
+
+## 주기 (hz, 약 4초)
+WARNING: topic [/depth_cam/ir/image_raw/theora] does not appear to be published yet
+average rate: 31.181
+	min: 0.000s max: 0.058s std dev: 0.00964s window: 32
+
+## 샘플 1개 (배열 생략)
+header:
+  stamp:
+    sec: 1064
+    nanosec: 900863000
+  frame_id: depth_cam_ir_optical_frame
+data: '<sequence type: uint8, length: 0>'
+b_o_s: 0
+e_o_s: 0
+granulepos: 2147483682
+packetno: 37
+---

@@ -1,0 +1,87 @@
+# /joint_states    [sensor_msgs/msg/JointState]
+
+## info -v  (pub/sub 노드, QoS: reliability/durability)
+Type: sensor_msgs/msg/JointState
+
+Publisher count: 1
+
+Node name: joint_state_publisher
+Node namespace: /
+Topic type: sensor_msgs/msg/JointState
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.ae.07.82.e4.00.00.00.00.00.00.13.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 1
+
+Node name: robot_state_publisher
+Node namespace: /
+Topic type: sensor_msgs/msg/JointState
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.7f.01.b0.07.41.7a.00.00.00.00.00.00.15.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: BEST_EFFORT
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+
+## 메시지 구조 (ros2 interface show)
+# This is a message that holds data to describe the state of a set of torque controlled joints.
+#
+# The state of each joint (revolute or prismatic) is defined by:
+#  * the position of the joint (rad or m),
+#  * the velocity of the joint (rad/s or m/s) and
+#  * the effort that is applied in the joint (Nm or N).
+#
+# Each joint is uniquely identified by its name
+# The header specifies the time at which the joint states were recorded. All the joint states
+# in one message have to be recorded at the same time.
+#
+# This message consists of a multiple arrays, one for each part of the joint state.
+# The goal is to make each of the fields optional. When e.g. your joints have no
+# effort associated with them, you can leave the effort array empty.
+#
+# All arrays in this message should have the same size, or be empty.
+# This is the only way to uniquely associate the joint name with the correct
+# states.
+
+std_msgs/Header header
+	builtin_interfaces/Time stamp
+		int32 sec
+		uint32 nanosec
+	string frame_id
+
+string[] name
+float64[] position
+float64[] velocity
+float64[] effort
+
+## 주기 (hz, 약 4초)
+WARNING: topic [/joint_states] does not appear to be published yet
+average rate: 19.995
+	min: 0.042s max: 0.057s std dev: 0.00353s window: 22
+average rate: 19.995
+	min: 0.042s max: 0.057s std dev: 0.00257s window: 42
+
+## 샘플 1개 (배열 생략)
+header:
+  stamp:
+    sec: 1179
+    nanosec: 238450400
+  frame_id: ''
+name: '<sequence type: string, length: 11>'
+position: '<sequence type: double, length: 11>'
+velocity: '<sequence type: double, length: 0>'
+effort: '<sequence type: double, length: 0>'
+---

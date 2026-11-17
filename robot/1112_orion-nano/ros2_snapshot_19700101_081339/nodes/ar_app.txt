@@ -1,0 +1,34 @@
+# /ar_app
+## node info
+/ar_app
+  Subscribers:
+
+  Publishers:
+    /ar_app/image_result: sensor_msgs/msg/Image
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /rosout: rcl_interfaces/msg/Log
+  Service Servers:
+    /ar_app/describe_parameters: rcl_interfaces/srv/DescribeParameters
+    /ar_app/enter: std_srvs/srv/Trigger
+    /ar_app/exit: std_srvs/srv/Trigger
+    /ar_app/get_parameter_types: rcl_interfaces/srv/GetParameterTypes
+    /ar_app/get_parameters: rcl_interfaces/srv/GetParameters
+    /ar_app/heartbeat: std_srvs/srv/SetBool
+    /ar_app/init_finish: std_srvs/srv/Trigger
+    /ar_app/list_parameters: rcl_interfaces/srv/ListParameters
+    /ar_app/set_model: interfaces/srv/SetString
+    /ar_app/set_parameters: rcl_interfaces/srv/SetParameters
+    /ar_app/set_parameters_atomically: rcl_interfaces/srv/SetParametersAtomically
+  Service Clients:
+
+  Action Servers:
+
+  Action Clients:
+
+
+## param dump
+/ar_app:
+  ros__parameters:
+    debug: false
+    use_sim_time: false
+

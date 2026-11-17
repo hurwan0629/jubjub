@@ -1,0 +1,40 @@
+# /line_following
+## node info
+/line_following
+  Subscribers:
+
+  Publishers:
+    /controller/cmd_vel: geometry_msgs/msg/Twist
+    /line_following/image_result: sensor_msgs/msg/Image
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /rosout: rcl_interfaces/msg/Log
+    /servo_controller: servo_controller_msgs/msg/ServosPosition
+  Service Servers:
+    /line_following/describe_parameters: rcl_interfaces/srv/DescribeParameters
+    /line_following/enter: std_srvs/srv/Trigger
+    /line_following/exit: std_srvs/srv/Trigger
+    /line_following/get_parameter_types: rcl_interfaces/srv/GetParameterTypes
+    /line_following/get_parameters: rcl_interfaces/srv/GetParameters
+    /line_following/get_target_color: std_srvs/srv/Trigger
+    /line_following/heartbeat: std_srvs/srv/SetBool
+    /line_following/init_finish: std_srvs/srv/Trigger
+    /line_following/list_parameters: rcl_interfaces/srv/ListParameters
+    /line_following/set_color: interfaces/srv/SetString
+    /line_following/set_parameters: rcl_interfaces/srv/SetParameters
+    /line_following/set_parameters_atomically: rcl_interfaces/srv/SetParametersAtomically
+    /line_following/set_running: std_srvs/srv/SetBool
+    /line_following/set_target_color: interfaces/srv/SetPoint
+    /line_following/set_threshold: interfaces/srv/SetFloat64
+  Service Clients:
+
+  Action Servers:
+
+  Action Clients:
+
+
+## param dump
+/line_following:
+  ros__parameters:
+    debug: false
+    use_sim_time: false
+

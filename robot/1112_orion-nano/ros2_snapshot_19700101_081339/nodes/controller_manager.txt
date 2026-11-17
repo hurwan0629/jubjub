@@ -1,0 +1,85 @@
+# /controller_manager
+## node info
+/controller_manager
+  Subscribers:
+    /joint_controller: sensor_msgs/msg/JointState
+    /servo_controller: servo_controller_msgs/msg/ServosPosition
+  Publishers:
+    /controller_manager/joint_states: sensor_msgs/msg/JointState
+    /controller_manager/servo_states: servo_controller_msgs/msg/ServoStateList
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /rosout: rcl_interfaces/msg/Log
+  Service Servers:
+    /controller_manager/describe_parameters: rcl_interfaces/srv/DescribeParameters
+    /controller_manager/get_parameter_types: rcl_interfaces/srv/GetParameterTypes
+    /controller_manager/get_parameters: rcl_interfaces/srv/GetParameters
+    /controller_manager/init_finish: std_srvs/srv/Trigger
+    /controller_manager/list_parameters: rcl_interfaces/srv/ListParameters
+    /controller_manager/set_parameters: rcl_interfaces/srv/SetParameters
+    /controller_manager/set_parameters_atomically: rcl_interfaces/srv/SetParametersAtomically
+  Service Clients:
+    /ros_robot_controller/init_finish: std_srvs/srv/Trigger
+  Action Servers:
+
+  Action Clients:
+
+
+## param dump
+/controller_manager:
+  ros__parameters:
+    arm_controller:
+      joint_controllers:
+      - joint1
+      - joint2
+      - joint3
+      - joint4
+      - joint5
+      joint_trajectory_action_node:
+        constraints:
+          goal_time: 0.05
+        min_velocity: 0.1
+    base_frame: base_footprint
+    gripper_controller:
+      joint_controllers:
+      - r_joint
+      joint_trajectory_action_node:
+        constraints:
+          goal_time: 0.05
+        min_velocity: 0.1
+    joint1:
+      id: 1
+      init: 500
+      max: 0
+      min: 1000
+    joint2:
+      id: 2
+      init: 500
+      max: 0
+      min: 1000
+    joint3:
+      id: 3
+      init: 500
+      max: 0
+      min: 1000
+    joint4:
+      id: 4
+      init: 500
+      max: 0
+      min: 1000
+    joint5:
+      id: 5
+      init: 500
+      max: 0
+      min: 1000
+    r_joint:
+      id: 10
+      init: 700
+      max: 0
+      min: 1000
+    use_sim_time: false
+    w_joint:
+      id: 9
+      init: 500
+      max: 1000
+      min: 0
+

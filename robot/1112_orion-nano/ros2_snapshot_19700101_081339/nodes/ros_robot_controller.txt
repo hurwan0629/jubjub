@@ -1,0 +1,44 @@
+# /ros_robot_controller
+## node info
+/ros_robot_controller
+  Subscribers:
+    /ros_robot_controller/bus_servo/set_position: ros_robot_controller_msgs/msg/ServosPosition
+    /ros_robot_controller/bus_servo/set_state: ros_robot_controller_msgs/msg/SetBusServoState
+    /ros_robot_controller/enable_reception: std_msgs/msg/Bool
+    /ros_robot_controller/pwm_servo/set_state: ros_robot_controller_msgs/msg/SetPWMServoState
+    /ros_robot_controller/set_buzzer: ros_robot_controller_msgs/msg/BuzzerState
+    /ros_robot_controller/set_led: ros_robot_controller_msgs/msg/LedState
+    /ros_robot_controller/set_motor: ros_robot_controller_msgs/msg/MotorsState
+    /ros_robot_controller/set_oled: ros_robot_controller_msgs/msg/OLEDState
+  Publishers:
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /ros_robot_controller/battery: std_msgs/msg/UInt16
+    /ros_robot_controller/button: ros_robot_controller_msgs/msg/ButtonState
+    /ros_robot_controller/imu_raw: sensor_msgs/msg/Imu
+    /ros_robot_controller/joy: sensor_msgs/msg/Joy
+    /ros_robot_controller/sbus: ros_robot_controller_msgs/msg/Sbus
+    /rosout: rcl_interfaces/msg/Log
+  Service Servers:
+    /ros_robot_controller/bus_servo/get_state: ros_robot_controller_msgs/srv/GetBusServoState
+    /ros_robot_controller/describe_parameters: rcl_interfaces/srv/DescribeParameters
+    /ros_robot_controller/get_parameter_types: rcl_interfaces/srv/GetParameterTypes
+    /ros_robot_controller/get_parameters: rcl_interfaces/srv/GetParameters
+    /ros_robot_controller/init_finish: std_srvs/srv/Trigger
+    /ros_robot_controller/list_parameters: rcl_interfaces/srv/ListParameters
+    /ros_robot_controller/pwm_servo/get_state: ros_robot_controller_msgs/srv/GetPWMServoState
+    /ros_robot_controller/set_parameters: rcl_interfaces/srv/SetParameters
+    /ros_robot_controller/set_parameters_atomically: rcl_interfaces/srv/SetParametersAtomically
+  Service Clients:
+
+  Action Servers:
+
+  Action Clients:
+
+
+## param dump
+/ros_robot_controller:
+  ros__parameters:
+    imu_frame: imu_link
+    init_finish: false
+    use_sim_time: false
+
