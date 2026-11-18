@@ -86,3 +86,5 @@ server/storage/
 
 # Local server tests
 server/tests/test_*.py
+!server/tests/test_robot_patrol.py
+!server/tests/test_robot_patrol_migration.py

@@ -19,6 +19,7 @@ import {
   Text,
 } from '@/components';
 import type { ParkMapMarker } from '@/components';
+import { PatrolRobotScope } from '@/components/PatrolRobotScope';
 import { useRouteConfig } from '@/hooks/useRoute';
 import { icons } from '@/icons';
 import type { RootParams } from '@/navigation';
@@ -32,15 +33,27 @@ const MAP_HEIGHT = 290;
 const NOTICE_MS = 2500;
 const TOAST_MS = 1600;
 
-export function RouteEditScreen({ navigation }: Props) {
-  const { data, error, loading, reload } = useRouteConfig();
+export function RouteEditScreen(props: Props) {
+  return (
+    <PatrolRobotScope fixedRobotId={props.route.params?.robotId} onMissing={() => props.navigation.goBack()}>
+      {(robotId, setBusy) => <RobotRouteEdit {...props} robotId={robotId} setBusy={setBusy} />}
+    </PatrolRobotScope>
+  );
+}
+
+function RobotRouteEdit({
+  navigation,
+  robotId,
+  setBusy,
+}: Props & { robotId?: string; setBusy: (busy: boolean) => void }) {
+  const { data, error, loading, reload } = useRouteConfig(robotId);
 
   return (
-    <SafeAreaView style={s.screen} edges={['top']}>
+    <SafeAreaView style={s.screen} edges={[]}>
       <Header title="순찰 경로 편집" onBack={() => navigation.goBack()} />
       {/* 불러온 경로를 고쳐 쓰는 편집기. 처음 불러온 값으로 한 번만 시작해요. */}
       {data && !error ? (
-        <RouteEditor initial={data} onDone={() => navigation.goBack()} />
+        <RouteEditor initial={data} onDone={() => navigation.goBack()} setBusy={setBusy} />
       ) : (
         <View style={s.padded}>
           <Text variant="13-regular" color={error ? 'error' : 'textSub'}>
@@ -53,7 +66,15 @@ export function RouteEditScreen({ navigation }: Props) {
   );
 }
 
-function RouteEditor({ initial, onDone }: { initial: RouteConfig; onDone: () => void }) {
+function RouteEditor({
+  initial,
+  onDone,
+  setBusy,
+}: {
+  initial: RouteConfig;
+  onDone: () => void;
+  setBusy: (busy: boolean) => void;
+}) {
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<Tab>('route');
   const [draft, setDraft] = useState<RouteConfig>(initial);
@@ -86,6 +107,7 @@ function RouteEditor({ initial, onDone }: { initial: RouteConfig; onDone: () => 
   const handleSave = async () => {
     if (saving) return;
     setSaving(true);
+    setBusy(true);
     setSaveError(undefined);
     try {
       await saveRouteConfig(draft);
@@ -96,6 +118,7 @@ function RouteEditor({ initial, onDone }: { initial: RouteConfig; onDone: () => 
       setSaveError(e instanceof Error ? e.message : '경로를 저장하지 못했어요. 다시 시도해 주세요');
     } finally {
       setSaving(false);
+      setBusy(false);
     }
   };
 

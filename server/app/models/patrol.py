@@ -59,6 +59,7 @@ class Park(Base):
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     reject_reason: Mapped[str | None] = mapped_column(Text)
     route_setup_done: Mapped[bool] = mapped_column(Boolean, server_default=false())
+    anchor_points: Mapped[list[dict]] = mapped_column(DOCUMENT, default=list, server_default=text("'[]'"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     catalog: Mapped[ParkCatalogEntry] = relationship(lazy="joined")
 
@@ -93,16 +94,25 @@ class Route(Base):
     __tablename__ = "routes"
     __table_args__ = (
         Index(
-            "uq_routes_active_park",
+            "uq_routes_active_robot",
+            "park_id",
+            "robot_id",
+            unique=True,
+            postgresql_where=text("is_active AND robot_id IS NOT NULL"),
+            sqlite_where=text("is_active = 1 AND robot_id IS NOT NULL"),
+        ),
+        Index(
+            "uq_routes_active_draft",
             "park_id",
             unique=True,
-            postgresql_where=text("is_active"),
-            sqlite_where=text("is_active = 1"),
+            postgresql_where=text("is_active AND robot_id IS NULL"),
+            sqlite_where=text("is_active = 1 AND robot_id IS NULL"),
         ),
     )
 
     id: Mapped[int] = mapped_column(ID, Identity(always=True), primary_key=True)
     park_id: Mapped[int] = mapped_column(ForeignKey("parks.id"))
+    robot_id: Mapped[int | None] = mapped_column(ForeignKey("robots.id"), index=True)
     station_id: Mapped[int] = mapped_column(ForeignKey("points.id"))
     is_active: Mapped[bool] = mapped_column(Boolean, server_default=false())
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
@@ -122,12 +132,22 @@ class RoutePoint(Base):
 class Schedule(Base):
     __tablename__ = "schedules"
     __table_args__ = (
-        UniqueConstraint("park_id", "run_at", "repeat"),
+        UniqueConstraint("park_id", "robot_id", "run_at", "repeat"),
+        Index(
+            "uq_schedules_draft",
+            "park_id",
+            "run_at",
+            "repeat",
+            unique=True,
+            postgresql_where=text("robot_id IS NULL"),
+            sqlite_where=text("robot_id IS NULL"),
+        ),
         CheckConstraint("repeat IN ('daily', 'weekdays', 'weekends')", name="schedule_repeat"),
     )
 
     id: Mapped[int] = mapped_column(ID, Identity(always=True), primary_key=True)
     park_id: Mapped[int] = mapped_column(ForeignKey("parks.id"), index=True)
+    robot_id: Mapped[int | None] = mapped_column(ForeignKey("robots.id"), index=True)
     run_at: Mapped[time] = mapped_column(Time)
     enabled: Mapped[bool] = mapped_column(Boolean, server_default=true())
     label: Mapped[str] = mapped_column(Text)

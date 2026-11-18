@@ -1,18 +1,22 @@
 // A-01 홈 (실시간 현황). 새 규칙(토큰 · Text · 훅 · 공통 컴포넌트)으로 쓴 예시 화면이에요.
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { useFocusEffect } from '@react-navigation/native';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ImageSource } from 'expo-image';
+import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { TaskType } from '@/api/types';
-import { AlertCard, Card, Icon, ROBOT_STATE, SectionHeader, StatRow, StatusBadge, Text } from '@/components';
+import { AlertCard, Button, Card, Icon, ROBOT_STATE, SectionHeader, StatRow, StatusBadge, Text } from '@/components';
+import { useProfile } from '@/hooks/useAccount';
 import { useDecisions } from '@/hooks/useDecisions';
 import { useNotifications } from '@/hooks/useNotifications';
-import { useRobotStatus, useTaskQueue, useTodaySummary } from '@/hooks/useRobot';
+import { useManagedPark } from '@/hooks/useParkChange';
+import { useHomeRobots, useTaskQueue, useTodaySummary } from '@/hooks/useRobot';
 import { icons } from '@/icons';
-import type { HomeStackParams, TabParams } from '@/navigation';
+import type { HomeStackParams, RootParams, TabParams } from '@/navigation';
 import { colors, layout, radius, softShadow, space } from '@/theme';
 import { SLOT_LABEL, SLOT_WARN_PERCENT } from '@/utils/labels';
 
@@ -25,10 +29,31 @@ const TASK_ICON: Record<TaskType, ImageSource> = {
   recover: icons.triangleAlert,
 };
 
-type Props = CompositeScreenProps<NativeStackScreenProps<HomeStackParams, 'HomeMain'>, BottomTabScreenProps<TabParams>>;
+function subjectParticle(name: string) {
+  const last = name.trim().at(-1) ?? '';
+  const code = last.charCodeAt(0);
+  if (code >= 0xac00 && code <= 0xd7a3) return (code - 0xac00) % 28 ? '이' : '가';
+  return /[013678lmnr]/i.test(last) ? '이' : '가';
+}
+
+type Props = CompositeScreenProps<
+  NativeStackScreenProps<HomeStackParams, 'HomeMain'>,
+  CompositeScreenProps<BottomTabScreenProps<TabParams>, NativeStackScreenProps<RootParams>>
+>;
 
 export function HomeScreen({ navigation }: Props) {
-  const { data: robot } = useRobotStatus();
+  const { data: robots, error: robotError, reload: reloadRobots } = useHomeRobots();
+  const { data: managedPark, reload: reloadPark } = useManagedPark();
+  const { data: profile, reload: reloadProfile } = useProfile();
+  const [selectedRobotId, setSelectedRobotId] = useState<string>();
+  const robot = robots?.find((item) => item.id === selectedRobotId) ?? robots?.[0];
+  useFocusEffect(
+    useCallback(() => {
+      reloadRobots();
+      reloadPark();
+      reloadProfile();
+    }, [reloadRobots, reloadPark, reloadProfile]),
+  );
   const { data: tasks } = useTaskQueue();
   const { data: today } = useTodaySummary();
   const { data: notifications } = useNotifications();
@@ -48,7 +73,7 @@ export function HomeScreen({ navigation }: Props) {
               JUBJUB
             </Text>
           </View>
-          <Text variant="13-semibold">한강공원</Text>
+          <Text variant="13-semibold">{managedPark?.name ?? '관리 공원'}</Text>
         </View>
         <Pressable
           style={s.iconButton}
@@ -63,43 +88,10 @@ export function HomeScreen({ navigation }: Props) {
       <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
         <Text variant="24-bold">{'안녕하세요!\n공원 관리자님'}</Text>
 
-        {/* 로봇 상태 카드 */}
-        {robot ? (
-          <Pressable style={s.robotCard} onPress={() => navigation.navigate('Map')}>
-            <View style={s.robotTop}>
-              <View style={s.iconCircle44}>
-                <Icon source={icons.bot} size={22} />
-              </View>
-              <View style={s.robotTitle}>
-                <Text variant="18-bold">
-                  {robot.name}가 {ROBOT_STATE[robot.state].sentence}
-                </Text>
-                <Text variant="12-regular" color="textSub">
-                  공원 수거 로봇 · {robot.activity}
-                </Text>
-              </View>
-            </View>
-            <View style={s.robotInfo}>
-              <View style={s.gap4}>
-                <Text variant="10-regular" color="textSub">
-                  배터리
-                </Text>
-                <View style={s.valueUnit}>
-                  <Text variant="22-bold">{robot.battery}</Text>
-                  <Text variant="11-regular">%</Text>
-                </View>
-              </View>
-              <View style={s.robotRight}>
-                <StatusBadge state={robot.state} />
-                <Text variant="10-regular" color="textSub">
-                  다음 지점 · {robot.nextPoint}
-                </Text>
-              </View>
-            </View>
-          </Pressable>
+        {profile?.routeSetupDone === false && managedPark?.status === 'approved' ? (
+          <Button label="새 공원 경로 설정" onPress={() => navigation.navigate('RouteSetup')} />
         ) : null}
-
-        {/* 미확인 알림 배너 */}
+        {/* 첨부 시안 순서: 알림 → 로봇 선택 → 선택한 로봇 상태 */}
         {latest ? (
           <AlertCard
             icon={icons.hand}
@@ -111,6 +103,107 @@ export function HomeScreen({ navigation }: Props) {
             unread
             onPress={() => navigation.navigate('Alerts')}
           />
+        ) : null}
+
+        <View style={s.robotSelector}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={s.robotTabs}
+            contentContainerStyle={s.robotTabContent}
+            accessibilityRole="tablist"
+          >
+            {robots?.map((item) => {
+              const selected = item.id === robot?.id;
+              return (
+                <Pressable
+                  key={item.id}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected }}
+                  accessibilityLabel={`${item.name} 선택`}
+                  onPress={() => setSelectedRobotId(item.id)}
+                  style={[s.robotTab, selected ? s.robotTabSelected : null]}
+                >
+                  {selected ? (
+                    <Text variant="13-bold" color="card">
+                      ✓
+                    </Text>
+                  ) : null}
+                  <Text variant="13-semibold" color={selected ? 'card' : 'textSub'} numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+          <Pressable
+            style={s.robotListLink}
+            accessibilityRole="button"
+            accessibilityLabel="로봇 목록 열기"
+            onPress={() => navigation.navigate('RobotList')}
+          >
+            <Text variant="13-bold" color="brandText">
+              로봇 목록 ›
+            </Text>
+          </Pressable>
+        </View>
+
+        {robotError ? (
+          <View style={s.section}>
+            <Text variant="13-regular" color="error">
+              {robotError.message}
+            </Text>
+            <Button label="로봇 다시 불러오기" onPress={reloadRobots} />
+          </View>
+        ) : !robots ? (
+          <Text variant="13-regular" color="textSub">
+            로봇을 불러오고 있어요…
+          </Text>
+        ) : robots.length === 0 ? (
+          <Text variant="13-regular" color="textSub">
+            배정된 로봇이 없어요. 총관리자에게 배정을 요청해 주세요.
+          </Text>
+        ) : null}
+
+        {/* 로봇 상태 카드 */}
+        {robot ? (
+          <Pressable style={s.robotCard} onPress={() => navigation.navigate('Map')}>
+            <View style={s.robotTop}>
+              <View style={s.iconCircle44}>
+                <Icon source={icons.bot} size={22} />
+              </View>
+              <View style={s.robotTitle}>
+                <Text variant="18-bold">
+                  {robot.name}
+                  {subjectParticle(robot.name)} {ROBOT_STATE[robot.state].sentence}
+                </Text>
+                <Text variant="12-regular" color="textSub">
+                  공원 수거 로봇 · {robot.activity}
+                </Text>
+              </View>
+            </View>
+            <View style={s.robotInfo}>
+              <View style={s.gap4}>
+                <Text variant="10-regular" color="textSub">
+                  {robot.battery == null && robot.batteryVoltage != null ? '배터리 전압' : '배터리'}
+                </Text>
+                <View style={s.valueUnit}>
+                  <Text variant="22-bold">
+                    {robot.battery ?? (robot.batteryVoltage != null ? robot.batteryVoltage.toFixed(1) : '—')}
+                  </Text>
+                  <Text variant="11-regular">
+                    {robot.battery != null ? '%' : robot.batteryVoltage != null ? 'V' : ''}
+                  </Text>
+                </View>
+              </View>
+              <View style={s.robotRight}>
+                <StatusBadge state={robot.state} />
+                <Text variant="10-regular" color="textSub">
+                  다음 지점 · {robot.nextPoint}
+                </Text>
+              </View>
+            </View>
+          </Pressable>
         ) : null}
 
         {/* 오늘 요약 */}
@@ -128,7 +221,7 @@ export function HomeScreen({ navigation }: Props) {
         ) : null}
 
         {/* 칸별 적재율 */}
-        {robot ? (
+        {robot?.slots.length ? (
           <View style={s.sectionWide}>
             <SectionHeader title="칸별 적재율" action="실시간" />
             <Card style={s.loadCard}>
@@ -226,6 +319,30 @@ const s = StyleSheet.create({
   brand: { flexDirection: 'row', alignItems: 'center', gap: space[8] },
   iconButton: { width: layout.touchMin, height: layout.touchMin, alignItems: 'center', justifyContent: 'center' },
   content: { paddingHorizontal: layout.screenPadding, paddingTop: space[20], paddingBottom: 28, gap: space[24] },
+  robotSelector: { flexDirection: 'row', alignItems: 'center', gap: space[12] },
+  robotTabs: { flex: 1 },
+  robotTabContent: { gap: space[8] },
+  robotTab: {
+    minHeight: layout.touchMin,
+    minWidth: 80,
+    maxWidth: 160,
+    paddingHorizontal: space[16],
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space[8],
+    borderRadius: radius.pill,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  robotTabSelected: { backgroundColor: colors.brand, borderColor: colors.brand },
+  robotListLink: {
+    minHeight: layout.touchMin,
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    paddingLeft: space[4],
+  },
   robotCard: {
     backgroundColor: colors.card,
     borderRadius: radius[20],

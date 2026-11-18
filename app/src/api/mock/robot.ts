@@ -1,5 +1,35 @@
 // 로봇·작업 대기열·오늘 요약 목업 (Figma A-01 홈 시안 기준)
-import type { RobotStatus, Task, TodaySummary } from '../types';
+import type { AssignedRobot, RobotStatus, Task, TodaySummary } from '../types';
+
+/** 서버 없이 화면을 확인할 때 쓰는 2대 예시. 계정별 목록이 있으면 그 목록을 우선해요. */
+export const mockAssignedRobots: AssignedRobot[] = [
+  {
+    id: '1',
+    name: '로봇 1',
+    serialNo: 'DEMO-001',
+    parkId: 'demo',
+    status: 'working',
+    slamX: null,
+    slamY: null,
+    lat: null,
+    lng: null,
+    batteryVoltage: null,
+    lastSeenAt: null,
+  },
+  {
+    id: '2',
+    name: '로봇 2',
+    serialNo: 'DEMO-002',
+    parkId: 'demo',
+    status: 'charging',
+    slamX: null,
+    slamY: null,
+    lat: null,
+    lng: null,
+    batteryVoltage: null,
+    lastSeenAt: null,
+  },
+];
 
 export const mockRobot: RobotStatus = {
   name: 'Jubi',

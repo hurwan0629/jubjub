@@ -27,6 +27,7 @@ class ManagedPark(ParkSchema):
     approved_at: datetime | None
     reject_reason: str | None
     route_setup_done: bool
+    anchor_points: list[dict] = Field(default_factory=list)
 
 
 class PointInput(ParkSchema):
@@ -41,6 +42,7 @@ class PointResponse(PointInput):
 
 
 class RouteInput(ParkSchema):
+    catalog_id: str | None = Field(default=None, pattern=r"^[1-9][0-9]{0,18}$")
     points: list[PointInput] = Field(min_length=1, max_length=100)
 
     @model_validator(mode="after")
@@ -69,6 +71,8 @@ class ConfigInput(RouteInput):
 
 
 class RouteResponse(ParkSchema):
+    catalog_id: str
+    robot_id: str | None = None
     id: str | None
     start: LatLng | None
     points: list[PointResponse]
@@ -77,6 +81,8 @@ class RouteResponse(ParkSchema):
 
 
 class ConfigResponse(ParkSchema):
+    catalog_id: str
+    robot_id: str | None = None
     park_name: str
     bounds: ParkBounds
     area: ParkArea
