@@ -56,3 +56,6 @@ ios/Pods/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Local dataset archive (exceeds GitHub file size limit)
+/data.zip
