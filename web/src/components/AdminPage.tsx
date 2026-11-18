@@ -1,4 +1,7 @@
-﻿import { useEffect, useState } from 'react';
+import { AdminHome } from './AdminHome';
+import { Pagination } from './Pagination';
+import { paginate } from './pageData';
+import { useEffect, useState } from 'react';
 import { ParkChanges, ParkReports, RobotList } from './AdminOperations';
 import { Logo } from './Logo';
 import type { RegistrationStatus } from '../api/admin';
@@ -14,12 +17,23 @@ const FILTERS = [
 ] as const;
 export function AdminPage({ onLogout }: { onLogout: () => void }) {
   const { data, loading, error, unauthorized, busy, reload, decide } = useAdminRegistrations();
-  const [tab, setTab] = useState<'managers' | 'reports' | 'robots'>('managers');
+  const [tab, setTab] = useState<'home' | 'managers' | 'reports' | 'robots'>('home');
+  const [managerTab, setManagerTab] = useState<'registrations' | 'changes'>('registrations');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
   const [filter, setFilter] = useState<'all' | RegistrationStatus>('all');
   const [target, setTarget] = useState<Decision>();
   const [notice, setNotice] = useState('');
   const rows = data?.registrations ?? [];
-  const visible = rows.filter((row) => filter === 'all' || row.registrationStatus === filter);
+  const visible = rows.filter(
+    (row) =>
+      (filter === 'all' || row.registrationStatus === filter) &&
+      `${row.applicantName} ${row.applicantLoginId} ${row.name} ${row.applicantEmail}`
+        .toLowerCase()
+        .includes(search.toLowerCase()),
+  );
+  const list = paginate(visible, page);
+  useEffect(() => setPage(1), [filter, search]);
   const count = (id: string) =>
     id === 'all' ? rows.length : rows.filter((row) => row.registrationStatus === id).length;
   useEffect(() => {
@@ -52,6 +66,7 @@ export function AdminPage({ onLogout }: { onLogout: () => void }) {
             aria-label="승인 대기 알림"
             onClick={() => {
               setTab('managers');
+              setManagerTab('registrations');
               setFilter('pending');
               setNotice(`승인 대기 중인 신청이 ${count('pending')}건 있어요.`);
             }}
@@ -72,6 +87,7 @@ export function AdminPage({ onLogout }: { onLogout: () => void }) {
           <p className="menu-label">메뉴</p>
           {(
             [
+              { id: 'home', label: '홈', icon: 'home' },
               { id: 'managers', label: '관리자 보기', icon: 'users' },
               { id: 'reports', label: '공원별 보고', icon: 'report' },
               { id: 'robots', label: '로봇 목록', icon: 'bot' },
@@ -89,8 +105,34 @@ export function AdminPage({ onLogout }: { onLogout: () => void }) {
           ))}{' '}
         </aside>
         <main className="admin-main">
-          <h1>{tab === 'managers' ? '관리자 보기' : tab === 'reports' ? '공원별 보고' : '로봇 목록'}</h1>
-          {tab === 'reports' ? (
+          <h1>
+            {tab === 'home'
+              ? '홈'
+              : tab === 'managers'
+                ? '관리자 보기'
+                : tab === 'reports'
+                  ? '공원별 보고'
+                  : '로봇 목록'}
+          </h1>
+          {tab === 'home' ? (
+            <AdminHome
+              registrations={rows}
+              robots={data?.robots ?? []}
+              loading={loading}
+              error={error}
+              onReload={() => void reload()}
+              onManagers={() => {
+                setTab('managers');
+                setManagerTab('registrations');
+                setFilter('pending');
+              }}
+              onRobots={() => setTab('robots')}
+              onParkChanges={() => {
+                setTab('managers');
+                setManagerTab('changes');
+              }}
+            />
+          ) : tab === 'reports' ? (
             <ParkReports />
           ) : tab === 'robots' ? (
             <RobotList />
@@ -102,122 +144,146 @@ export function AdminPage({ onLogout }: { onLogout: () => void }) {
                 </span>
                 <strong>작업 중인 Jubi와 담당 관리자를 확인할 수 있습니다.</strong>
               </div>
-              <section className="board" aria-label="가입 신청 관리">
-                <div className="toolbar">
-                  <label htmlFor="status-filter">승인 상태</label>
-                  <select
-                    id="status-filter"
-                    value={filter}
-                    onChange={(e) => setFilter(e.target.value as typeof filter)}
-                  >
-                    {FILTERS.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.label} {count(item.id)}
-                      </option>
-                    ))}
-                  </select>
-                  <button className="refresh-button" onClick={() => void reload()} disabled={busy || loading}>
-                    새로고침
-                  </button>
-                </div>
-                {loading ? (
-                  <p className="loading" role="status">
-                    신청 목록을 불러오고 있어요…
-                  </p>
-                ) : null}
-                {error ? (
-                  <div className="error-panel" role="alert">
-                    <p>{error}</p>
-                    <button className="button soft" onClick={unauthorized ? onLogout : () => void reload()}>
-                      {unauthorized ? '다시 로그인' : '다시 시도'}
+              <div className="section-tabs" role="tablist" aria-label="관리자 신청 종류">
+                <button
+                  role="tab"
+                  aria-selected={managerTab === 'registrations'}
+                  onClick={() => setManagerTab('registrations')}
+                >
+                  가입 승인
+                </button>
+                <button role="tab" aria-selected={managerTab === 'changes'} onClick={() => setManagerTab('changes')}>
+                  공원 변경 승인
+                </button>
+              </div>
+              {managerTab === 'changes' ? (
+                <ParkChanges onChanged={() => void reload()} />
+              ) : (
+                <section className="board" aria-label="가입 신청 관리">
+                  <div className="toolbar">
+                    <label htmlFor="status-filter">승인 상태</label>
+                    <select
+                      id="status-filter"
+                      value={filter}
+                      onChange={(e) => setFilter(e.target.value as typeof filter)}
+                    >
+                      {FILTERS.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.label} {count(item.id)}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      className="table-search"
+                      type="search"
+                      aria-label="관리자 검색"
+                      placeholder="관리자 · 아이디 · 공원 검색"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                    />
+                    <button className="refresh-button" onClick={() => void reload()} disabled={busy || loading}>
+                      새로고침
                     </button>
                   </div>
-                ) : null}
-                {!unauthorized && data ? (
-                  <div className="table-scroll">
-                    <table>
-                      <caption className="sr-only">회원가입 신청자와 공원 및 승인 상태</caption>
-                      <thead>
-                        <tr>
-                          {['관리자', '아이디', '전화번호', '이메일', '담당 공원', '담당 로봇', '승인 여부'].map(
-                            (title) => (
-                              <th scope="col" key={title}>
-                                {title}
-                              </th>
-                            ),
-                          )}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {visible.map((row) => (
-                          <tr key={row.userId}>
-                            <th scope="row">{row.applicantName}</th>
-                            <td className="muted">{row.applicantLoginId}</td>
-                            <td>{row.applicantPhone || '미등록'}</td>
-                            <td>{row.applicantEmail}</td>
-                            <td>{row.name}</td>
-                            <td>
-                              {data.robots
-                                .filter((robot) => robot.parkId === row.id)
-                                .map((robot) => robot.name)
-                                .join(', ') || <span className="muted">배정 전</span>}
-                            </td>
-                            <td>
-                              <div className="row-actions">
-                                {row.registrationStatus === 'pending' ? (
-                                  <>
-                                    <button
-                                      className="approve-button"
-                                      aria-label={`${row.applicantName} 가입 승인`}
-                                      disabled={busy || loading || !!error}
-                                      onClick={() => setTarget({ action: 'approve', registration: row })}
-                                    >
-                                      승인
-                                    </button>
-                                    <button
-                                      className="reject-button"
-                                      aria-label={`${row.applicantName} 가입 반려`}
-                                      disabled={busy || loading || !!error}
-                                      onClick={() => setTarget({ action: 'reject', registration: row })}
-                                    >
-                                      반려
-                                    </button>
-                                  </>
-                                ) : row.registrationStatus === 'approved' ? (
-                                  <button
-                                    className="cancel-button"
-                                    aria-label={`${row.applicantName} 승인 취소`}
-                                    disabled={busy || loading || !!error}
-                                    onClick={() => setTarget({ action: 'revoke', registration: row })}
-                                  >
-                                    승인 취소
-                                  </button>
-                                ) : (
-                                  <span className="error-text">반려</span>
-                                )}
-                              </div>
-                              {row.rejectReason ? (
-                                <small className="error-text reason">사유: {row.rejectReason}</small>
-                              ) : null}
-                            </td>
+                  {loading ? (
+                    <p className="loading" role="status">
+                      신청 목록을 불러오고 있어요…
+                    </p>
+                  ) : null}
+                  {error ? (
+                    <div className="error-panel" role="alert">
+                      <p>{error}</p>
+                      <button className="button soft" onClick={unauthorized ? onLogout : () => void reload()}>
+                        {unauthorized ? '다시 로그인' : '다시 시도'}
+                      </button>
+                    </div>
+                  ) : null}
+                  {!unauthorized && data ? (
+                    <div className="table-scroll">
+                      <table>
+                        <caption className="sr-only">회원가입 신청자와 공원 및 승인 상태</caption>
+                        <thead>
+                          <tr>
+                            {['관리자', '아이디', '전화번호', '이메일', '담당 공원', '담당 로봇', '승인 여부'].map(
+                              (title) => (
+                                <th scope="col" key={title}>
+                                  {title}
+                                </th>
+                              ),
+                            )}
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    {visible.length === 0 ? (
-                      <div className="empty">
-                        <h2>
-                          {filter === 'all'
-                            ? '아직 회원가입 신청이 없어요'
-                            : `${FILTERS.find((f) => f.id === filter)?.label} 상태의 신청이 없어요`}
-                        </h2>
-                        <p>새 신청이 접수되면 여기에서 확인할 수 있어요.</p>
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
-              </section>
-              <ParkChanges onChanged={() => void reload()} />
+                        </thead>
+                        <tbody>
+                          {list.items.map((row) => (
+                            <tr key={row.userId}>
+                              <th scope="row">{row.applicantName}</th>
+                              <td className="muted">{row.applicantLoginId}</td>
+                              <td>{row.applicantPhone || '미등록'}</td>
+                              <td>{row.applicantEmail}</td>
+                              <td>{row.name}</td>
+                              <td>
+                                {data.robots
+                                  .filter((robot) => robot.parkId === row.id)
+                                  .map((robot) => robot.name)
+                                  .join(', ') || <span className="muted">배정 전</span>}
+                              </td>
+                              <td>
+                                <div className="row-actions">
+                                  {row.registrationStatus === 'pending' ? (
+                                    <>
+                                      <button
+                                        className="approve-button"
+                                        aria-label={`${row.applicantName} 가입 승인`}
+                                        disabled={busy || loading || !!error}
+                                        onClick={() => setTarget({ action: 'approve', registration: row })}
+                                      >
+                                        승인
+                                      </button>
+                                      <button
+                                        className="reject-button"
+                                        aria-label={`${row.applicantName} 가입 반려`}
+                                        disabled={busy || loading || !!error}
+                                        onClick={() => setTarget({ action: 'reject', registration: row })}
+                                      >
+                                        반려
+                                      </button>
+                                    </>
+                                  ) : row.registrationStatus === 'approved' ? (
+                                    <button
+                                      className="cancel-button"
+                                      aria-label={`${row.applicantName} 승인 취소`}
+                                      disabled={busy || loading || !!error}
+                                      onClick={() => setTarget({ action: 'revoke', registration: row })}
+                                    >
+                                      승인 취소
+                                    </button>
+                                  ) : (
+                                    <span className="error-text">반려</span>
+                                  )}
+                                </div>
+                                {row.rejectReason ? (
+                                  <small className="error-text reason">사유: {row.rejectReason}</small>
+                                ) : null}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {visible.length === 0 ? (
+                        <div className="empty">
+                          <h2>
+                            {filter === 'all'
+                              ? '아직 회원가입 신청이 없어요'
+                              : `${FILTERS.find((f) => f.id === filter)?.label} 상태의 신청이 없어요`}
+                          </h2>
+                          <p>새 신청이 접수되면 여기에서 확인할 수 있어요.</p>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  <Pagination {...list} onChange={setPage} />
+                </section>
+              )}
             </>
           )}
         </main>
