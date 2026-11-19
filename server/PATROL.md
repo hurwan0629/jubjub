@@ -1,5 +1,7 @@
 # 공원 지정과 순찰 설정 (KAN-93)
 
+> Multi-station API update (2026-11-18): see [STATIONS.md](STATIONS.md). The coordinate-only examples below remain compatible for a single registered station. For multiple stations, use defaultStationId.
+
 순찰 설정 API는 `Authorization: Bearer <accessToken>`이 필요해요. 가입 중 공원 카탈로그 검색(GET /parks)은 공개예요.
 앱은 Supabase에 직접 접근하지 않아요. 요청에 userId/parkId를 보내도 권한으로 사용하지 않고
 로그인한 관리자의 공원에만 접근해요.
@@ -62,7 +64,7 @@ DB 마이그레이션 `20261117_0005`: 배정된 로봇마다 기존 공용 설�
 | API | 요청/응답 |
 | --- | --- |
 | GET /park | 운영 공원. 미선택 시 404 |
-| PUT /park | `{catalogId}` → 공원 정보와 status/approvedBy/approvedAt/rejectReason/routeSetupDone |
+| PUT /park | `{catalogId}` → 공원 정보와 status/reviewedBy/reviewedAt/rejectReason/routeSetupDone |
 | GET /station | `{latitude,longitude}` 또는 미등록이면 null |
 | PUT /station | `{latitude,longitude}` → 저장 좌표 |
 | GET /routes | `{id,start,points,end,appliesFrom:"nextPatrol"}`. 경로 미등록이면 id=null, points=[] |
@@ -95,7 +97,7 @@ pending/rejected에서 다른 공원을 고르면 동일 parks 행의 catalog_id
   각 routes.station_id가 출발·종료 위치를 고정해 분리수거장을 옮겨도 이전 버전이 유지돼요.
 - `route_points`에는 순찰 지점만 저장해요. `GET /routes`의 start/end가 분리수거장이에요.
 - 분리수거장 위치를 옮기면 공원의 모든 활성 경로를 새 버전으로 만들고 거리 조건을 재검증해요.
-- 경로 변경마다 agent_runs/agent_steps에 “관리자 경로 수정” 로그를 함께 저장해요.
+- 경로 변경은 경로와 지점 이력으로 보존하며 에이전트 실행 로그를 생성하지 않아요.
   이 테이블은 이번에 필요한 로그 필드만 도입했어요. 인식·작업 FK는 해당 기능 구현 시 추가해요.
 
 ## 로봇 연동 시 지킬 계약
@@ -133,7 +135,7 @@ alembic upgrade head
 목록에서 비활성화된 항목은 새로 선택할 수 없지만, 이미 연결된 운영 공원에서는 계속 조회할 수 있어요.
 
 DB 설계서 대비 parks의 정보 컬럼 대신 catalog_id를 사용하고 routes.station_id,
-schedules.label/repeat, agent_runs.park_id를 추가했어요.
+schedules.label/repeat를 추가했어요. 에이전트 실행 로그 테이블은 `20261118_0008`에서 제거했어요.
 20261113_0003은 최초 적용 전에 정규화 구조로 수정했어요.
 적용 후 parks의 네 컬럼·목록 외래 키·새 테이블 7개 RLS를 확인했고,
 `alembic check`에서 모델과 DB 차이가 없음을 확인했어요.

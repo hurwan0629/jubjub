@@ -109,6 +109,28 @@ global.fetch = async (url, init) => {
   return new Response(JSON.stringify(response), { status });
 };
 
+test('재신청은 별도 인증을 사용하고 수정할 수 없는 아이디를 제출하지 않는다', async () => {
+  client.setAuthToken(null);
+  response = { reapplicationToken: 'restricted-token', loginId: 'manager01', rejectReason: '정보 확인 필요' };
+  const session = await auth.prepareReapplication({ loginId: 'manager01', password: 'password123' });
+  assert.equal(calls.at(-1).url, 'http://localhost:8000/auth/reapplication-session');
+  assert.equal(session.rejectReason, '정보 확인 필요');
+  response = { id: '7', registrationStatus: 'pending' };
+  await auth.reapply({
+    reapplicationToken: session.reapplicationToken,
+    name: '수정',
+    password: 'newpass123',
+    email: 'new@example.com',
+    phone: '01012345678',
+    catalogId: '1',
+  });
+  assert.equal(calls.at(-1).url, 'http://localhost:8000/auth/reapply');
+  assert.equal(JSON.parse(calls.at(-1).body).loginId, undefined);
+  assert.equal(JSON.parse(calls.at(-1).body).reapplicationToken, 'restricted-token');
+  await client.request('/me');
+  assert.equal(calls.at(-1).headers.Authorization, undefined);
+});
+
 test('승인 상태와 초기 설정 완료 여부에 따라 진입 화면을 결정한다', () => {
   assert.equal(auth.onboardingScreen({ role: 'manager', registrationStatus: null, routeSetupDone: false }), 'Login');
   for (const parkStatus of ['pending', 'rejected']) {
@@ -188,18 +210,36 @@ test('로봇별 경로 조회와 저장은 같은 robotId를 전달한다', asyn
   assert.equal(calls.at(-1).url, 'http://localhost:8000/robots');
 });
 
+test('경로를 다시 저장할 때 선택한 분리수거장 ID를 유지한다', async () => {
+  const config = {
+    robotId: '22',
+    catalogId: '1',
+    defaultStationId: '7',
+    stations: [{ id: '7', name: '남문', position: { latitude: 37.5, longitude: 127 } }],
+    station: { latitude: 37.5, longitude: 127 },
+    points: [],
+    schedule: [],
+  };
+  response = config;
+  await routes.saveRouteConfig(config);
+  const body = JSON.parse(calls.at(-1).body);
+  assert.equal(body.defaultStationId, '7');
+  assert.equal(body.catalogId, '1');
+  assert.equal(body.stations, undefined);
+});
+
 test('홈은 배정된 로봇의 이름과 상태를 각각 표시하고 가짜 배터리 비율을 만들지 않는다', async () => {
   const robots = require('../src/api/robot.ts');
   response = [
     { id: '1', name: '로봇 1', status: 'working', batteryVoltage: 11.8, lastSeenAt: '2026-11-17T05:00:00Z' },
-    { id: '2', name: '로봇 2', status: 'charging', batteryVoltage: null, lastSeenAt: null },
+    { id: '2', name: '로봇 2', status: 'idle', batteryVoltage: null, lastSeenAt: null },
   ];
   const home = await robots.getHomeRobots();
   assert.deepEqual(
     home.map((r) => [r.id, r.name, r.state]),
     [
       ['1', '로봇 1', 'patrolling'],
-      ['2', '로봇 2', 'charging'],
+      ['2', '로봇 2', 'idle'],
     ],
   );
   assert.equal(home[0].battery, null);
@@ -298,6 +338,36 @@ test('목업도 계정별 승인 대기와 설정을 보존하고 다른 계정�
     status: 409,
   });
   assert.equal(mockAuth.onboardingScreen(await mockAuth.login({ loginId: 'newmanager' })), 'Main');
+});
+
+test('목업 재신청도 기존 정보를 고치고 승인 대기로 돌아간다', async () => {
+  const mockAuth = require('../src/api/auth.ts');
+  const sessions = require('../src/api/mock/onboarding.ts');
+  const session = await sessions.openMockSession('newmanager');
+  session.profile.registrationStatus = session.profile.parkStatus = 'rejected';
+  session.park.status = 'rejected';
+  session.park.rejectReason = '담당자 정보 확인';
+  await sessions.saveMockSession();
+  const info = await mockAuth.prepareReapplication({ loginId: 'newmanager', password: 'test1234' });
+  assert.equal(info.name, session.profile.name);
+  assert.equal(info.rejectReason, '담당자 정보 확인');
+  assert.equal(JSON.stringify([...storage.values()]).includes(info.reapplicationToken), false);
+  const body = {
+    reapplicationToken: info.reapplicationToken,
+    password: 'newpass123',
+    name: '수정한 이름',
+    email: 'changed@example.com',
+    phone: '01011112222',
+    catalogId: 'banpo',
+  };
+  assert.equal((await mockAuth.reapply(body)).registrationStatus, 'pending');
+  assert.equal(sessions.getMockSession().profile.name, '수정한 이름');
+  assert.equal(sessions.getMockSession().park.catalogId, 'banpo');
+  assert.equal(sessions.getMockSession().park.rejectReason, null);
+  await assert.rejects(mockAuth.reapply(body), { code: 'registration_not_rejected' });
+  await assert.rejects(mockAuth.login({ loginId: 'newmanager', password: 'newpass123' }), {
+    code: 'registration_pending',
+  });
 });
 
 test('두 로봇의 목업 경로와 이름도 서로 섞이지 않는다', async () => {

@@ -24,14 +24,12 @@ JWT에 역할을 고정하지 않으므로 역할 변경은 다음 요청부터 
 분리 API의 `/station`, `/schedules`, `/route/complete`에는 `?catalogId=`를 보내요.
 
 `GET /admin/parks`는 승인된 공원과 담당자·로봇 수를 반환해요.
-`GET /admin/parks/{id}/reports?date=YYYY-MM-DD&catalogId=...`는 저장된 일일 보고를 조회해요.
-보고가 없으면 빈 배열이에요. 보고 자동 생성과 탐지/순찰 실측 집계는 별도 구현 범위예요.
-`catalogId`가 선택 당시와 다르면 409로 공원 목록을 다시 선택하게 해요.
+일일 보고 조회 API와 데모 보고 생성기는 제거했어요.
 
 `PATCH /admin/robots/{id}/assignment`의 `{parkId}`는 승인 공원 배정, `{parkId:null}`은 회수예요.
 대기·오프라인 로봇만 가능하고, 다른 공원으로 옮길 때 이전 로봇의 활성 경로·시간표를 제거해요.
 다른 로봇의 설정과 과거 경로 이력은 보존해요.
-마이그레이션 `20261117_0007`은 공원 변경 요청·일일 보고 테이블을 추가하며 두 테이블 모두 RLS를 활성화해요.
+마이그레이션 `20261118_0008`은 `daily_reports`, `agent_steps`, `agent_runs` 테이블과 데이터를 삭제해요. 다운그레이드는 테이블 구조만 복원해요.
 
 ## 기존 테이블 구조
 
@@ -45,16 +43,14 @@ JWT에 역할을 고정하지 않으므로 역할 변경은 다음 요청부터 
 | users | role: manager(기본), super_admin. route_setup_done 제거 |
 | parks | status, approved_by, approved_at, reject_reason, route_setup_done 추가 |
 | robots | id/name/serial_no/park_id/status/assigned_at/created_at 신규 |
-| agent_runs | robot_id nullable FK 추가 |
 
 parks는 여전히 관리자당 1개예요. 공원 정보는 catalog_id로 목록을 연결해서 조회해요.
 같은 공원에 pending 신청은 여러 개 가능하지만 approved catalog_id는 부분 유일 인덱스로 한 개만 허용해요.
 robots.serial_no는 유일하고 park_id는 유일하지 않으므로 공원 하나에 여러 로봇을 할당할 수 있어요.
 로봇의 park_id와 assigned_at은 함께 NULL이거나 함께 값이 있어야 해요.
-로봇 상태는 idle/working/charging/offline/error예요. 새 로봇은 실제 연결 확인 전이므로 offline이에요.
+로봇 상태는 idle/working/emptying/offline/error예요. 새 로봇은 실제 연결 확인 전이므로 offline이에요.
 로봇 할당은 온라인 상태를 임의로 바꾸지 않아요.
-agent_runs의 관리자 경로 변경 로그는 로봇 실행이 아니므로 robot_id=NULL이에요.
-실제 로봇 실행기는 실행 대상 robot_id를 기록해야 해요.
+경로 저장 시 에이전트 실행 로그를 생성하지 않아요.
 아직 없는 tasks/robot_states 등의 다중 로봇 실행·상태 집계는 이후 구현 범위예요.
 
 ## 앱 흐름
@@ -93,19 +89,19 @@ agent_runs의 관리자 경로 변경 로그는 로봇 실행이 아니므로 ro
 기존 /admin/park-requests 및 /admin/parks/{id}/approve·reject는 호환 경로예요. 신규 관리 화면은 userId 기준 /admin/registrations를 사용해요.
 
 승인 취소는 승인 상태인 관리자에게만 가능해요. 담당 로봇이 모두 idle/offline일 때 로봇의 park_id와 assigned_at을 비우고 신청을 rejected로 변경하며 취소 사유를 저장해요.
-working/charging/error 로봇이 있으면 409 robot_not_available로 전체 변경을 거부해요. 기존 경로·시간표는 삭제하지 않아요.
+working/emptying/error 로봇이 있으면 409 robot_not_available로 전체 변경을 거부해요. 기존 경로·시간표는 삭제하지 않아요.
 취소 직후 해당 관리자의 로그인 및 기존 토큰을 사용하는 업무 API 접근은 403으로 차단돼요.
 가입 신청/로봇 전체 목록 API는 offset 10,000 이후도 조회할 수 있으며 한 페이지는 최대 100개예요.
 신청 목록은 공원 정보 외에 userId/applicantName/applicantLoginId/applicantEmail/applicantPhone/registrationStatus/createdAt과 승인 메타데이터를 반환해요.
 GET/PUT /park와 승인·반려 응답에는 아래 필드가 추가돼요.
 
 ```json
-{"status":"pending","approvedBy":null,"approvedAt":null,"rejectReason":null,"routeSetupDone":false}
+{"status":"pending","reviewedBy":null,"reviewedAt":null,"rejectReason":null,"routeSetupDone":false}
 ```
 
 가입 승인은 로봇 없이도 가능해요. robotIds를 함께 보내면 최대 100대까지 지정할 수 있고 중복 ID는 거부해요.
 선택한 모든 로봇이 존재하며 미할당이고 idle/offline일 때만 승인해요.
-이미 다른 공원에 할당된 로봇을 가져오거나 working/charging/error 로봇을 배치할 수 없어요.
+이미 다른 공원에 할당된 로봇을 가져오거나 working/emptying/error 로봇을 배치할 수 없어요.
 승인과 모든 로봇 할당을 같은 트랜잭션으로 처리하므로 일부만 저장되는 일은 없어요.
 신청·로봇 행 잠금과 공원의 부분 유일 인덱스로 동시 중복 승인·할당도 막아요.
 한 총관리자의 여러 변경 요청은 계정 행 잠금으로 직렬화해요.

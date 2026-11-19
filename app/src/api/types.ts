@@ -8,7 +8,6 @@ export type RobotState =
   | 'picking' // 줍는 중
   | 'toStation' // 분리수거장 이동 중
   | 'emptying' // 비우는 중
-  | 'charging' // 충전 중
   | 'idle' // 대기
   | 'teleop' // 원격 조종 중 (확장)
   | 'error' // 오류 (뒤집힘·고립 등)
@@ -54,6 +53,15 @@ export type SignUpRequest = {
 
 /** POST /auth/register 응답 (201). 비밀번호는 돌려주지 않아요 */
 export type SignUpResponse = { id: string; name: string; email: string; registrationStatus: 'pending' };
+
+export type ReapplicationSession = Omit<SignUpRequest, 'password'> & {
+  reapplicationToken: string;
+  expiresIn: number;
+  rejectReason: string;
+  park: Park | null;
+};
+
+export type ReapplyRequest = Omit<SignUpRequest, 'loginId'> & { reapplicationToken: string };
 
 /** POST /auth/login 요청 */
 export type LoginRequest = { loginId: string; password: string };
@@ -103,6 +111,8 @@ export type ManagedPark = Omit<Park, 'distance'> & {
   status: 'pending' | 'approved' | 'rejected';
   routeSetupDone: boolean;
   rejectReason: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
 };
 
 /** 순찰 지점 (C-03 처음 설정 · A-04 경로 편집) */
@@ -128,6 +138,8 @@ export type PatrolSlot = {
 export type RouteConfig = {
   catalogId?: string;
   robotId?: string | null;
+  defaultStationId?: string | null;
+  stations?: { id: string; name: string; position: LatLng }[];
   parkName: string;
   bounds: ParkBounds;
   area: ParkArea;
@@ -141,7 +153,7 @@ export type AssignedRobot = {
   name: string;
   serialNo: string;
   parkId: string | null;
-  status: 'idle' | 'working' | 'emptying' | 'charging' | 'offline' | 'error';
+  status: 'idle' | 'working' | 'emptying' | 'offline' | 'error';
   slamX: number | null;
   slamY: number | null;
   lat: number | null;

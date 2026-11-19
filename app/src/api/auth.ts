@@ -3,7 +3,16 @@ import { ApiError, mockFor, mockResponse, request, setAuthToken } from './client
 import { mockTakenLoginIds } from './mock/auth';
 import { getMockSession, hasMockAccount, openMockSession, saveMockSession } from './mock/onboarding';
 import { mockParks } from './mock/parks';
-import type { LoginRequest, LoginResponse, SignUpRequest, SignUpResponse } from './types';
+import type {
+  LoginRequest,
+  LoginResponse,
+  ReapplicationSession,
+  ReapplyRequest,
+  SignUpRequest,
+  SignUpResponse,
+} from './types';
+
+let mockReapplication: { token: string; loginId: string; expiresAt: number } | undefined;
 
 /**
  * POST /auth/register : 회원가입 (201).
@@ -36,7 +45,10 @@ export async function signUp(body: SignUpRequest): Promise<SignUpResponse> {
       status: 'pending',
       routeSetupDone: false,
       rejectReason: null,
+      reviewedBy: null,
+      reviewedAt: null,
     };
+    getMockSession().application = { loginId: body.loginId, phone: body.phone };
     await saveMockSession();
     return mockResponse(
       { id: `${Date.now()}`, name: body.name, email: body.email.toLowerCase(), registrationStatus: 'pending' },
@@ -95,4 +107,80 @@ export function onboardingScreen(profile: Pick<LoginResponse, 'role' | 'registra
   if (profile.role === 'super_admin') return 'Login' as const;
   if (profile.registrationStatus !== 'approved') return 'Login' as const;
   return profile.routeSetupDone ? ('Main' as const) : ('RouteSetup' as const);
+}
+
+/** 반려 계정의 비밀번호 확인 후 재신청에만 사용할 인증과 기존 정보를 받아요. */
+export async function prepareReapplication(body: LoginRequest): Promise<ReapplicationSession> {
+  if (!mockFor('auth')) {
+    return request('/auth/reapplication-session', { method: 'POST', body: JSON.stringify(body) });
+  }
+  const session = await openMockSession(body.loginId);
+  if (session.profile.registrationStatus !== 'rejected' || !session.park) {
+    throw new ApiError(409, '반려된 가입 신청만 다시 신청할 수 있어요', 'registration_not_rejected');
+  }
+  mockReapplication = {
+    token: `reapply-${Date.now()}-${Math.random()}`,
+    loginId: body.loginId,
+    expiresAt: Date.now() + 1800000,
+  };
+  session.application = { loginId: body.loginId, phone: session.application?.phone ?? '' };
+  await saveMockSession();
+  return mockResponse({
+    reapplicationToken: mockReapplication.token,
+    expiresIn: 1800,
+    loginId: body.loginId,
+    name: session.profile.name,
+    email: session.profile.email,
+    phone: session.application?.phone ?? '',
+    catalogId: session.park.catalogId,
+    rejectReason: session.park.rejectReason ?? '',
+    park: { ...session.park, id: session.park.catalogId, distance: '' },
+  });
+}
+
+export async function reapply(body: ReapplyRequest): Promise<SignUpResponse> {
+  if (!mockFor('auth')) return request('/auth/reapply', { method: 'POST', body: JSON.stringify(body) });
+  const session = getMockSession();
+  if (
+    !session.park ||
+    session.profile.registrationStatus !== 'rejected' ||
+    !mockReapplication ||
+    mockReapplication.expiresAt < Date.now() ||
+    mockReapplication.token !== body.reapplicationToken ||
+    mockReapplication.loginId !== session.application?.loginId
+  ) {
+    throw new ApiError(409, '이미 처리된 가입 신청이에요. 다시 로그인해 주세요', 'registration_not_rejected');
+  }
+  const selected = mockParks.find((park) => park.id === body.catalogId);
+  if (!selected) throw new ApiError(404, '선택한 공원을 찾을 수 없어요', 'park_not_found');
+  const { distance: _distance, ...park } = selected;
+  session.profile = {
+    ...session.profile,
+    name: body.name,
+    email: body.email.toLowerCase(),
+    parkStatus: 'pending',
+    registrationStatus: 'pending',
+    routeSetupDone: false,
+  };
+  session.park = {
+    ...park,
+    catalogId: body.catalogId,
+    status: 'pending',
+    rejectReason: null,
+    routeSetupDone: false,
+    reviewedBy: null,
+    reviewedAt: null,
+  };
+  session.application = { loginId: session.application?.loginId ?? '', phone: body.phone };
+  session.route = null;
+  session.robotRoutes = {};
+  session.station = null;
+  mockReapplication = undefined;
+  await saveMockSession();
+  return mockResponse({
+    id: session.park.id,
+    name: body.name,
+    email: body.email.toLowerCase(),
+    registrationStatus: 'pending',
+  });
 }

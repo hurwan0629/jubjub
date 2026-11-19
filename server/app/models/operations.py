@@ -1,12 +1,12 @@
 """공원 변경 신청 이력과 공원별 일일 보고를 보존해요."""
 
-from datetime import date, datetime
+from datetime import datetime
 
-from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Identity, Index, Text, UniqueConstraint, func, text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Identity, Index, Text, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
-from app.models.patrol import DOCUMENT, ID
+from app.models.patrol import ID
 
 
 class ParkChangeRequest(Base):
@@ -32,16 +32,4 @@ class ParkChangeRequest(Base):
     reject_reason: Mapped[str | None] = mapped_column(Text)
     reviewed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-
-
-class DailyReport(Base):
-    __tablename__ = "daily_reports"
-    __table_args__ = (UniqueConstraint("catalog_id", "date"),)
-    id: Mapped[int] = mapped_column(ID, Identity(always=True), primary_key=True)
-    park_id: Mapped[int] = mapped_column(ForeignKey("parks.id"), index=True)
-    catalog_id: Mapped[int] = mapped_column(ForeignKey("park_catalog_entries.id"), index=True)
-    date: Mapped[date] = mapped_column(Date)
-    summary: Mapped[str] = mapped_column(Text)
-    payload: Mapped[dict] = mapped_column(DOCUMENT, default=dict, server_default=text("'{}'"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

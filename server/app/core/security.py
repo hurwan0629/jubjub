@@ -57,6 +57,8 @@ def decode_user_id(token: str) -> int:
     key = signing_key()
     try:
         claims = jwt.decode(token, key, algorithms=["HS256"], options={"require": ["sub", "iat", "exp"]})
+        if claims.get("purpose") is not None:
+            raise ValueError("업무용 인증 토큰이 아니에요")
         subject = claims["sub"]
         if not re.fullmatch(r"[1-9][0-9]{0,18}", subject) or int(subject) > 2**63 - 1:
             raise ValueError("잘못된 사용자 번호예요")

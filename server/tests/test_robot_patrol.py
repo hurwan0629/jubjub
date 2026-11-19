@@ -91,10 +91,13 @@ def test_station_move_versions_all_robots_and_preserves_old_history(setup_client
     save(client, 1)
     save(client, 2)
     old_routes = list(db.scalars(select(Route).where(Route.is_active.is_(True))))
+    old_points = list(db.scalars(select(PatrolPoint)))
     moved = {"latitude": 37.499, "longitude": 127}
     assert client.put("/station", json=moved).status_code == 200
     assert all(not db.get(Route, r.id).is_active for r in old_routes)
-    assert all(db.get(PatrolPoint, r.station_id).lat == 37.5 for r in old_routes)
+    assert all(r.default_station_id is not None for r in old_routes)
+    assert old_points
+    assert all(p.deleted_at is not None for p in old_points)
     for robot_id in (1, 2):
         result = client.get(f"/routes?robotId={robot_id}").json()
         assert result["robotId"] == str(robot_id)
@@ -137,7 +140,7 @@ def test_consumed_draft_cannot_block_assigned_robot_station_replacement(setup_cl
     choose(client)
     save(client, "")
     park = db.scalar(select(Park))
-    park.status, park.approved_by, park.approved_at = "pending", None, None
+    park.status, park.reviewed_by, park.reviewed_at = "pending", None, None
     db.add(Robot(id=1, name="A", serial_no="A"))
     db.commit()
     token, _ = create_access_token(10)
@@ -183,6 +186,7 @@ def test_first_robot_approval_inherits_unassigned_draft(setup_client):
     park = db.scalar(select(Park))
     park.status = "pending"
     park.reject_reason = None
+    park.reviewed_by = park.reviewed_at = None
     db.commit()
     db.add(Robot(id=1, name="A", serial_no="A"))
     db.add(Robot(id=2, name="B", serial_no="B"))

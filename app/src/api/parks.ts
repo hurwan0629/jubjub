@@ -67,7 +67,15 @@ export async function selectPark(catalogId: string): Promise<ManagedPark> {
   const selected = mockParks.find((p) => p.id === catalogId);
   if (!selected) throw new ApiError(404, '선택한 공원을 찾을 수 없어요');
   const { distance: _distance, ...park } = selected;
-  session.park = { ...park, catalogId, status: 'pending', routeSetupDone: false, rejectReason: null };
+  session.park = {
+    ...park,
+    catalogId,
+    status: 'pending',
+    routeSetupDone: false,
+    rejectReason: null,
+    reviewedBy: null,
+    reviewedAt: null,
+  };
   session.profile.parkStatus = 'pending';
   session.profile.registrationStatus = 'pending';
   session.profile.routeSetupDone = false;

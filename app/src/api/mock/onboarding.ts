@@ -4,6 +4,7 @@ import type { AssignedRobot, LatLng, ManagedPark, ParkChange, Profile, RouteConf
 import { mockProfile } from './account';
 
 type Session = {
+  application?: { loginId: string; phone: string };
   parkChanges?: ParkChange[];
   profile: Profile;
   park: ManagedPark | null;

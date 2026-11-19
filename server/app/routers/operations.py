@@ -1,15 +1,13 @@
 """하위관리자 공원 변경 신청과 총관리자 운영 API예요."""
 
-from datetime import date
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Path, Query
 
-from app.routers.patrol import DB, Admin, CatalogID
+from app.routers.patrol import DB, Admin
 from app.schemas.approval import RejectionInput, RobotResponse
 from app.schemas.operations import (
     AdminParkResponse,
-    AdminReportResponse,
     AssignmentInput,
     ParkChangeInput,
     ParkChangeResponse,
@@ -66,8 +64,3 @@ def list_parks(
 @router.patch("/admin/robots/{robot_id}/assignment", response_model=RobotResponse)
 def assign_robot(robot_id: ID, body: AssignmentInput, db: DB, user: Admin):
     return operations.assign_robot(db, user, robot_id, int(body.park_id) if body.park_id is not None else None)
-
-
-@router.get("/admin/parks/{park_id}/reports", response_model=list[AdminReportResponse])
-def park_reports(park_id: ID, db: DB, user: Admin, date: date | None = None, catalog_id: CatalogID = None):
-    return operations.park_reports(db, user, park_id, date, catalog_id)

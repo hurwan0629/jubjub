@@ -2,11 +2,11 @@
 
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
-from app.models import Park, Robot, User
+from app.models import Park, Robot, Route, StationSelection, User
 from app.schemas.approval import ApprovalInput, ParkRequestResponse, RejectionInput, RobotInput, RobotResponse
 from app.services.auth import require_super_admin
 from app.services.patrol import _managed, _park, inherit_draft, transaction
@@ -92,8 +92,8 @@ def approve(db: Session, user: User, park_id: int, body: ApprovalInput):
         raise AppError(409, "대기 중이거나 오프라인인 미할당 로봇만 지정할 수 있어요", code="robot_not_available")
     now = datetime.now(UTC)
     park.status = "approved"
-    park.approved_by = user.id
-    park.approved_at = now
+    park.reviewed_by = user.id
+    park.reviewed_at = now
     park.reject_reason = None
     for robot in robots:
         robot.park_id = park.id
@@ -108,8 +108,8 @@ def reject(db: Session, user: User, park_id: int, body: RejectionInput):
     require_super_admin(user)
     park = _pending(db, park_id)
     park.status = "rejected"
-    park.approved_by = None
-    park.approved_at = None
+    park.reviewed_by = user.id
+    park.reviewed_at = datetime.now(UTC)
     park.reject_reason = body.reason
     db.flush()
     return _managed(park)
@@ -152,10 +152,23 @@ def revoke(db: Session, user: User, park_id: int, body: RejectionInput):
     for robot in robots:
         robot.park_id = None
         robot.assigned_at = None
+    if robots:
+        released_ids = [robot.id for robot in robots]
+        db.execute(
+            delete(StationSelection).where(
+                StationSelection.park_id == park.id, StationSelection.robot_id.in_(released_ids)
+            )
+        )
+        db.execute(
+            update(Route)
+            .where(Route.park_id == park.id, Route.robot_id.in_(released_ids), Route.is_active.is_(True))
+            .values(is_active=False)
+        )
+        park.route_setup_done = False
     # 별도 DB 상태를 추가하지 않고 반려 상태와 사유로 업무 접근을 즉시 차단해요.
     park.status = "rejected"
-    park.approved_by = None
-    park.approved_at = None
+    park.reviewed_by = user.id
+    park.reviewed_at = datetime.now(UTC)
     park.reject_reason = body.reason
     db.flush()
     return _managed(park)

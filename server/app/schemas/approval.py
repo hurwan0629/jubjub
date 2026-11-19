@@ -40,7 +40,7 @@ class RobotResponse(ParkSchema):
     name: str
     serial_no: str
     park_id: str | None
-    status: Literal["idle", "working", "emptying", "charging", "offline", "error"]
+    status: Literal["idle", "working", "emptying", "offline", "error"]
     assigned_at: datetime | None
     created_at: datetime
     slam_x: float | None = None

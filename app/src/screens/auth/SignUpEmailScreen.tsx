@@ -5,13 +5,13 @@ import type { ComponentRef } from 'react';
 import { LayoutChangeEvent, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { signUp } from '@/api/auth';
 import { ApiError } from '@/api/client';
 import type { Park } from '@/api/types';
 import { Button, Checkbox, Header, Text, TextField } from '@/components';
+import { useAuth } from '@/hooks/useAuth';
 import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 import type { RootParams } from '@/navigation';
-import { colors, layout, space } from '@/theme';
+import { colors, layout, radius, space } from '@/theme';
 import { digitsOnly, formatPhone, INVALID, PASSWORD_MISMATCH, RULES } from '@/utils/validation';
 
 import { PrivacyConsentDialog } from './PrivacyConsentDialog';
@@ -35,17 +35,31 @@ function validate(f: Form): Partial<Record<Field, string>> {
 }
 
 /** C-04 가입 정보 → 공원 선택 → 가입 신청. 승인 전에는 로그인하지 않아요. */
-export function SignUpEmailScreen({ navigation }: NativeStackScreenProps<RootParams, 'SignUpEmail'>) {
-  const [form, setForm] = useState<Form>(EMPTY);
+export function SignUpEmailScreen({ navigation, route }: NativeStackScreenProps<RootParams, 'SignUpEmail'>) {
+  const { signUp, reapply } = useAuth();
+  const reapplication = route.params?.reapplication;
+  const title = reapplication ? '다시 신청하기' : '회원가입';
+  const [form, setForm] = useState<Form>(() =>
+    reapplication
+      ? {
+          ...EMPTY,
+          loginId: reapplication.loginId,
+          name: reapplication.name,
+          email: reapplication.email,
+          phone: formatPhone(reapplication.phone),
+        }
+      : EMPTY,
+  );
   // 칸을 벗어났거나 가입하기를 눌렀을 때부터 오류를 보여 줘요
   const [touched, setTouched] = useState<Partial<Record<Field, boolean>>>({});
   const [serverErrors, setServerErrors] = useState<Partial<Record<Field, string>>>({});
   const [formError, setFormError] = useState<string>();
-  const [agreed, setAgreed] = useState(false);
+  const [agreed, setAgreed] = useState(!!reapplication);
   const [consentOpen, setConsentOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [expired, setExpired] = useState(false);
   const [stage, setStage] = useState<'form' | 'park' | 'done'>('form');
-  const [park, setPark] = useState<Park | null>(null);
+  const [park, setPark] = useState<Park | null>(reapplication?.park ?? null);
   const submission = useRef<AbortController | null>(null);
   useEffect(() => () => submission.current?.abort(), []);
 
@@ -90,7 +104,7 @@ export function SignUpEmailScreen({ navigation }: NativeStackScreenProps<RootPar
   });
 
   const filled = Object.values(form).every((v) => v.trim().length > 0);
-  const canSubmit = filled && agreed && !busy;
+  const canSubmit = filled && agreed && !busy && !expired;
 
   const next = () => {
     setTouched({ loginId: true, password: true, password2: true, name: true, email: true, phone: true });
@@ -108,14 +122,18 @@ export function SignUpEmailScreen({ navigation }: NativeStackScreenProps<RootPar
     setBusy(true);
     setFormError(undefined);
     try {
-      await signUp({
+      const body = {
         loginId: form.loginId,
         password: form.password,
         name: form.name.trim(),
         email: form.email.trim(),
         phone: digitsOnly(form.phone),
         catalogId: park.id,
-      });
+      };
+      if (reapplication) {
+        const { loginId: _loginId, ...information } = body;
+        await reapply({ ...information, reapplicationToken: reapplication.reapplicationToken });
+      } else await signUp(body);
       if (controller.signal.aborted) return;
       setForm(EMPTY);
       setStage('done');
@@ -123,11 +141,19 @@ export function SignUpEmailScreen({ navigation }: NativeStackScreenProps<RootPar
       if (controller.signal.aborted) return;
       if (!(e instanceof ApiError)) {
         setFormError('가입하지 못했어요. 잠시 후 다시 시도해 주세요');
+      } else if (reapplication && (e.status === 401 || e.code === 'registration_not_rejected')) {
+        setExpired(true);
+        setStage('form');
+        setFormError('재신청 인증이 만료되었거나 이미 처리된 신청이에요. 다시 로그인해 주세요.');
       } else if (e.code === 'account_exists') {
         // 서버는 아이디 · 이메일 중 어느 쪽이 겹치는지 알려 주지 않아서 두 칸에 모두 보여 줘요
-        setServerErrors({ loginId: e.message, email: e.message });
+        setServerErrors(reapplication ? { email: e.message } : { loginId: e.message, email: e.message });
         setStage('form');
-        setFormError('이미 제출한 가입 신청이 있다면 승인 후 로그인해 주세요.');
+        setFormError(
+          reapplication
+            ? '다른 이메일로 수정한 뒤 다시 신청해 주세요.'
+            : '이미 제출한 가입 신청이 있다면 승인 후 로그인해 주세요.',
+        );
       } else if (e.status === 422 && e.details?.length) {
         // details[].field = "body.loginId" → 해당 칸 아래에 오류를 보여 줘요
         const fields = e.details.map((d) => d.field.split('.').pop()).filter((f): f is Field => !!f && f in EMPTY);
@@ -146,9 +172,11 @@ export function SignUpEmailScreen({ navigation }: NativeStackScreenProps<RootPar
   if (stage === 'done')
     return (
       <SafeAreaView style={s.screen} edges={['top', 'bottom']}>
-        <Header title="회원가입" />
+        <Header title={title} />
         <View style={s.confirmation}>
-          <Text variant="18-bold">총관리자에게 회원가입 승인을 요청했습니다.</Text>
+          <Text variant="18-bold">
+            {reapplication ? '총관리자에게 재신청을 보냈어요.' : '총관리자에게 회원가입 승인을 요청했습니다.'}
+          </Text>
           <Text variant="15-bold" color="brandText">
             {park?.name}
           </Text>
@@ -162,7 +190,7 @@ export function SignUpEmailScreen({ navigation }: NativeStackScreenProps<RootPar
   if (stage === 'park')
     return (
       <SafeAreaView style={s.screen} edges={['top', 'bottom']}>
-        <Header title="회원가입" onBack={busy ? undefined : () => setStage('form')} />
+        <Header title={title} onBack={busy ? undefined : () => setStage('form')} />
         <View style={s.flex} pointerEvents={busy ? 'none' : 'auto'}>
           <StepPark park={park} onPick={setPark} />
         </View>
@@ -180,13 +208,27 @@ export function SignUpEmailScreen({ navigation }: NativeStackScreenProps<RootPar
 
   return (
     <SafeAreaView style={s.screen} edges={['top', 'bottom']}>
-      <Header title="회원가입" onBack={busy ? undefined : () => navigation.goBack()} />
+      <Header title={title} onBack={busy ? undefined : () => navigation.goBack()} />
       <View style={[s.flex, { paddingBottom: keyboardSpace }]}>
         <ScrollView ref={scrollRef} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+          {reapplication ? (
+            <View style={s.rejection}>
+              <Text variant="12-bold" color="error">
+                반려 사유
+              </Text>
+              <Text variant="13-regular" lineHeight="relaxed">
+                {reapplication.rejectReason || '총관리자에게 반려 사유를 확인해 주세요.'}
+              </Text>
+              <Text variant="12-regular" color="textSub">
+                정보를 수정하고 담당 공원을 확인한 뒤 다시 신청해 주세요.
+              </Text>
+            </View>
+          ) : null}
           <TextField
             label="아이디"
             placeholder="영문, 숫자 4~16자"
             {...bind('loginId')}
+            editable={!reapplication && !busy}
             autoCapitalize="none"
             autoCorrect={false}
             autoComplete="username-new"
@@ -227,29 +269,31 @@ export function SignUpEmailScreen({ navigation }: NativeStackScreenProps<RootPar
           />
 
           {/* 개인정보 수집 · 이용 동의 */}
-          <View style={s.consent}>
-            <Pressable
-              style={s.consentCheck}
-              onPress={() => setAgreed((a) => !a)}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: agreed }}
-            >
-              <Checkbox checked={agreed} />
-              <Text variant="13-regular" style={s.flex}>
-                [필수] 개인정보 수집 · 이용 동의
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => setConsentOpen(true)}
-              hitSlop={10}
-              accessibilityRole="button"
-              accessibilityLabel="개인정보 수집 및 이용 동의서 보기"
-            >
-              <Text variant="12-regular" color="textSub" style={s.underline}>
-                보기
-              </Text>
-            </Pressable>
-          </View>
+          {!reapplication ? (
+            <View style={s.consent}>
+              <Pressable
+                style={s.consentCheck}
+                onPress={() => setAgreed((a) => !a)}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: agreed }}
+              >
+                <Checkbox checked={agreed} />
+                <Text variant="13-regular" style={s.flex}>
+                  [필수] 개인정보 수집 · 이용 동의
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setConsentOpen(true)}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="개인정보 수집 및 이용 동의서 보기"
+              >
+                <Text variant="12-regular" color="textSub" style={s.underline}>
+                  보기
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
 
           {formError ? (
             <Text variant="12-regular" color="error" accessibilityLiveRegion="polite">
@@ -259,6 +303,12 @@ export function SignUpEmailScreen({ navigation }: NativeStackScreenProps<RootPar
         </ScrollView>
 
         <View style={s.bottom}>
+          {expired ? (
+            <Button
+              label="다시 로그인하기"
+              onPress={() => navigation.reset({ index: 0, routes: [{ name: 'Login' }] })}
+            />
+          ) : null}
           <Button label="다음" disabled={!canSubmit} onPress={next} />
         </View>
       </View>
@@ -276,6 +326,14 @@ export function SignUpEmailScreen({ navigation }: NativeStackScreenProps<RootPar
 }
 
 const s = StyleSheet.create({
+  rejection: {
+    backgroundColor: colors.bgError,
+    borderColor: colors.error,
+    borderWidth: 1,
+    borderRadius: radius[16],
+    padding: space[16],
+    gap: space[8],
+  },
   screen: { flex: 1, backgroundColor: colors.bg },
   flex: { flex: 1 },
   content: {

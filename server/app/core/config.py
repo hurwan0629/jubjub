@@ -3,7 +3,7 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 SERVER_DIR = Path(__file__).resolve().parents[2]
@@ -37,6 +37,12 @@ class Settings(BaseSettings):
     # 운영 에이전트 LLM
     llm_api_key: str = ""
     llm_model: str = ""
+
+    # Expo 푸시. 실제 발송은 운영 설정에서 명시적으로 켜요.
+    expo_push_enabled: bool = False
+    expo_push_base_url: str = "https://exp.host/--/api/v2/push"
+    expo_push_access_token: SecretStr = SecretStr("")
+    expo_push_timeout_seconds: float = Field(default=10, gt=0, le=30)
 
     @field_validator("database_url")
     @classmethod

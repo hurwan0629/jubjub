@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Annotated, Literal
 
-from pydantic import Field, StringConstraints, model_validator
+from pydantic import ConfigDict, Field, StringConstraints, field_validator, model_validator
 
 from app.schemas.parks import LatLng, ParkArea, ParkBounds, ParkSchema
 
@@ -23,8 +23,8 @@ class ManagedPark(ParkSchema):
     bounds: ParkBounds
     area: ParkArea
     status: Literal["pending", "approved", "rejected"]
-    approved_by: str | None
-    approved_at: datetime | None
+    reviewed_by: str | None
+    reviewed_at: datetime | None
     reject_reason: str | None
     route_setup_done: bool
     anchor_points: list[dict] = Field(default_factory=list)
@@ -43,6 +43,7 @@ class PointResponse(PointInput):
 
 class RouteInput(ParkSchema):
     catalog_id: str | None = Field(default=None, pattern=r"^[1-9][0-9]{0,18}$")
+    default_station_id: str | None = Field(default=None, pattern=r"^[1-9][0-9]{0,18}$")
     points: list[PointInput] = Field(min_length=1, max_length=100)
 
     @model_validator(mode="after")
@@ -51,6 +52,13 @@ class RouteInput(ParkSchema):
         if len(positions) != len(set(positions)):
             raise ValueError("같은 위치의 순찰 지점은 한 번만 지정해 주세요")
         return self
+
+    @field_validator("default_station_id")
+    @classmethod
+    def station_range(cls, value):
+        if value is not None and int(value) > 9223372036854775807:
+            raise ValueError("올바른 분리수거장 번호를 지정해 주세요")
+        return value
 
 
 class ScheduleInput(ParkSchema):
@@ -66,13 +74,46 @@ class ScheduleResponse(ScheduleInput):
 
 
 class ConfigInput(RouteInput):
-    station: LatLng
+    station: LatLng | None = None
     schedule: list[ScheduleInput] = Field(min_length=1, max_length=100)
+
+    @model_validator(mode="after")
+    def station_required(self):
+        if self.station is None and self.default_station_id is None:
+            raise ValueError("기본 분리수거장을 선택해 주세요")
+        return self
+
+
+class StationInput(ParkSchema):
+    model_config = ConfigDict(extra="forbid")
+    catalog_id: str | None = Field(default=None, pattern=r"^[1-9][0-9]{0,18}$")
+    name: Name
+    position: LatLng
+
+
+class StationResponse(ParkSchema):
+    id: str
+    name: str
+    position: LatLng
+
+
+class StationSelectionInput(ParkSchema):
+    model_config = ConfigDict(extra="forbid")
+    catalog_id: str | None = Field(default=None, pattern=r"^[1-9][0-9]{0,18}$")
+    station_id: str = Field(pattern=r"^[1-9][0-9]{0,18}$")
+
+    @field_validator("station_id")
+    @classmethod
+    def station_range(cls, value):
+        if int(value) > 9223372036854775807:
+            raise ValueError("올바른 분리수거장 번호를 지정해 주세요")
+        return value
 
 
 class RouteResponse(ParkSchema):
     catalog_id: str
     robot_id: str | None = None
+    default_station_id: str | None = None
     id: str | None
     start: LatLng | None
     points: list[PointResponse]
@@ -83,6 +124,8 @@ class RouteResponse(ParkSchema):
 class ConfigResponse(ParkSchema):
     catalog_id: str
     robot_id: str | None = None
+    default_station_id: str | None = None
+    stations: list[StationResponse] = Field(default_factory=list)
     park_name: str
     bounds: ParkBounds
     area: ParkArea

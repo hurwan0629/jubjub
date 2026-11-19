@@ -2,6 +2,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import type { NavigatorScreenParams } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+import type { ReapplicationSession } from '@/api/types';
 import { TabBar } from '@/components';
 import { useUnreadCount } from '@/hooks/useNotifications';
 import { AlertsScreen } from '@/screens/AlertsScreen';
@@ -35,7 +36,7 @@ export type RootParams = {
   ParkChange: undefined;
   Splash: undefined; // C-00 시작화면 (3초)
   Login: undefined; // C-01 로그인
-  SignUpEmail: undefined; // C-04 회원가입 - 계정 정보
+  SignUpEmail: { reapplication: ReapplicationSession } | undefined; // C-04 회원가입·재신청
   RouteSetup: undefined; // C-03 공원 승인 후 순찰 경로 처음 설정
   RouteEdit: { robotId?: string } | undefined; // 선택한 로봇의 경로 편집
   RobotList: undefined;

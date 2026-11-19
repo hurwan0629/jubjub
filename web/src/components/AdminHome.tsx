@@ -7,7 +7,6 @@ import { paginate } from './pageData';
 const STATUS: Record<AdminRobot['status'], string> = {
   idle: '대기',
   working: '작업 중',
-  charging: '충전 중',
   emptying: '비우는 중',
   offline: '오프라인',
   error: '오류',
@@ -158,7 +157,7 @@ export function AdminHome({
           </section>
           <section className="board">
             <h2>로봇 상태</h2>
-            {(['idle', 'working', 'charging', 'offline', 'error'] as const).map((s) => (
+            {(['idle', 'working', 'emptying', 'offline', 'error'] as const).map((s) => (
               <div className="status-summary" key={s}>
                 <span className={`status-pill status-${s}`}>{STATUS[s]}</span>
                 <strong>{loading ? '—' : robots.filter((r) => r.status === s).length}대</strong>
