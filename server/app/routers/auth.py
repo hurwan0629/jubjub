@@ -4,8 +4,15 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
-from app.schemas.auth import LoginRequest, LoginResponse, RegisterRequest, RegisterResponse
-from app.services.auth import login_user, profile_for_user, register_user
+from app.schemas.auth import (
+    LoginRequest,
+    LoginResponse,
+    ReapplicationSession,
+    ReapplyRequest,
+    RegisterRequest,
+    RegisterResponse,
+)
+from app.services.auth import login_user, profile_for_user, reapplication_session, reapply_user, register_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -20,4 +27,15 @@ def login(body: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse:
 )
 def register(body: RegisterRequest, db: Session = Depends(get_db)) -> RegisterResponse:
     user = register_user(db, body)
+    return RegisterResponse(id=str(user.id), **profile_for_user(db, user).model_dump())
+
+
+@router.post("/reapplication-session", response_model=ReapplicationSession)
+def prepare_reapplication(body: LoginRequest, db: Session = Depends(get_db)):
+    return reapplication_session(db, body)
+
+
+@router.post("/reapply", response_model=RegisterResponse)
+def reapply(body: ReapplyRequest, db: Session = Depends(get_db)):
+    user = reapply_user(db, body)
     return RegisterResponse(id=str(user.id), **profile_for_user(db, user).model_dump())

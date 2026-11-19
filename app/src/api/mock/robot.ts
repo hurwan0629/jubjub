@@ -21,7 +21,7 @@ export const mockAssignedRobots: AssignedRobot[] = [
     name: '로봇 2',
     serialNo: 'DEMO-002',
     parkId: 'demo',
-    status: 'charging',
+    status: 'idle',
     slamX: null,
     slamY: null,
     lat: null,

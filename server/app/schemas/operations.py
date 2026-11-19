@@ -1,9 +1,9 @@
 """앱 신청과 총관리자 운영 화면의 API 계약이에요."""
 
-from datetime import date, datetime
+from datetime import datetime
 from typing import Annotated, Literal
 
-from pydantic import Field, StringConstraints, field_validator
+from pydantic import StringConstraints, field_validator
 
 from app.schemas.approval import Identifier
 from app.schemas.parks import ParkSchema
@@ -61,35 +61,3 @@ class AdminParkResponse(ParkSchema):
     manager_login_id: str
     status: Literal["pending", "approved", "rejected"]
     robot_count: int
-
-
-class MaterialCount(ParkSchema):
-    material: str
-    count: int = Field(ge=0)
-
-
-class HourCount(ParkSchema):
-    hour: str
-    count: int = Field(ge=0)
-
-
-class ReportEvent(ParkSchema):
-    time: str
-    title: str
-    detail: str
-
-
-class AdminReportResponse(ParkSchema):
-    id: str
-    park_id: str
-    date: date
-    summary: str
-    pickups: int | None = Field(default=None, ge=0)
-    station_visits: int | None = Field(default=None, ge=0)
-    patrols_done: int | None = Field(default=None, ge=0)
-    patrols_planned: int | None = Field(default=None, ge=0)
-    materials: list[MaterialCount] = Field(default_factory=list)
-    hourly: list[HourCount] = Field(default_factory=list)
-    insights: list[str] = Field(default_factory=list)
-    events: list[ReportEvent] = Field(default_factory=list)
-    created_at: datetime

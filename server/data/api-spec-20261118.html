@@ -1,0 +1,2124 @@
+<h1>JUBJUB API 명세서</h1>
+<p>기준일: 2026-11-19 (KST) · 현재 로컬 구현 기준 전체 55개 HTTP API(기존 호환 경로 4개 포함). KAN-23의 기능 → 요청 → 응답 형식으로 전체를 다시 작성했습니다. 이 문서는 변경분 목록이 아닌 전체 명세입니다. 코드 기준이며 원격 서버 배포 완료를 의미하지 않습니다.</p>
+<p><a href="https://kdt-3team-finalterm.atlassian.net/browse/KAN-23" data-card-appearance="inline"></a></p>
+<div data-type="extension" data-extension-key="toc" data-extension-type="com.atlassian.confluence.macro.core" data-parameters='{"macroParams":{"minLevel":{"value":"2"},"maxLevel":{"value":"2"}}}'></div>
+<h2>1. 공통 규칙</h2>
+<table><thead><tr><th><p>항목</p></th><th><p>내용</p></th></tr></thead><tbody><tr><td><p>서버 기본 주소</p></td><td><p>http://localhost:8000 — 휴대폰에서는 서버 PC의 사설 IP:8000 사용</p></td></tr><tr><td><p>문서 주소</p></td><td><p>/docs (Swagger), /openapi.json (OpenAPI). 아래 경로에 /api 접두사는 없습니다. 웹 개발 프록시 /api는 클라이언트 설정입니다.</p></td></tr><tr><td><p>요청·응답</p></td><td><p>JSON / Content-Type: application/json / camelCase</p></td></tr><tr><td><p>일반 인증</p></td><td><p>Authorization: Bearer &lt;accessToken&gt;</p></td></tr><tr><td><p>공개 HTTP 경로</p></td><td><p>GET /health, GET /parks, POST /auth/register, POST /auth/login, POST /auth/reapplication-session, POST /auth/reapply. 재신청은 자체 본인 확인·전용 토큰 검증이 있습니다.</p></td></tr><tr><td><p>역할</p></td><td><p>manager: 하위관리자 앱 / super_admin: 총관리자 웹. /admin/*는 서버에서 총관리자 권한 검사. /me는 둘 다 허용. 일반 공원·순찰·로봇 API는 manager만 허용.</p></td></tr><tr><td><p>승인 정책</p></td><td><p>pending·rejected manager는 일반 업무 API를 기존 토큰으로도 호출할 수 없습니다. 승인 취소 시 즉시 차단합니다.</p></td></tr><tr><td><p>ID</p></td><td><p>응답·JSON 본문 ID는 문자열. Path·Query ID는 URL의 양의 정수로 서버가 변환합니다. Query·Path 상한 9223372036854775807. 이름이 같아 보여도 userId, parkId, catalogId, robotId는 별개입니다.</p></td></tr><tr><td><p>목록·페이지</p></td><td><p>목록은 data/total 포장 없는 배열. 해당 API가 지원하는 limit·offset으로 조회합니다. 빈 결과는 []입니다.</p></td></tr><tr><td><p>시각·좌표</p></td><td><p>시각은 ISO 8601, 화면에서 KST 변환. 시간표 HH:mm은 현지 운영 시간 계약으로 타임존 필드는 없습니다. 위도·경도는 latitude/longitude, 로봇 SLAM 좌표는 slamX/slamY입니다.</p></td></tr><tr><td><p>저장·예시</p></td><td><p>설정 변경은 트랜잭션으로 처리합니다. 아래 계정·ID·좌표는 가상 예시이며 실제 호출은 공원 검색 결과와 실제 경계 안 좌표를 사용합니다.</p></td></tr></tbody></table>
+<pre><code class="language-http">Content-Type: application/json
+Authorization: Bearer &lt;accessToken&gt;</code></pre>
+<h3>ID 구분</h3>
+<table><thead><tr><th><p>예시 필드</p></th><th><p>테이블·의미</p></th><th><p>사용 위치</p></th></tr></thead><tbody><tr><td><p>userId=&quot;12&quot;</p></td><td><p>users.id — 계정</p></td><td><p>/admin/registrations/{user_id}</p></td></tr><tr><td><p>parkId=&quot;5&quot;</p></td><td><p>parks.id — 관리자와 연결된 운영 공원</p></td><td><p>로봇 배정, /admin/parks/{park_id}/approve</p></td></tr><tr><td><p>catalogId=&quot;69&quot;</p></td><td><p>park_catalog_entries.id — 물리적 공원 목록</p></td><td><p>공원 검색·가입·공원 변경·편집 대상 검증</p></td></tr><tr><td><p>robotId=&quot;6&quot;</p></td><td><p>robots.id — 로봇</p></td><td><p>로봇 상세·로봇별 순찰 설정</p></td></tr><tr><td><p>requestId=&quot;31&quot;</p></td><td><p>park_change_requests.id — 변경 요청</p></td><td><p>공원 변경 취소·승인·반려</p></td></tr></tbody></table>
+<h3>다중 로봇·편집 일관성</h3>
+<ul><li><p>robotId가 있는 순찰 API는 공원 배정 로봇이 2대 이상이면 반드시 지정합니다(미지정 422 robot_required). 1대면 생략 시 자동 선택, 0대면 robotId=null 미배정 초안을 저장합니다.</p></li><li><p>분리수거장은 공원 공통, 경로·시간표는 로봇별입니다. 첫 로봇 배정 때 초안을 독립 설정으로 복사합니다.</p></li><li><p>응답의 catalogId를 편집 화면에서 보관하고 PUT /route·PUT /routes의 body.catalogId, PUT /station·PUT /schedules·POST /route/complete의 query.catalogId로 돌려보냅니다.</p></li><li><p>catalogId가 달라지면 409 park_changed입니다. 과거 공원 변경 승인이 있는 공원은 catalogId를 생략해도 409이므로 신규 클라이언트는 항상 전달해야 합니다.</p></li><li><p>지점은 공원 외곽 안·holes 밖이어야 합니다(다각형 경계 자체는 허용). 분리수거장부터 다른 지점과 1km 이내로 연결되는지 검사하며, 인접한 배열 항목끼리만 검사하는 방식은 아닙니다.</p></li><li><p>PUT /schedules는 빈 배열을 허용하지만 PUT /route의 schedule은 최소 1개입니다. 초기 완료 확인은 시간표 행 존재 기준이며 on=true 항목 존재 여부를 별도로 강제하지 않습니다.</p></li></ul>
+<h2>2. 전체 API 목록</h2>
+<table><thead><tr><th><p>번호</p></th><th><p>기능</p></th><th><p>Method</p></th><th><p>Path</p></th><th><p>권한</p></th></tr></thead><tbody><tr><td><p>1</p></td><td><p>서버·DB 상태 확인</p></td><td><p>GET</p></td><td><p>/health</p></td><td><p>공개·전용 검증</p></td></tr><tr><td><p>2</p></td><td><p>공원 검색</p></td><td><p>GET</p></td><td><p>/parks</p></td><td><p>공개·전용 검증</p></td></tr><tr><td><p>3</p></td><td><p>회원가입 신청</p></td><td><p>POST</p></td><td><p>/auth/register</p></td><td><p>공개·전용 검증</p></td></tr><tr><td><p>4</p></td><td><p>로그인</p></td><td><p>POST</p></td><td><p>/auth/login</p></td><td><p>공개·전용 검증</p></td></tr><tr><td><p>5</p></td><td><p>반려 사유·재신청 정보 조회</p></td><td><p>POST</p></td><td><p>/auth/reapplication-session</p></td><td><p>공개·전용 검증</p></td></tr><tr><td><p>6</p></td><td><p>반려된 가입 신청 수정·재제출</p></td><td><p>POST</p></td><td><p>/auth/reapply</p></td><td><p>공개·전용 검증</p></td></tr><tr><td><p>7</p></td><td><p>내 계정 조회</p></td><td><p>GET</p></td><td><p>/me</p></td><td><p>승인된 하위·총관리자</p></td></tr><tr><td><p>8</p></td><td><p>담당 공원 조회</p></td><td><p>GET</p></td><td><p>/park</p></td><td><p>승인된 하위관리자</p></td></tr><tr><td><p>9</p></td><td><p>담당 공원 선택 — 기존 호환 API</p></td><td><p>PUT</p></td><td><p>/park</p></td><td><p>승인된 하위관리자</p></td></tr><tr><td><p>10</p></td><td><p>공유 분리수거장 조회</p></td><td><p>GET</p></td><td><p>/station</p></td><td><p>승인된 하위관리자</p></td></tr><tr><td><p>11</p></td><td><p>공유 분리수거장 저장</p></td><td><p>PUT</p></td><td><p>/station</p></td><td><p>승인된 하위관리자</p></td></tr><tr><td><p>12</p></td><td><p>로봇별 순찰 경로 조회</p></td><td><p>GET</p></td><td><p>/routes</p></td><td><p>승인된 하위관리자</p></td></tr><tr><td><p>13</p></td><td><p>로봇별 순찰 지점·순서 저장</p></td><td><p>PUT</p></td><td><p>/routes</p></td><td><p>승인된 하위관리자</p></td></tr><tr><td><p>14</p></td><td><p>로봇별 순찰 시간표 조회</p></td><td><p>GET</p></td><td><p>/schedules</p></td><td><p>승인된 하위관리자</p></td></tr><tr><td><p>15</p></td><td><p>로봇별 순찰 시간표 교체</p></td><td><p>PUT</p></td><td><p>/schedules</p></td><td><p>승인된 하위관리자</p></td></tr><tr><td><p>16</p></td><td><p>로봇별 전체 순찰 설정 조회</p></td><td><p>GET</p></td><td><p>/route</p></td><td><p>승인된 하위관리자</p></td></tr><tr><td><p>17</p></td><td><p>전체 순찰 설정 일괄 저장</p></td><td><p>PUT</p></td><td><p>/route</p></td><td><p>승인된 하위관리자</p></td></tr><tr><td><p>18</p></td><td><p>개별 순찰 설정 완료 처리</p></td><td><p>POST</p></td><td><p>/route/complete</p></td><td><p>승인된 하위관리자</p></td></tr><tr><td><p>19</p></td><td><p>총관리자 — 가입 신청 목록</p></td><td><p>GET</p></td><td><p>/admin/registrations</p></td><td><p>총관리자</p></td></tr><tr><td><p>20</p></td><td><p>총관리자 — 가입 승인</p></td><td><p>POST</p></td><td><p>/admin/registrations/{user_id}/approve</p></td><td><p>총관리자</p></td></tr><tr><td><p>21</p></td><td><p>총관리자 — 가입 반려</p></td><td><p>POST</p></td><td><p>/admin/registrations/{user_id}/reject</p></td><td><p>총관리자</p></td></tr><tr><td><p>22</p></td><td><p>총관리자 — 기존 가입 승인 취소</p></td><td><p>POST</p></td><td><p>/admin/registrations/{user_id}/revoke</p></td><td><p>총관리자</p></td></tr><tr><td><p>23</p></td><td><p>총관리자 — 공원 신청 목록(호환)</p></td><td><p>GET</p></td><td><p>/admin/park-requests</p></td><td><p>총관리자</p></td></tr><tr><td><p>24</p></td><td><p>총관리자 — 공원 ID로 승인(호환)</p></td><td><p>POST</p></td><td><p>/admin/parks/{park_id}/approve</p></td><td><p>총관리자</p></td></tr><tr><td><p>25</p></td><td><p>총관리자 — 공원 ID로 반려(호환)</p></td><td><p>POST</p></td><td><p>/admin/parks/{park_id}/reject</p></td><td><p>총관리자</p></td></tr><tr><td><p>26</p></td><td><p>총관리자 — 로봇 등록</p></td><td><p>POST</p></td><td><p>/admin/robots</p></td><td><p>총관리자</p></td></tr><tr><td><p>27</p></td><td><p>총관리자 — 전체·미배정 로봇 목록</p></td><td><p>GET</p></td><td><p>/admin/robots</p></td><td><p>총관리자</p></td></tr><tr><td><p>28</p></td><td><p>내 공원의 배정 로봇 목록</p></td><td><p>GET</p></td><td><p>/robots</p></td><td><p>승인된 하위관리자</p></td></tr><tr><td><p>29</p></td><td><p>내 공원의 로봇 상세 조회</p></td><td><p>GET</p></td><td><p>/robots/{robot_id}</p></td><td><p>승인된 하위관리자</p></td></tr><tr><td><p>30</p></td><td><p>내 공원 로봇 이름 수정</p></td><td><p>PATCH</p></td><td><p>/robots/{robot_id}</p></td><td><p>승인된 하위관리자</p></td></tr><tr><td><p>31</p></td><td><p>내 공원 변경 요청 이력</p></td><td><p>GET</p></td><td><p>/park-change-requests</p></td><td><p>승인된 하위관리자</p></td></tr><tr><td><p>32</p></td><td><p>담당 공원 변경 신청</p></td><td><p>POST</p></td><td><p>/park-change-requests</p></td><td><p>승인된 하위관리자</p></td></tr><tr><td><p>33</p></td><td><p>내 공원 변경 요청 취소</p></td><td><p>POST</p></td><td><p>/park-change-requests/{request_id}/cancel</p></td><td><p>승인된 하위관리자</p></td></tr><tr><td><p>34</p></td><td><p>총관리자 — 공원 변경 요청 목록</p></td><td><p>GET</p></td><td><p>/admin/park-change-requests</p></td><td><p>총관리자</p></td></tr><tr><td><p>35</p></td><td><p>총관리자 — 공원 변경 승인</p></td><td><p>POST</p></td><td><p>/admin/park-change-requests/{request_id}/approve</p></td><td><p>총관리자</p></td></tr><tr><td><p>36</p></td><td><p>총관리자 — 공원 변경 반려</p></td><td><p>POST</p></td><td><p>/admin/park-change-requests/{request_id}/reject</p></td><td><p>총관리자</p></td></tr><tr><td><p>37</p></td><td><p>총관리자 — 운영 공원 목록</p></td><td><p>GET</p></td><td><p>/admin/parks</p></td><td><p>총관리자</p></td></tr><tr><td><p>38</p></td><td><p>총관리자 — 로봇 공원 배정·이동·회수</p></td><td><p>PATCH</p></td><td><p>/admin/robots/{robot_id}/assignment</p></td><td><p>총관리자</p></td></tr><tr><td><p>39</p></td><td><p>최초·추가 로봇 배정 요청</p></td><td><p>POST</p></td><td><p>/robot-assignment-requests</p></td><td><p>승인된 하위관리자</p></td></tr><tr><td><p>40</p></td><td><p>내 로봇 배정 요청 이력</p></td><td><p>GET</p></td><td><p>/robot-assignment-requests</p></td><td><p>승인된 하위관리자</p></td></tr><tr><td><p>41</p></td><td><p>내 로봇 배정 요청 취소</p></td><td><p>POST</p></td><td><p>/robot-assignment-requests/{request_id}/cancel</p></td><td><p>승인된 하위관리자</p></td></tr><tr><td><p>42</p></td><td><p>총관리자 — 로봇 배정 요청 목록</p></td><td><p>GET</p></td><td><p>/admin/robot-assignment-requests</p></td><td><p>총관리자</p></td></tr><tr><td><p>43</p></td><td><p>총관리자 — 요청 승인과 실제 로봇 배정</p></td><td><p>POST</p></td><td><p>/admin/robot-assignment-requests/{request_id}/approve</p></td><td><p>총관리자</p></td></tr><tr><td><p>44</p></td><td><p>총관리자 — 로봇 배정 요청 반려</p></td><td><p>POST</p></td><td><p>/admin/robot-assignment-requests/{request_id}/reject</p></td><td><p>총관리자</p></td></tr><tr><td><p>45</p></td><td><p>분리수거장 목록</p></td><td><p>GET</p></td><td><p>/stations</p></td><td><p>승인된 하위관리자</p></td></tr><tr><td><p>46</p></td><td><p>분리수거장 등록</p></td><td><p>POST</p></td><td><p>/stations</p></td><td><p>승인된 하위관리자</p></td></tr><tr><td><p>47</p></td><td><p>분리수거장 수정</p></td><td><p>PATCH</p></td><td><p>/stations/{station_id}</p></td><td><p>승인된 하위관리자</p></td></tr><tr><td><p>48</p></td><td><p>분리수거장 삭제</p></td><td><p>DELETE</p></td><td><p>/stations/{station_id}</p></td><td><p>승인된 하위관리자</p></td></tr><tr><td><p>49</p></td><td><p>로봇 기본 분리수거장 선택</p></td><td><p>PUT</p></td><td><p>/robots/{robot_id}/default-station</p></td><td><p>승인된 하위관리자</p></td></tr><tr><td><p>50</p></td><td><p>내 알림 목록</p></td><td><p>GET</p></td><td><p>/notifications</p></td><td><p>승인된 하위·총관리자</p></td></tr><tr><td><p>51</p></td><td><p>내 미확인 알림 개수</p></td><td><p>GET</p></td><td><p>/notifications/unread-count</p></td><td><p>승인된 하위·총관리자</p></td></tr><tr><td><p>52</p></td><td><p>내 알림 상세</p></td><td><p>GET</p></td><td><p>/notifications/{notification_id}</p></td><td><p>승인된 하위·총관리자</p></td></tr><tr><td><p>53</p></td><td><p>내 알림 읽음 처리</p></td><td><p>PATCH</p></td><td><p>/notifications/{notification_id}/read</p></td><td><p>승인된 하위·총관리자</p></td></tr><tr><td><p>54</p></td><td><p>Expo 기기 토큰 등록·갱신</p></td><td><p>PUT</p></td><td><p>/push-tokens</p></td><td><p>승인된 하위·총관리자</p></td></tr><tr><td><p>55</p></td><td><p>현재 기기 토큰 해제</p></td><td><p>DELETE</p></td><td><p>/push-tokens</p></td><td><p>승인된 하위·총관리자</p></td></tr></tbody></table>
+<h2>3.01. 서버·DB 상태 확인</h2>
+<h3>GET /health</h3>
+<p>기능: SELECT 1로 DB 연결을 확인합니다. 로봇·외부 서비스 정상 여부까지 의미하지 않습니다.</p>
+<p>권한: 일반 Bearer 토큰 불필요. 위 기능의 자체 검증 조건 적용</p>
+<h4>요청</h4>
+<pre><code class="language-http">GET /health</code></pre>
+<p>요청 본문: 없음.</p>
+<h4>응답</h4>
+<p>성공: HTTP 200 · HealthResponse</p>
+<pre><code class="language-json">{
+  &quot;status&quot;: &quot;ok&quot;,
+  &quot;db&quot;: &quot;ok&quot;
+}</code></pre>
+<p>주요 업무 오류: 503 db_unavailable. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.02. 공원 검색</h2>
+<h3>GET /parks</h3>
+<p>기능: 활성 공원만 이름·ID 순서로 반환합니다. 이름 또는 주소에 검색 단어가 모두 포함되어야 합니다. 공백 검색어·검색 결과 없음은 []입니다. 거리순 검색은 없고 distance는 빈 문자열입니다.</p>
+<p>권한: 일반 Bearer 토큰 불필요. 위 기능의 자체 검증 조건 적용</p>
+<h4>요청</h4>
+<pre><code class="language-http">GET /parks?query=예시공원&amp;limit=20&amp;offset=0</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>query</p></td><td><p>query</p></td><td><p>선택</p></td><td><p>string</p></td><td><p>최대 문자 수: 100; 기본값: &quot;&quot;</p></td></tr><tr><td><p>query</p></td><td><p>limit</p></td><td><p>선택</p></td><td><p>integer</p></td><td><p>최솟값: 1; 최댓값: 100; 기본값: 20</p></td></tr><tr><td><p>query</p></td><td><p>offset</p></td><td><p>선택</p></td><td><p>integer</p></td><td><p>최솟값: 0; 최댓값: 10000; 기본값: 0</p></td></tr></tbody></table>
+<p>요청 본문: 없음.</p>
+<h4>응답</h4>
+<p>성공: HTTP 200 · ParkResponse[]</p>
+<pre><code class="language-json">[
+  {
+    &quot;id&quot;: &quot;69&quot;,
+    &quot;name&quot;: &quot;예시공원&quot;,
+    &quot;address&quot;: &quot;서울특별시 예시 주소&quot;,
+    &quot;distance&quot;: &quot;&quot;,
+    &quot;bounds&quot;: {
+      &quot;southWest&quot;: {
+        &quot;latitude&quot;: 37.54,
+        &quot;longitude&quot;: 127.03
+      },
+      &quot;northEast&quot;: {
+        &quot;latitude&quot;: 37.55,
+        &quot;longitude&quot;: 127.04
+      }
+    },
+    &quot;area&quot;: {
+      &quot;outer&quot;: [
+        {
+          &quot;latitude&quot;: 37.54,
+          &quot;longitude&quot;: 127.03
+        },
+        {
+          &quot;latitude&quot;: 37.54,
+          &quot;longitude&quot;: 127.04
+        },
+        {
+          &quot;latitude&quot;: 37.55,
+          &quot;longitude&quot;: 127.04
+        },
+        {
+          &quot;latitude&quot;: 37.55,
+          &quot;longitude&quot;: 127.03
+        },
+        {
+          &quot;latitude&quot;: 37.54,
+          &quot;longitude&quot;: 127.03
+        }
+      ],
+      &quot;holes&quot;: []
+    }
+  }
+]</code></pre>
+<p>주요 업무 오류: 503 park_catalog_unavailable. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.03. 회원가입 신청</h2>
+<h3>POST /auth/register</h3>
+<p>기능: 가입 계정과 담당 공원을 하나의 트랜잭션으로 생성합니다. manager 역할만 생성하고 pending으로 대기합니다. 토큰은 발급하지 않습니다. 비밀번호 확인·개인정보 동의는 앱에서 검사합니다. 아이디는 대소문자를 구분하고 이메일은 소문자로 정규화합니다. 정의하지 않은 필드는 422입니다.</p>
+<p>권한: 일반 Bearer 토큰 불필요. 위 기능의 자체 검증 조건 적용</p>
+<h4>요청</h4>
+<pre><code class="language-http">POST /auth/register</code></pre>
+<p>본문: RegisterRequest — 필드 상세는 4장 공통 데이터 계약에 모두 기재했습니다.</p>
+<pre><code class="language-json">{
+  &quot;loginId&quot;: &quot;manager01&quot;,
+  &quot;password&quot;: &quot;ExamplePass123!&quot;,
+  &quot;name&quot;: &quot;공원 관리자&quot;,
+  &quot;phone&quot;: &quot;010-1234-5678&quot;,
+  &quot;email&quot;: &quot;manager@example.com&quot;,
+  &quot;catalogId&quot;: &quot;69&quot;
+}</code></pre>
+<h4>응답</h4>
+<p>성공: HTTP 201 · RegisterResponse</p>
+<pre><code class="language-json">{
+  &quot;name&quot;: &quot;공원 관리자&quot;,
+  &quot;email&quot;: &quot;manager@example.com&quot;,
+  &quot;role&quot;: &quot;manager&quot;,
+  &quot;parkStatus&quot;: &quot;pending&quot;,
+  &quot;routeSetupDone&quot;: false,
+  &quot;registrationStatus&quot;: &quot;pending&quot;,
+  &quot;id&quot;: &quot;12&quot;
+}</code></pre>
+<p>주요 업무 오류: 404 park_not_found; 409 account_exists; 503 registration_unavailable. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.04. 로그인</h2>
+<h3>POST /auth/login</h3>
+<p>기능: 비밀번호 확인 후 승인된 계정에만 토큰을 발급합니다. pending·rejected는 403입니다. 총관리자는 웹에서 로그인하며 앱은 web_login_required로 안내합니다(앱 자체 오류). isFirstLogin은 최초 로그인 횟수가 아니라 manager의 순찰 초기 설정 필요 여부입니다.</p>
+<p>권한: 일반 Bearer 토큰 불필요. 위 기능의 자체 검증 조건 적용</p>
+<h4>요청</h4>
+<pre><code class="language-http">POST /auth/login</code></pre>
+<p>본문: LoginRequest — 필드 상세는 4장 공통 데이터 계약에 모두 기재했습니다.</p>
+<pre><code class="language-json">{
+  &quot;loginId&quot;: &quot;manager01&quot;,
+  &quot;password&quot;: &quot;ExamplePass123!&quot;
+}</code></pre>
+<h4>응답</h4>
+<p>성공: HTTP 200 · LoginResponse</p>
+<pre><code class="language-json">{
+  &quot;role&quot;: &quot;manager&quot;,
+  &quot;parkStatus&quot;: &quot;approved&quot;,
+  &quot;routeSetupDone&quot;: false,
+  &quot;registrationStatus&quot;: &quot;approved&quot;,
+  &quot;accessToken&quot;: &quot;&lt;accessToken&gt;&quot;,
+  &quot;tokenType&quot;: &quot;bearer&quot;,
+  &quot;expiresIn&quot;: 3600,
+  &quot;isFirstLogin&quot;: true
+}</code></pre>
+<p>주요 업무 오류: 401 invalid_credentials; 403 registration_pending / registration_rejected / registration_incomplete; 503 auth_not_configured. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.05. 반려 사유·재신청 정보 조회</h2>
+<h3>POST /auth/reapplication-session</h3>
+<p>기능: 기존 아이디·비밀번호로 본인 확인한 반려 manager만 호출할 수 있습니다. 기존 정보와 반려 사유, 30분 유효한 재신청 전용 토큰을 반환합니다. 비밀번호는 반환하지 않습니다. park는 활성 공원일 때 기존 선택 정보이고, 비활성 공원은 null입니다. 일반 업무 API에는 이 토큰을 사용할 수 없습니다.</p>
+<p>권한: 일반 Bearer 토큰 불필요. 위 기능의 자체 검증 조건 적용</p>
+<h4>요청</h4>
+<pre><code class="language-http">POST /auth/reapplication-session</code></pre>
+<p>본문: LoginRequest — 필드 상세는 4장 공통 데이터 계약에 모두 기재했습니다.</p>
+<pre><code class="language-json">{
+  &quot;loginId&quot;: &quot;manager01&quot;,
+  &quot;password&quot;: &quot;ExamplePass123!&quot;
+}</code></pre>
+<h4>응답</h4>
+<p>성공: HTTP 200 · ReapplicationSession</p>
+<pre><code class="language-json">{
+  &quot;reapplicationToken&quot;: &quot;&lt;reapplicationToken&gt;&quot;,
+  &quot;expiresIn&quot;: 1800,
+  &quot;loginId&quot;: &quot;manager01&quot;,
+  &quot;name&quot;: &quot;공원 관리자&quot;,
+  &quot;email&quot;: &quot;manager@example.com&quot;,
+  &quot;phone&quot;: &quot;01012345678&quot;,
+  &quot;catalogId&quot;: &quot;69&quot;,
+  &quot;rejectReason&quot;: &quot;담당자 정보를 확인해 주세요&quot;,
+  &quot;park&quot;: {
+    &quot;id&quot;: &quot;69&quot;,
+    &quot;name&quot;: &quot;예시공원&quot;,
+    &quot;address&quot;: &quot;서울특별시 예시 주소&quot;,
+    &quot;distance&quot;: &quot;&quot;,
+    &quot;bounds&quot;: {
+      &quot;southWest&quot;: {
+        &quot;latitude&quot;: 37.54,
+        &quot;longitude&quot;: 127.03
+      },
+      &quot;northEast&quot;: {
+        &quot;latitude&quot;: 37.55,
+        &quot;longitude&quot;: 127.04
+      }
+    },
+    &quot;area&quot;: {
+      &quot;outer&quot;: [
+        {
+          &quot;latitude&quot;: 37.54,
+          &quot;longitude&quot;: 127.03
+        },
+        {
+          &quot;latitude&quot;: 37.54,
+          &quot;longitude&quot;: 127.04
+        },
+        {
+          &quot;latitude&quot;: 37.55,
+          &quot;longitude&quot;: 127.04
+        },
+        {
+          &quot;latitude&quot;: 37.55,
+          &quot;longitude&quot;: 127.03
+        },
+        {
+          &quot;latitude&quot;: 37.54,
+          &quot;longitude&quot;: 127.03
+        }
+      ],
+      &quot;holes&quot;: []
+    }
+  }
+}</code></pre>
+<p>주요 업무 오류: 401 invalid_credentials; 409 registration_not_rejected; 503 auth_not_configured. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.06. 반려된 가입 신청 수정·재제출</h2>
+<h3>POST /auth/reapply</h3>
+<p>기능: 일반 Bearer 토큰 대신 본문의 reapplicationToken을 사용합니다. 같은 계정·신청 행을 수정하고 pending으로 되돌립니다. loginId·role 입력은 허용하지 않습니다. 비밀번호를 새로 입력하며 이전 비밀번호를 반환하거나 자동 채우지 않습니다. 다른 공원을 고르면 이전 경로·지점·시간표·좌표 기준점을 초기화하고 미처리 공원 변경 요청은 취소합니다. 제출 후 토큰을 다시 사용할 수 없으며 다시 승인받아야 로그인할 수 있습니다.</p>
+<p>권한: 일반 Bearer 토큰 불필요. 위 기능의 자체 검증 조건 적용</p>
+<h4>요청</h4>
+<pre><code class="language-http">POST /auth/reapply</code></pre>
+<p>본문: ReapplyRequest — 필드 상세는 4장 공통 데이터 계약에 모두 기재했습니다.</p>
+<pre><code class="language-json">{
+  &quot;password&quot;: &quot;ExamplePass123!&quot;,
+  &quot;name&quot;: &quot;공원 관리자&quot;,
+  &quot;phone&quot;: &quot;010-1234-5678&quot;,
+  &quot;email&quot;: &quot;manager@example.com&quot;,
+  &quot;catalogId&quot;: &quot;69&quot;,
+  &quot;reapplicationToken&quot;: &quot;&lt;reapplicationToken&gt;&quot;
+}</code></pre>
+<h4>응답</h4>
+<p>성공: HTTP 200 · RegisterResponse</p>
+<pre><code class="language-json">{
+  &quot;name&quot;: &quot;공원 관리자&quot;,
+  &quot;email&quot;: &quot;manager@example.com&quot;,
+  &quot;role&quot;: &quot;manager&quot;,
+  &quot;parkStatus&quot;: &quot;pending&quot;,
+  &quot;routeSetupDone&quot;: false,
+  &quot;registrationStatus&quot;: &quot;pending&quot;,
+  &quot;id&quot;: &quot;12&quot;
+}</code></pre>
+<p>주요 업무 오류: 401 invalid_token; 404 park_not_found; 409 account_exists / registration_not_rejected; 503 registration_unavailable / auth_not_configured. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.07. 내 계정 조회</h2>
+<h3>GET /me</h3>
+<p>기능: 토큰 소유자의 이름·이메일·역할·가입 승인 상태·초기 설정 완료 여부를 반환합니다. 총관리자는 parkStatus=null, registrationStatus=approved입니다.</p>
+<p>권한: 승인된 manager 또는 super_admin Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">GET /me</code></pre>
+<p>요청 본문: 없음.</p>
+<h4>응답</h4>
+<p>성공: HTTP 200 · ProfileResponse</p>
+<pre><code class="language-json">{
+  &quot;name&quot;: &quot;공원 관리자&quot;,
+  &quot;email&quot;: &quot;manager@example.com&quot;,
+  &quot;role&quot;: &quot;manager&quot;,
+  &quot;parkStatus&quot;: &quot;approved&quot;,
+  &quot;routeSetupDone&quot;: false,
+  &quot;registrationStatus&quot;: &quot;approved&quot;
+}</code></pre>
+<p>오류: 5장의 공통 인증·입력 검증·서버 오류를 적용합니다.</p>
+<h2>3.08. 담당 공원 조회</h2>
+<h3>GET /park</h3>
+<p>기능: 로그인한 manager의 운영 공원과 지도 정보·승인 정보를 반환합니다. id는 parks.id, catalogId는 공원 목록 ID입니다. pending·rejected 계정은 공통 인증 단계에서 차단됩니다.</p>
+<p>권한: 승인된 manager Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">GET /park</code></pre>
+<p>요청 본문: 없음.</p>
+<h4>응답</h4>
+<p>성공: HTTP 200 · ManagedPark</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;5&quot;,
+  &quot;catalogId&quot;: &quot;69&quot;,
+  &quot;name&quot;: &quot;예시공원&quot;,
+  &quot;address&quot;: &quot;서울특별시 예시 주소&quot;,
+  &quot;center&quot;: {
+    &quot;latitude&quot;: 37.5433,
+    &quot;longitude&quot;: 127.0332
+  },
+  &quot;bounds&quot;: {
+    &quot;southWest&quot;: {
+      &quot;latitude&quot;: 37.54,
+      &quot;longitude&quot;: 127.03
+    },
+    &quot;northEast&quot;: {
+      &quot;latitude&quot;: 37.55,
+      &quot;longitude&quot;: 127.04
+    }
+  },
+  &quot;area&quot;: {
+    &quot;outer&quot;: [
+      {
+        &quot;latitude&quot;: 37.54,
+        &quot;longitude&quot;: 127.03
+      },
+      {
+        &quot;latitude&quot;: 37.54,
+        &quot;longitude&quot;: 127.04
+      },
+      {
+        &quot;latitude&quot;: 37.55,
+        &quot;longitude&quot;: 127.04
+      },
+      {
+        &quot;latitude&quot;: 37.55,
+        &quot;longitude&quot;: 127.03
+      },
+      {
+        &quot;latitude&quot;: 37.54,
+        &quot;longitude&quot;: 127.03
+      }
+    ],
+    &quot;holes&quot;: []
+  },
+  &quot;status&quot;: &quot;approved&quot;,
+  &quot;reviewedBy&quot;: &quot;8&quot;,
+  &quot;reviewedAt&quot;: &quot;2026-11-18T03:00:00Z&quot;,
+  &quot;rejectReason&quot;: null,
+  &quot;routeSetupDone&quot;: false,
+  &quot;anchorPoints&quot;: []
+}</code></pre>
+<p>주요 업무 오류: 404 park_not_found. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.09. 담당 공원 선택 — 기존 호환 API</h2>
+<h3>PUT /park</h3>
+<p>기능: 현재 공개 가입은 /auth/register에서 공원을 함께 저장합니다. 승인 계정은 같은 catalogId 요청에는 기존 공원을 반환하고, 다른 공원으로 직접 바꾸는 요청은 거부합니다. pending·rejected는 인증 단계에서 차단되어 이 API로 재신청할 수 없습니다. 공원 변경은 /park-change-requests, 반려 재신청은 /auth/reapply를 사용합니다.</p>
+<p>권한: 승인된 manager Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">PUT /park</code></pre>
+<p>본문: ParkSelection — 필드 상세는 4장 공통 데이터 계약에 모두 기재했습니다.</p>
+<pre><code class="language-json">{
+  &quot;catalogId&quot;: &quot;69&quot;
+}</code></pre>
+<h4>응답</h4>
+<p>성공: HTTP 200 · ManagedPark</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;5&quot;,
+  &quot;catalogId&quot;: &quot;69&quot;,
+  &quot;name&quot;: &quot;예시공원&quot;,
+  &quot;address&quot;: &quot;서울특별시 예시 주소&quot;,
+  &quot;center&quot;: {
+    &quot;latitude&quot;: 37.5433,
+    &quot;longitude&quot;: 127.0332
+  },
+  &quot;bounds&quot;: {
+    &quot;southWest&quot;: {
+      &quot;latitude&quot;: 37.54,
+      &quot;longitude&quot;: 127.03
+    },
+    &quot;northEast&quot;: {
+      &quot;latitude&quot;: 37.55,
+      &quot;longitude&quot;: 127.04
+    }
+  },
+  &quot;area&quot;: {
+    &quot;outer&quot;: [
+      {
+        &quot;latitude&quot;: 37.54,
+        &quot;longitude&quot;: 127.03
+      },
+      {
+        &quot;latitude&quot;: 37.54,
+        &quot;longitude&quot;: 127.04
+      },
+      {
+        &quot;latitude&quot;: 37.55,
+        &quot;longitude&quot;: 127.04
+      },
+      {
+        &quot;latitude&quot;: 37.55,
+        &quot;longitude&quot;: 127.03
+      },
+      {
+        &quot;latitude&quot;: 37.54,
+        &quot;longitude&quot;: 127.03
+      }
+    ],
+    &quot;holes&quot;: []
+  },
+  &quot;status&quot;: &quot;approved&quot;,
+  &quot;reviewedBy&quot;: &quot;8&quot;,
+  &quot;reviewedAt&quot;: &quot;2026-11-18T03:00:00Z&quot;,
+  &quot;rejectReason&quot;: null,
+  &quot;routeSetupDone&quot;: false,
+  &quot;anchorPoints&quot;: []
+}</code></pre>
+<p>주요 업무 오류: 404 park_not_found; 409 approved_park_change_forbidden. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.10. 공유 분리수거장 조회</h2>
+<h3>GET /station</h3>
+<p>기능: 공원 공통 분리수거장 좌표를 반환합니다. 미등록이면 null입니다. 로봇별 분리수거장을 따로 두지 않습니다. 여러 장소가 등록되면 단일 좌표 방식은 409 default_station_required이며 defaultStationId로 선택해야 합니다.</p>
+<p>권한: 승인된 manager Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">GET /station</code></pre>
+<p>요청 본문: 없음.</p>
+<h4>응답</h4>
+<p>성공: HTTP 200 · LatLng / null</p>
+<pre><code class="language-json">{
+  &quot;latitude&quot;: 37.5433,
+  &quot;longitude&quot;: 127.0332
+}</code></pre>
+<p>주요 업무 오류: ; 409 default_station_required; 404 station_not_found. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.11. 공유 분리수거장 저장</h2>
+<h3>PUT /station</h3>
+<p>기능: catalogId는 query로 전달합니다. 공원 경계 안 좌표만 허용합니다. 위치를 옮기면 같은 공원의 배정 로봇·미배정 초안의 활성 경로를 모두 검증하고 경로 버전을 함께 갱신합니다. 어느 경로라도 유효하지 않으면 전체 변경을 취소합니다. 여러 장소가 등록되면 단일 좌표 방식은 409 default_station_required이며 defaultStationId로 선택해야 합니다.</p>
+<p>권한: 승인된 manager Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">PUT /station?catalogId=69</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>query</p></td><td><p>catalogId</p></td><td><p>선택</p></td><td><p>integer / null</p></td><td><p>최솟값: 1; 최댓값: 9223372036854775807</p></td></tr></tbody></table>
+<p>본문: LatLng — 필드 상세는 4장 공통 데이터 계약에 모두 기재했습니다.</p>
+<pre><code class="language-json">{
+  &quot;latitude&quot;: 37.5433,
+  &quot;longitude&quot;: 127.0332
+}</code></pre>
+<h4>응답</h4>
+<p>성공: HTTP 200 · LatLng</p>
+<pre><code class="language-json">{
+  &quot;latitude&quot;: 37.5433,
+  &quot;longitude&quot;: 127.0332
+}</code></pre>
+<p>주요 업무 오류: 409 park_changed; 422 point_outside_park / point_too_far; 409 default_station_required; 404 station_not_found. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.12. 로봇별 순찰 경로 조회</h2>
+<h3>GET /routes</h3>
+<p>기능: robotId로 대상 로봇을 지정합니다. 미설정이면 id/start/end가 null일 수 있고 points=[]입니다. start/end는 해당 경로 버전의 분리수거장 좌표이며 appliesFrom=nextPatrol입니다. 실제 주행 가능한 polyline 계산 API가 아닙니다.</p>
+<p>권한: 승인된 manager Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">GET /routes?robotId=6</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>query</p></td><td><p>robotId</p></td><td><p>선택</p></td><td><p>integer / null</p></td><td><p>최솟값: 1; 최댓값: 9223372036854775807</p></td></tr></tbody></table>
+<p>요청 본문: 없음.</p>
+<h4>응답</h4>
+<p>성공: HTTP 200 · RouteResponse</p>
+<pre><code class="language-json">{
+  &quot;catalogId&quot;: &quot;69&quot;,
+  &quot;robotId&quot;: &quot;6&quot;,
+  &quot;id&quot;: &quot;20&quot;,
+  &quot;start&quot;: {
+    &quot;latitude&quot;: 37.5433,
+    &quot;longitude&quot;: 127.0332
+  },
+  &quot;points&quot;: [
+    {
+      &quot;name&quot;: &quot;정문&quot;,
+      &quot;position&quot;: {
+        &quot;latitude&quot;: 37.5435,
+        &quot;longitude&quot;: 127.0334
+      },
+      &quot;id&quot;: &quot;101&quot;
+    }
+  ],
+  &quot;end&quot;: {
+    &quot;latitude&quot;: 37.5433,
+    &quot;longitude&quot;: 127.0332
+  },
+  &quot;appliesFrom&quot;: &quot;nextPatrol&quot;
+}</code></pre>
+<p>주요 업무 오류: 404 robot_not_found; 422 robot_required. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.13. 로봇별 순찰 지점·순서 저장</h2>
+<h3>PUT /routes</h3>
+<p>기능: body.catalogId로 편집 시작 당시 공원을 확인합니다. points 배열 순서가 순찰 순서입니다. 좌표 중복은 거부하고 분리수거장이 먼저 있어야 합니다. 기존 경로를 비활성화하고 새 버전·새 지점 ID를 생성합니다. 전달한 임시 id를 식별 권한으로 사용하지 않습니다. 다음 순찰 적용 설정이며 실행 중인 로봇에 즉시 경로 명령을 보내는 API가 아닙니다. 여러 장소가 등록되면 단일 좌표 방식은 409 default_station_required이며 defaultStationId로 선택해야 합니다.</p>
+<p>권한: 승인된 manager Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">PUT /routes?robotId=6</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>query</p></td><td><p>robotId</p></td><td><p>선택</p></td><td><p>integer / null</p></td><td><p>최솟값: 1; 최댓값: 9223372036854775807</p></td></tr></tbody></table>
+<p>본문: RouteInput — 필드 상세는 4장 공통 데이터 계약에 모두 기재했습니다.</p>
+<pre><code class="language-json">{
+  &quot;catalogId&quot;: &quot;69&quot;,
+  &quot;points&quot;: [
+    {
+      &quot;name&quot;: &quot;정문&quot;,
+      &quot;position&quot;: {
+        &quot;latitude&quot;: 37.5435,
+        &quot;longitude&quot;: 127.0334
+      }
+    }
+  ]
+}</code></pre>
+<h4>응답</h4>
+<p>성공: HTTP 200 · RouteResponse</p>
+<pre><code class="language-json">{
+  &quot;catalogId&quot;: &quot;69&quot;,
+  &quot;robotId&quot;: &quot;6&quot;,
+  &quot;id&quot;: &quot;20&quot;,
+  &quot;start&quot;: {
+    &quot;latitude&quot;: 37.5433,
+    &quot;longitude&quot;: 127.0332
+  },
+  &quot;points&quot;: [
+    {
+      &quot;name&quot;: &quot;정문&quot;,
+      &quot;position&quot;: {
+        &quot;latitude&quot;: 37.5435,
+        &quot;longitude&quot;: 127.0334
+      },
+      &quot;id&quot;: &quot;101&quot;
+    }
+  ],
+  &quot;end&quot;: {
+    &quot;latitude&quot;: 37.5433,
+    &quot;longitude&quot;: 127.0332
+  },
+  &quot;appliesFrom&quot;: &quot;nextPatrol&quot;
+}</code></pre>
+<p>주요 업무 오류: 404 robot_not_found; 409 station_required / park_changed; 422 robot_required / point_outside_park / point_too_far; 409 default_station_required; 404 station_not_found. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.14. 로봇별 순찰 시간표 조회</h2>
+<h3>GET /schedules</h3>
+<p>기능: robotId로 조회합니다. runAt이 아니라 time=HH:mm, enabled가 아니라 on 필드를 사용합니다. 미설정이면 []입니다.</p>
+<p>권한: 승인된 manager Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">GET /schedules?robotId=6</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>query</p></td><td><p>robotId</p></td><td><p>선택</p></td><td><p>integer / null</p></td><td><p>최솟값: 1; 최댓값: 9223372036854775807</p></td></tr></tbody></table>
+<p>요청 본문: 없음.</p>
+<h4>응답</h4>
+<p>성공: HTTP 200 · ScheduleResponse[]</p>
+<pre><code class="language-json">[
+  {
+    &quot;time&quot;: &quot;10:00&quot;,
+    &quot;label&quot;: &quot;오전 순찰&quot;,
+    &quot;on&quot;: true,
+    &quot;repeat&quot;: &quot;daily&quot;,
+    &quot;id&quot;: &quot;30&quot;
+  }
+]</code></pre>
+<p>주요 업무 오류: 404 robot_not_found; 422 robot_required. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.15. 로봇별 순찰 시간표 교체</h2>
+<h3>PUT /schedules</h3>
+<p>기능: 본문은 객체가 아닌 배열입니다. 최대 100개이며 []로 비울 수 있습니다. 같은 시각의 동일 repeat와 daily+weekdays/weekends 조합은 중복입니다. 같은 시각의 weekdays+weekends는 허용합니다. on=false여도 중복 검사는 적용됩니다. 비우면 다른 로봇의 완성 설정 유무에 따라 routeSetupDone이 false가 될 수 있습니다.</p>
+<p>권한: 승인된 manager Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">PUT /schedules?robotId=6&amp;catalogId=69</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>query</p></td><td><p>robotId</p></td><td><p>선택</p></td><td><p>integer / null</p></td><td><p>최솟값: 1; 최댓값: 9223372036854775807</p></td></tr><tr><td><p>query</p></td><td><p>catalogId</p></td><td><p>선택</p></td><td><p>integer / null</p></td><td><p>최솟값: 1; 최댓값: 9223372036854775807</p></td></tr></tbody></table>
+<p>본문: ScheduleInput[] — 필드 상세는 4장 공통 데이터 계약에 모두 기재했습니다.</p>
+<pre><code class="language-json">[
+  {
+    &quot;time&quot;: &quot;10:00&quot;,
+    &quot;label&quot;: &quot;오전 순찰&quot;,
+    &quot;on&quot;: true,
+    &quot;repeat&quot;: &quot;daily&quot;
+  }
+]</code></pre>
+<h4>응답</h4>
+<p>성공: HTTP 200 · ScheduleResponse[]</p>
+<pre><code class="language-json">[
+  {
+    &quot;time&quot;: &quot;10:00&quot;,
+    &quot;label&quot;: &quot;오전 순찰&quot;,
+    &quot;on&quot;: true,
+    &quot;repeat&quot;: &quot;daily&quot;,
+    &quot;id&quot;: &quot;30&quot;
+  }
+]</code></pre>
+<p>주요 업무 오류: 404 robot_not_found; 409 park_changed; 422 robot_required / duplicate_schedule. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.16. 로봇별 전체 순찰 설정 조회</h2>
+<h3>GET /route</h3>
+<p>기능: 분리수거장·지점·시간표·공원 경계를 한 번에 반환합니다. station은 공원 공통이고 경로·시간표는 로봇별입니다. 미설정은 station=null, points=[], schedule=[]입니다.</p>
+<p>권한: 승인된 manager Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">GET /route?robotId=6</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>query</p></td><td><p>robotId</p></td><td><p>선택</p></td><td><p>integer / null</p></td><td><p>최솟값: 1; 최댓값: 9223372036854775807</p></td></tr></tbody></table>
+<p>요청 본문: 없음.</p>
+<h4>응답</h4>
+<p>성공: HTTP 200 · ConfigResponse</p>
+<pre><code class="language-json">{
+  &quot;catalogId&quot;: &quot;69&quot;,
+  &quot;robotId&quot;: &quot;6&quot;,
+  &quot;parkName&quot;: &quot;예시공원&quot;,
+  &quot;bounds&quot;: {
+    &quot;southWest&quot;: {
+      &quot;latitude&quot;: 37.54,
+      &quot;longitude&quot;: 127.03
+    },
+    &quot;northEast&quot;: {
+      &quot;latitude&quot;: 37.55,
+      &quot;longitude&quot;: 127.04
+    }
+  },
+  &quot;area&quot;: {
+    &quot;outer&quot;: [
+      {
+        &quot;latitude&quot;: 37.54,
+        &quot;longitude&quot;: 127.03
+      },
+      {
+        &quot;latitude&quot;: 37.54,
+        &quot;longitude&quot;: 127.04
+      },
+      {
+        &quot;latitude&quot;: 37.55,
+        &quot;longitude&quot;: 127.04
+      },
+      {
+        &quot;latitude&quot;: 37.55,
+        &quot;longitude&quot;: 127.03
+      },
+      {
+        &quot;latitude&quot;: 37.54,
+        &quot;longitude&quot;: 127.03
+      }
+    ],
+    &quot;holes&quot;: []
+  },
+  &quot;station&quot;: {
+    &quot;latitude&quot;: 37.5433,
+    &quot;longitude&quot;: 127.0332
+  },
+  &quot;points&quot;: [
+    {
+      &quot;name&quot;: &quot;정문&quot;,
+      &quot;position&quot;: {
+        &quot;latitude&quot;: 37.5435,
+        &quot;longitude&quot;: 127.0334
+      },
+      &quot;id&quot;: &quot;101&quot;
+    }
+  ],
+  &quot;schedule&quot;: [
+    {
+      &quot;time&quot;: &quot;10:00&quot;,
+      &quot;label&quot;: &quot;오전 순찰&quot;,
+      &quot;on&quot;: true,
+      &quot;repeat&quot;: &quot;daily&quot;,
+      &quot;id&quot;: &quot;30&quot;
+    }
+  ]
+}</code></pre>
+<p>주요 업무 오류: 404 robot_not_found; 422 robot_required. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.17. 전체 순찰 설정 일괄 저장</h2>
+<h3>PUT /route</h3>
+<p>기능: 분리수거장·경로·시간표를 하나의 트랜잭션으로 저장하고 routeSetupDone=true로 완료합니다. points·schedule은 각각 1~100개입니다. body.catalogId와 query.robotId를 사용합니다. 공유 분리수거장 변경은 다른 로봇의 기존 경로도 함께 검증·갱신합니다. 실패하면 일부 항목만 저장되지 않습니다. 여러 장소가 등록되면 단일 좌표 방식은 409 default_station_required이며 defaultStationId로 선택해야 합니다.</p>
+<p>권한: 승인된 manager Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">PUT /route?robotId=6</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>query</p></td><td><p>robotId</p></td><td><p>선택</p></td><td><p>integer / null</p></td><td><p>최솟값: 1; 최댓값: 9223372036854775807</p></td></tr></tbody></table>
+<p>본문: ConfigInput — 필드 상세는 4장 공통 데이터 계약에 모두 기재했습니다.</p>
+<pre><code class="language-json">{
+  &quot;catalogId&quot;: &quot;69&quot;,
+  &quot;station&quot;: {
+    &quot;latitude&quot;: 37.5433,
+    &quot;longitude&quot;: 127.0332
+  },
+  &quot;points&quot;: [
+    {
+      &quot;name&quot;: &quot;정문&quot;,
+      &quot;position&quot;: {
+        &quot;latitude&quot;: 37.5435,
+        &quot;longitude&quot;: 127.0334
+      }
+    }
+  ],
+  &quot;schedule&quot;: [
+    {
+      &quot;time&quot;: &quot;10:00&quot;,
+      &quot;label&quot;: &quot;오전 순찰&quot;,
+      &quot;on&quot;: true,
+      &quot;repeat&quot;: &quot;daily&quot;
+    }
+  ]
+}</code></pre>
+<h4>응답</h4>
+<p>성공: HTTP 200 · ConfigResponse</p>
+<pre><code class="language-json">{
+  &quot;catalogId&quot;: &quot;69&quot;,
+  &quot;robotId&quot;: &quot;6&quot;,
+  &quot;parkName&quot;: &quot;예시공원&quot;,
+  &quot;bounds&quot;: {
+    &quot;southWest&quot;: {
+      &quot;latitude&quot;: 37.54,
+      &quot;longitude&quot;: 127.03
+    },
+    &quot;northEast&quot;: {
+      &quot;latitude&quot;: 37.55,
+      &quot;longitude&quot;: 127.04
+    }
+  },
+  &quot;area&quot;: {
+    &quot;outer&quot;: [
+      {
+        &quot;latitude&quot;: 37.54,
+        &quot;longitude&quot;: 127.03
+      },
+      {
+        &quot;latitude&quot;: 37.54,
+        &quot;longitude&quot;: 127.04
+      },
+      {
+        &quot;latitude&quot;: 37.55,
+        &quot;longitude&quot;: 127.04
+      },
+      {
+        &quot;latitude&quot;: 37.55,
+        &quot;longitude&quot;: 127.03
+      },
+      {
+        &quot;latitude&quot;: 37.54,
+        &quot;longitude&quot;: 127.03
+      }
+    ],
+    &quot;holes&quot;: []
+  },
+  &quot;station&quot;: {
+    &quot;latitude&quot;: 37.5433,
+    &quot;longitude&quot;: 127.0332
+  },
+  &quot;points&quot;: [
+    {
+      &quot;name&quot;: &quot;정문&quot;,
+      &quot;position&quot;: {
+        &quot;latitude&quot;: 37.5435,
+        &quot;longitude&quot;: 127.0334
+      },
+      &quot;id&quot;: &quot;101&quot;
+    }
+  ],
+  &quot;schedule&quot;: [
+    {
+      &quot;time&quot;: &quot;10:00&quot;,
+      &quot;label&quot;: &quot;오전 순찰&quot;,
+      &quot;on&quot;: true,
+      &quot;repeat&quot;: &quot;daily&quot;,
+      &quot;id&quot;: &quot;30&quot;
+    }
+  ]
+}</code></pre>
+<p>주요 업무 오류: 404 robot_not_found; 409 park_changed; 422 robot_required / point_outside_park / point_too_far / duplicate_schedule; 409 default_station_required; 404 station_not_found. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.18. 개별 순찰 설정 완료 처리</h2>
+<h3>POST /route/complete</h3>
+<p>기능: 본문 없이 query.robotId·catalogId를 사용합니다. 대상 로봇(또는 미배정 초안)에 분리수거장·활성 경로·시간표가 모두 있어야 완료합니다. PUT /route는 이 완료 처리를 포함하므로 별도 호출이 필요 없습니다.</p>
+<p>권한: 승인된 manager Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">POST /route/complete?robotId=6&amp;catalogId=69</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>query</p></td><td><p>robotId</p></td><td><p>선택</p></td><td><p>integer / null</p></td><td><p>최솟값: 1; 최댓값: 9223372036854775807</p></td></tr><tr><td><p>query</p></td><td><p>catalogId</p></td><td><p>선택</p></td><td><p>integer / null</p></td><td><p>최솟값: 1; 최댓값: 9223372036854775807</p></td></tr></tbody></table>
+<p>요청 본문: 없음.</p>
+<h4>응답</h4>
+<p>성공: HTTP 200 · SetupResponse</p>
+<pre><code class="language-json">{
+  &quot;routeSetupDone&quot;: true
+}</code></pre>
+<p>주요 업무 오류: 404 robot_not_found; 409 setup_incomplete / park_changed; 422 robot_required. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.19. 총관리자 — 가입 신청 목록</h2>
+<h3>GET /admin/registrations</h3>
+<p>기능: status 기본값은 pending, all이면 전체입니다. 각 항목은 운영 공원 정보와 신청자 정보를 포함하며 createdAt·id 오름차순입니다. createdAt은 parks 행의 생성 시각으로 재신청할 때 새로 갱신되는 시각은 아닙니다.</p>
+<p>권한: 총관리자(super_admin) Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">GET /admin/registrations?status=pending&amp;limit=20&amp;offset=0</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>query</p></td><td><p>status</p></td><td><p>선택</p></td><td><p>string / null</p></td><td><p>기본값: &quot;pending&quot;; 허용: all, pending, approved, rejected</p></td></tr><tr><td><p>query</p></td><td><p>limit</p></td><td><p>선택</p></td><td><p>integer</p></td><td><p>최솟값: 1; 최댓값: 100; 기본값: 20</p></td></tr><tr><td><p>query</p></td><td><p>offset</p></td><td><p>선택</p></td><td><p>integer</p></td><td><p>최솟값: 0; 최댓값: 9223372036854775807; 기본값: 0</p></td></tr></tbody></table>
+<p>요청 본문: 없음.</p>
+<h4>응답</h4>
+<p>성공: HTTP 200 · ParkRequestResponse[]</p>
+<pre><code class="language-json">[
+  {
+    &quot;id&quot;: &quot;5&quot;,
+    &quot;catalogId&quot;: &quot;69&quot;,
+    &quot;name&quot;: &quot;예시공원&quot;,
+    &quot;address&quot;: &quot;서울특별시 예시 주소&quot;,
+    &quot;center&quot;: {
+      &quot;latitude&quot;: 37.5433,
+      &quot;longitude&quot;: 127.0332
+    },
+    &quot;bounds&quot;: {
+      &quot;southWest&quot;: {
+        &quot;latitude&quot;: 37.54,
+        &quot;longitude&quot;: 127.03
+      },
+      &quot;northEast&quot;: {
+        &quot;latitude&quot;: 37.55,
+        &quot;longitude&quot;: 127.04
+      }
+    },
+    &quot;area&quot;: {
+      &quot;outer&quot;: [
+        {
+          &quot;latitude&quot;: 37.54,
+          &quot;longitude&quot;: 127.03
+        },
+        {
+          &quot;latitude&quot;: 37.54,
+          &quot;longitude&quot;: 127.04
+        },
+        {
+          &quot;latitude&quot;: 37.55,
+          &quot;longitude&quot;: 127.04
+        },
+        {
+          &quot;latitude&quot;: 37.55,
+          &quot;longitude&quot;: 127.03
+        },
+        {
+          &quot;latitude&quot;: 37.54,
+          &quot;longitude&quot;: 127.03
+        }
+      ],
+      &quot;holes&quot;: []
+    },
+    &quot;status&quot;: &quot;pending&quot;,
+    &quot;reviewedBy&quot;: null,
+    &quot;reviewedAt&quot;: null,
+    &quot;rejectReason&quot;: null,
+    &quot;routeSetupDone&quot;: false,
+    &quot;anchorPoints&quot;: [],
+    &quot;userId&quot;: &quot;12&quot;,
+    &quot;applicantName&quot;: &quot;공원 관리자&quot;,
+    &quot;applicantLoginId&quot;: &quot;manager01&quot;,
+    &quot;applicantEmail&quot;: &quot;manager@example.com&quot;,
+    &quot;applicantPhone&quot;: &quot;01012345678&quot;,
+    &quot;registrationStatus&quot;: &quot;pending&quot;,
+    &quot;createdAt&quot;: &quot;2026-11-18T02:00:00Z&quot;
+  }
+]</code></pre>
+<p>오류: 5장의 공통 인증·입력 검증·서버 오류를 적용합니다.</p>
+<h2>3.20. 총관리자 — 가입 승인</h2>
+<h3>POST /admin/registrations/{user_id}/approve</h3>
+<p>기능: path에는 계정 user_id를 넣습니다. {}로 로봇 없이도 승인할 수 있습니다. robotIds는 중복 없는 최대 100개입니다. 공원 목록이 활성이고 같은 catalogId에 승인된 다른 관리자가 없어야 합니다. 지정 로봇은 미배정이며 idle 또는 offline이어야 합니다. 초안 설정은 로봇별 독립 설정으로 복사합니다.</p>
+<p>권한: 총관리자(super_admin) Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">POST /admin/registrations/12/approve</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>path</p></td><td><p>user_id</p></td><td><p>필수</p></td><td><p>integer</p></td><td><p>최솟값: 1; 최댓값: 9223372036854775807</p></td></tr></tbody></table>
+<p>본문: ApprovalInput — 필드 상세는 4장 공통 데이터 계약에 모두 기재했습니다.</p>
+<pre><code class="language-json">{
+  &quot;robotIds&quot;: [
+    &quot;6&quot;
+  ]
+}</code></pre>
+<h4>응답</h4>
+<p>성공: HTTP 200 · ManagedPark</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;5&quot;,
+  &quot;catalogId&quot;: &quot;69&quot;,
+  &quot;name&quot;: &quot;예시공원&quot;,
+  &quot;address&quot;: &quot;서울특별시 예시 주소&quot;,
+  &quot;center&quot;: {
+    &quot;latitude&quot;: 37.5433,
+    &quot;longitude&quot;: 127.0332
+  },
+  &quot;bounds&quot;: {
+    &quot;southWest&quot;: {
+      &quot;latitude&quot;: 37.54,
+      &quot;longitude&quot;: 127.03
+    },
+    &quot;northEast&quot;: {
+      &quot;latitude&quot;: 37.55,
+      &quot;longitude&quot;: 127.04
+    }
+  },
+  &quot;area&quot;: {
+    &quot;outer&quot;: [
+      {
+        &quot;latitude&quot;: 37.54,
+        &quot;longitude&quot;: 127.03
+      },
+      {
+        &quot;latitude&quot;: 37.54,
+        &quot;longitude&quot;: 127.04
+      },
+      {
+        &quot;latitude&quot;: 37.55,
+        &quot;longitude&quot;: 127.04
+      },
+      {
+        &quot;latitude&quot;: 37.55,
+        &quot;longitude&quot;: 127.03
+      },
+      {
+        &quot;latitude&quot;: 37.54,
+        &quot;longitude&quot;: 127.03
+      }
+    ],
+    &quot;holes&quot;: []
+  },
+  &quot;status&quot;: &quot;approved&quot;,
+  &quot;reviewedBy&quot;: &quot;8&quot;,
+  &quot;reviewedAt&quot;: &quot;2026-11-18T03:00:00Z&quot;,
+  &quot;rejectReason&quot;: null,
+  &quot;routeSetupDone&quot;: false,
+  &quot;anchorPoints&quot;: []
+}</code></pre>
+<p>주요 업무 오류: 404 registration_not_found / robot_not_found; 409 park_request_not_pending / park_catalog_inactive / park_already_approved / invalid_applicant_role / robot_already_assigned / robot_not_available. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.21. 총관리자 — 가입 반려</h2>
+<h3>POST /admin/registrations/{user_id}/reject</h3>
+<p>기능: 대기 신청만 반려합니다. reason은 공백 제거 후 1~1000자입니다. 승인 정보는 null로 초기화하고 rejectReason을 남깁니다. 응답은 신청자 목록 항목이 아닌 ManagedPark입니다.</p>
+<p>권한: 총관리자(super_admin) Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">POST /admin/registrations/12/reject</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>path</p></td><td><p>user_id</p></td><td><p>필수</p></td><td><p>integer</p></td><td><p>최솟값: 1; 최댓값: 9223372036854775807</p></td></tr></tbody></table>
+<p>본문: RejectionInput — 필드 상세는 4장 공통 데이터 계약에 모두 기재했습니다.</p>
+<pre><code class="language-json">{
+  &quot;reason&quot;: &quot;담당 공원 확인이 필요해요&quot;
+}</code></pre>
+<h4>응답</h4>
+<p>성공: HTTP 200 · ManagedPark</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;5&quot;,
+  &quot;catalogId&quot;: &quot;69&quot;,
+  &quot;name&quot;: &quot;예시공원&quot;,
+  &quot;address&quot;: &quot;서울특별시 예시 주소&quot;,
+  &quot;center&quot;: {
+    &quot;latitude&quot;: 37.5433,
+    &quot;longitude&quot;: 127.0332
+  },
+  &quot;bounds&quot;: {
+    &quot;southWest&quot;: {
+      &quot;latitude&quot;: 37.54,
+      &quot;longitude&quot;: 127.03
+    },
+    &quot;northEast&quot;: {
+      &quot;latitude&quot;: 37.55,
+      &quot;longitude&quot;: 127.04
+    }
+  },
+  &quot;area&quot;: {
+    &quot;outer&quot;: [
+      {
+        &quot;latitude&quot;: 37.54,
+        &quot;longitude&quot;: 127.03
+      },
+      {
+        &quot;latitude&quot;: 37.54,
+        &quot;longitude&quot;: 127.04
+      },
+      {
+        &quot;latitude&quot;: 37.55,
+        &quot;longitude&quot;: 127.04
+      },
+      {
+        &quot;latitude&quot;: 37.55,
+        &quot;longitude&quot;: 127.03
+      },
+      {
+        &quot;latitude&quot;: 37.54,
+        &quot;longitude&quot;: 127.03
+      }
+    ],
+    &quot;holes&quot;: []
+  },
+  &quot;status&quot;: &quot;rejected&quot;,
+  &quot;reviewedBy&quot;: &quot;8&quot;,
+  &quot;reviewedAt&quot;: &quot;2026-11-18T03:00:00Z&quot;,
+  &quot;rejectReason&quot;: &quot;담당 공원 확인이 필요해요&quot;,
+  &quot;routeSetupDone&quot;: false,
+  &quot;anchorPoints&quot;: []
+}</code></pre>
+<p>주요 업무 오류: 404 registration_not_found; 409 park_request_not_pending. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.22. 총관리자 — 기존 가입 승인 취소</h2>
+<h3>POST /admin/registrations/{user_id}/revoke</h3>
+<p>기능: approved 계정만 취소할 수 있습니다. 모든 배정 로봇이 idle 또는 offline이어야 하고 로봇은 미배정으로 회수합니다. 계정은 rejected로 전환되며 사유를 저장합니다. 이전 로그인 토큰으로도 업무 접근이 즉시 차단됩니다. 이후 반려 재신청 절차를 사용할 수 있습니다.</p>
+<p>권한: 총관리자(super_admin) Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">POST /admin/registrations/12/revoke</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>path</p></td><td><p>user_id</p></td><td><p>필수</p></td><td><p>integer</p></td><td><p>최솟값: 1; 최댓값: 9223372036854775807</p></td></tr></tbody></table>
+<p>본문: RejectionInput — 필드 상세는 4장 공통 데이터 계약에 모두 기재했습니다.</p>
+<pre><code class="language-json">{
+  &quot;reason&quot;: &quot;담당 공원 확인이 필요해요&quot;
+}</code></pre>
+<h4>응답</h4>
+<p>성공: HTTP 200 · ManagedPark</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;5&quot;,
+  &quot;catalogId&quot;: &quot;69&quot;,
+  &quot;name&quot;: &quot;예시공원&quot;,
+  &quot;address&quot;: &quot;서울특별시 예시 주소&quot;,
+  &quot;center&quot;: {
+    &quot;latitude&quot;: 37.5433,
+    &quot;longitude&quot;: 127.0332
+  },
+  &quot;bounds&quot;: {
+    &quot;southWest&quot;: {
+      &quot;latitude&quot;: 37.54,
+      &quot;longitude&quot;: 127.03
+    },
+    &quot;northEast&quot;: {
+      &quot;latitude&quot;: 37.55,
+      &quot;longitude&quot;: 127.04
+    }
+  },
+  &quot;area&quot;: {
+    &quot;outer&quot;: [
+      {
+        &quot;latitude&quot;: 37.54,
+        &quot;longitude&quot;: 127.03
+      },
+      {
+        &quot;latitude&quot;: 37.54,
+        &quot;longitude&quot;: 127.04
+      },
+      {
+        &quot;latitude&quot;: 37.55,
+        &quot;longitude&quot;: 127.04
+      },
+      {
+        &quot;latitude&quot;: 37.55,
+        &quot;longitude&quot;: 127.03
+      },
+      {
+        &quot;latitude&quot;: 37.54,
+        &quot;longitude&quot;: 127.03
+      }
+    ],
+    &quot;holes&quot;: []
+  },
+  &quot;status&quot;: &quot;rejected&quot;,
+  &quot;reviewedBy&quot;: &quot;8&quot;,
+  &quot;reviewedAt&quot;: &quot;2026-11-18T03:00:00Z&quot;,
+  &quot;rejectReason&quot;: &quot;담당 공원 확인이 필요해요&quot;,
+  &quot;routeSetupDone&quot;: false,
+  &quot;anchorPoints&quot;: []
+}</code></pre>
+<p>주요 업무 오류: 404 registration_not_found; 409 registration_not_approved / robot_not_available. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.23. 총관리자 — 공원 신청 목록(호환)</h2>
+<h3>GET /admin/park-requests</h3>
+<p>기능: 가입 신청 목록의 기존 호환 경로입니다. 기본 status는 없음(전체)이고 all 문자열은 허용하지 않습니다. offset 상한은 10000입니다. 새 클라이언트는 /admin/registrations를 사용합니다.</p>
+<p>권한: 총관리자(super_admin) Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">GET /admin/park-requests?status=pending&amp;limit=20&amp;offset=0</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>query</p></td><td><p>status</p></td><td><p>선택</p></td><td><p>string / null</p></td><td><p>허용: pending, approved, rejected</p></td></tr><tr><td><p>query</p></td><td><p>limit</p></td><td><p>선택</p></td><td><p>integer</p></td><td><p>최솟값: 1; 최댓값: 100; 기본값: 20</p></td></tr><tr><td><p>query</p></td><td><p>offset</p></td><td><p>선택</p></td><td><p>integer</p></td><td><p>최솟값: 0; 최댓값: 10000; 기본값: 0</p></td></tr></tbody></table>
+<p>요청 본문: 없음.</p>
+<h4>응답</h4>
+<p>성공: HTTP 200 · ParkRequestResponse[]</p>
+<pre><code class="language-json">[
+  {
+    &quot;id&quot;: &quot;5&quot;,
+    &quot;catalogId&quot;: &quot;69&quot;,
+    &quot;name&quot;: &quot;예시공원&quot;,
+    &quot;address&quot;: &quot;서울특별시 예시 주소&quot;,
+    &quot;center&quot;: {
+      &quot;latitude&quot;: 37.5433,
+      &quot;longitude&quot;: 127.0332
+    },
+    &quot;bounds&quot;: {
+      &quot;southWest&quot;: {
+        &quot;latitude&quot;: 37.54,
+        &quot;longitude&quot;: 127.03
+      },
+      &quot;northEast&quot;: {
+        &quot;latitude&quot;: 37.55,
+        &quot;longitude&quot;: 127.04
+      }
+    },
+    &quot;area&quot;: {
+      &quot;outer&quot;: [
+        {
+          &quot;latitude&quot;: 37.54,
+          &quot;longitude&quot;: 127.03
+        },
+        {
+          &quot;latitude&quot;: 37.54,
+          &quot;longitude&quot;: 127.04
+        },
+        {
+          &quot;latitude&quot;: 37.55,
+          &quot;longitude&quot;: 127.04
+        },
+        {
+          &quot;latitude&quot;: 37.55,
+          &quot;longitude&quot;: 127.03
+        },
+        {
+          &quot;latitude&quot;: 37.54,
+          &quot;longitude&quot;: 127.03
+        }
+      ],
+      &quot;holes&quot;: []
+    },
+    &quot;status&quot;: &quot;pending&quot;,
+    &quot;reviewedBy&quot;: null,
+    &quot;reviewedAt&quot;: null,
+    &quot;rejectReason&quot;: null,
+    &quot;routeSetupDone&quot;: false,
+    &quot;anchorPoints&quot;: [],
+    &quot;userId&quot;: &quot;12&quot;,
+    &quot;applicantName&quot;: &quot;공원 관리자&quot;,
+    &quot;applicantLoginId&quot;: &quot;manager01&quot;,
+    &quot;applicantEmail&quot;: &quot;manager@example.com&quot;,
+    &quot;applicantPhone&quot;: &quot;01012345678&quot;,
+    &quot;registrationStatus&quot;: &quot;pending&quot;,
+    &quot;createdAt&quot;: &quot;2026-11-18T02:00:00Z&quot;
+  }
+]</code></pre>
+<p>오류: 5장의 공통 인증·입력 검증·서버 오류를 적용합니다.</p>
+<h2>3.24. 총관리자 — 공원 ID로 승인(호환)</h2>
+<h3>POST /admin/parks/{park_id}/approve</h3>
+<p>기능: 계정 userId가 아니라 운영 공원 park_id를 받는 기존 호환 API입니다. 처리 규칙·본문·응답은 가입 승인과 같습니다.</p>
+<p>권한: 총관리자(super_admin) Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">POST /admin/parks/5/approve</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>path</p></td><td><p>park_id</p></td><td><p>필수</p></td><td><p>integer</p></td><td><p>최솟값: 1; 최댓값: 9223372036854775807</p></td></tr></tbody></table>
+<p>본문: ApprovalInput — 필드 상세는 4장 공통 데이터 계약에 모두 기재했습니다.</p>
+<pre><code class="language-json">{
+  &quot;robotIds&quot;: [
+    &quot;6&quot;
+  ]
+}</code></pre>
+<h4>응답</h4>
+<p>성공: HTTP 200 · ManagedPark</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;5&quot;,
+  &quot;catalogId&quot;: &quot;69&quot;,
+  &quot;name&quot;: &quot;예시공원&quot;,
+  &quot;address&quot;: &quot;서울특별시 예시 주소&quot;,
+  &quot;center&quot;: {
+    &quot;latitude&quot;: 37.5433,
+    &quot;longitude&quot;: 127.0332
+  },
+  &quot;bounds&quot;: {
+    &quot;southWest&quot;: {
+      &quot;latitude&quot;: 37.54,
+      &quot;longitude&quot;: 127.03
+    },
+    &quot;northEast&quot;: {
+      &quot;latitude&quot;: 37.55,
+      &quot;longitude&quot;: 127.04
+    }
+  },
+  &quot;area&quot;: {
+    &quot;outer&quot;: [
+      {
+        &quot;latitude&quot;: 37.54,
+        &quot;longitude&quot;: 127.03
+      },
+      {
+        &quot;latitude&quot;: 37.54,
+        &quot;longitude&quot;: 127.04
+      },
+      {
+        &quot;latitude&quot;: 37.55,
+        &quot;longitude&quot;: 127.04
+      },
+      {
+        &quot;latitude&quot;: 37.55,
+        &quot;longitude&quot;: 127.03
+      },
+      {
+        &quot;latitude&quot;: 37.54,
+        &quot;longitude&quot;: 127.03
+      }
+    ],
+    &quot;holes&quot;: []
+  },
+  &quot;status&quot;: &quot;approved&quot;,
+  &quot;reviewedBy&quot;: &quot;8&quot;,
+  &quot;reviewedAt&quot;: &quot;2026-11-18T03:00:00Z&quot;,
+  &quot;rejectReason&quot;: null,
+  &quot;routeSetupDone&quot;: false,
+  &quot;anchorPoints&quot;: []
+}</code></pre>
+<p>주요 업무 오류: 404 park_request_not_found / robot_not_found; 409 park_request_not_pending / park_already_approved / park_catalog_inactive / invalid_applicant_role / robot_already_assigned / robot_not_available. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.25. 총관리자 — 공원 ID로 반려(호환)</h2>
+<h3>POST /admin/parks/{park_id}/reject</h3>
+<p>기능: 계정 userId가 아니라 운영 공원 park_id를 받습니다. 대기 중인 신청만 반려하며 새 클라이언트는 /admin/registrations/{user_id}/reject를 사용합니다.</p>
+<p>권한: 총관리자(super_admin) Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">POST /admin/parks/5/reject</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>path</p></td><td><p>park_id</p></td><td><p>필수</p></td><td><p>integer</p></td><td><p>최솟값: 1; 최댓값: 9223372036854775807</p></td></tr></tbody></table>
+<p>본문: RejectionInput — 필드 상세는 4장 공통 데이터 계약에 모두 기재했습니다.</p>
+<pre><code class="language-json">{
+  &quot;reason&quot;: &quot;담당 공원 확인이 필요해요&quot;
+}</code></pre>
+<h4>응답</h4>
+<p>성공: HTTP 200 · ManagedPark</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;5&quot;,
+  &quot;catalogId&quot;: &quot;69&quot;,
+  &quot;name&quot;: &quot;예시공원&quot;,
+  &quot;address&quot;: &quot;서울특별시 예시 주소&quot;,
+  &quot;center&quot;: {
+    &quot;latitude&quot;: 37.5433,
+    &quot;longitude&quot;: 127.0332
+  },
+  &quot;bounds&quot;: {
+    &quot;southWest&quot;: {
+      &quot;latitude&quot;: 37.54,
+      &quot;longitude&quot;: 127.03
+    },
+    &quot;northEast&quot;: {
+      &quot;latitude&quot;: 37.55,
+      &quot;longitude&quot;: 127.04
+    }
+  },
+  &quot;area&quot;: {
+    &quot;outer&quot;: [
+      {
+        &quot;latitude&quot;: 37.54,
+        &quot;longitude&quot;: 127.03
+      },
+      {
+        &quot;latitude&quot;: 37.54,
+        &quot;longitude&quot;: 127.04
+      },
+      {
+        &quot;latitude&quot;: 37.55,
+        &quot;longitude&quot;: 127.04
+      },
+      {
+        &quot;latitude&quot;: 37.55,
+        &quot;longitude&quot;: 127.03
+      },
+      {
+        &quot;latitude&quot;: 37.54,
+        &quot;longitude&quot;: 127.03
+      }
+    ],
+    &quot;holes&quot;: []
+  },
+  &quot;status&quot;: &quot;rejected&quot;,
+  &quot;reviewedBy&quot;: &quot;8&quot;,
+  &quot;reviewedAt&quot;: &quot;2026-11-18T03:00:00Z&quot;,
+  &quot;rejectReason&quot;: &quot;담당 공원 확인이 필요해요&quot;,
+  &quot;routeSetupDone&quot;: false,
+  &quot;anchorPoints&quot;: []
+}</code></pre>
+<p>주요 업무 오류: 404 park_request_not_found; 409 park_request_not_pending. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.26. 총관리자 — 로봇 등록</h2>
+<h3>POST /admin/robots</h3>
+<p>기능: name·serialNo는 앞뒤 공백 제거 후 각각 1~100자입니다. serialNo는 고유합니다. 신규 로봇은 실제 연결 확인 전이므로 offline, parkId/assignedAt=null로 생성합니다.</p>
+<p>권한: 총관리자(super_admin) Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">POST /admin/robots</code></pre>
+<p>본문: RobotInput — 필드 상세는 4장 공통 데이터 계약에 모두 기재했습니다.</p>
+<pre><code class="language-json">{
+  &quot;name&quot;: &quot;jub21&quot;,
+  &quot;serialNo&quot;: &quot;jub21&quot;
+}</code></pre>
+<h4>응답</h4>
+<p>성공: HTTP 201 · RobotResponse</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;6&quot;,
+  &quot;name&quot;: &quot;jub21&quot;,
+  &quot;serialNo&quot;: &quot;jub21&quot;,
+  &quot;parkId&quot;: null,
+  &quot;status&quot;: &quot;offline&quot;,
+  &quot;assignedAt&quot;: null,
+  &quot;createdAt&quot;: &quot;2026-11-18T02:00:00Z&quot;,
+  &quot;slamX&quot;: null,
+  &quot;slamY&quot;: null,
+  &quot;lat&quot;: null,
+  &quot;lng&quot;: null,
+  &quot;batteryVoltage&quot;: null,
+  &quot;lastSeenAt&quot;: null,
+  &quot;parkName&quot;: null,
+  &quot;managerId&quot;: null,
+  &quot;managerName&quot;: null,
+  &quot;managerLoginId&quot;: null
+}</code></pre>
+<p>주요 업무 오류: 409 robot_serial_exists. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.27. 총관리자 — 전체·미배정 로봇 목록</h2>
+<h3>GET /admin/robots</h3>
+<p>기능: unassigned=true이면 미배정 로봇만 반환합니다. 기본 false는 전체입니다. id 오름차순, limit·offset 페이지 방식입니다. 배정 로봇은 담당 공원·관리자 필드를 채웁니다.</p>
+<p>권한: 총관리자(super_admin) Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">GET /admin/robots?unassigned=false&amp;limit=20&amp;offset=0</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>query</p></td><td><p>unassigned</p></td><td><p>선택</p></td><td><p>boolean</p></td><td><p>기본값: false</p></td></tr><tr><td><p>query</p></td><td><p>limit</p></td><td><p>선택</p></td><td><p>integer</p></td><td><p>최솟값: 1; 최댓값: 100; 기본값: 20</p></td></tr><tr><td><p>query</p></td><td><p>offset</p></td><td><p>선택</p></td><td><p>integer</p></td><td><p>최솟값: 0; 최댓값: 9223372036854775807; 기본값: 0</p></td></tr></tbody></table>
+<p>요청 본문: 없음.</p>
+<h4>응답</h4>
+<p>성공: HTTP 200 · RobotResponse[]</p>
+<pre><code class="language-json">[
+  {
+    &quot;id&quot;: &quot;6&quot;,
+    &quot;name&quot;: &quot;jub3&quot;,
+    &quot;serialNo&quot;: &quot;jub3&quot;,
+    &quot;parkId&quot;: &quot;5&quot;,
+    &quot;status&quot;: &quot;offline&quot;,
+    &quot;assignedAt&quot;: &quot;2026-11-18T03:00:00Z&quot;,
+    &quot;createdAt&quot;: &quot;2026-11-18T02:00:00Z&quot;,
+    &quot;slamX&quot;: null,
+    &quot;slamY&quot;: null,
+    &quot;lat&quot;: null,
+    &quot;lng&quot;: null,
+    &quot;batteryVoltage&quot;: null,
+    &quot;lastSeenAt&quot;: null,
+    &quot;parkName&quot;: &quot;예시공원&quot;,
+    &quot;managerId&quot;: &quot;12&quot;,
+    &quot;managerName&quot;: &quot;공원 관리자&quot;,
+    &quot;managerLoginId&quot;: &quot;manager01&quot;
+  }
+]</code></pre>
+<p>오류: 5장의 공통 인증·입력 검증·서버 오류를 적용합니다.</p>
+<h2>3.28. 내 공원의 배정 로봇 목록</h2>
+<h3>GET /robots</h3>
+<p>기능: 승인된 manager의 공원에 배정된 로봇만 id 오름차순으로 반환합니다. 미배정이면 []입니다. 실제 측정 전 좌표·전압·최근 수신 시각은 null입니다.</p>
+<p>권한: 승인된 manager Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">GET /robots</code></pre>
+<p>요청 본문: 없음.</p>
+<h4>응답</h4>
+<p>성공: HTTP 200 · RobotResponse[]</p>
+<pre><code class="language-json">[
+  {
+    &quot;id&quot;: &quot;6&quot;,
+    &quot;name&quot;: &quot;jub3&quot;,
+    &quot;serialNo&quot;: &quot;jub3&quot;,
+    &quot;parkId&quot;: &quot;5&quot;,
+    &quot;status&quot;: &quot;offline&quot;,
+    &quot;assignedAt&quot;: &quot;2026-11-18T03:00:00Z&quot;,
+    &quot;createdAt&quot;: &quot;2026-11-18T02:00:00Z&quot;,
+    &quot;slamX&quot;: null,
+    &quot;slamY&quot;: null,
+    &quot;lat&quot;: null,
+    &quot;lng&quot;: null,
+    &quot;batteryVoltage&quot;: null,
+    &quot;lastSeenAt&quot;: null,
+    &quot;parkName&quot;: null,
+    &quot;managerId&quot;: null,
+    &quot;managerName&quot;: null,
+    &quot;managerLoginId&quot;: null
+  }
+]</code></pre>
+<p>오류: 5장의 공통 인증·입력 검증·서버 오류를 적용합니다.</p>
+<h2>3.29. 내 공원의 로봇 상세 조회</h2>
+<h3>GET /robots/{robot_id}</h3>
+<p>기능: 내 공원 소속 로봇만 조회합니다. 다른 공원 또는 없는 로봇은 같은 404로 처리합니다.</p>
+<p>권한: 승인된 manager Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">GET /robots/6</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>path</p></td><td><p>robot_id</p></td><td><p>필수</p></td><td><p>integer</p></td><td><p>최솟값: 1; 최댓값: 9223372036854775807</p></td></tr></tbody></table>
+<p>요청 본문: 없음.</p>
+<h4>응답</h4>
+<p>성공: HTTP 200 · RobotResponse</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;6&quot;,
+  &quot;name&quot;: &quot;jub3&quot;,
+  &quot;serialNo&quot;: &quot;jub3&quot;,
+  &quot;parkId&quot;: &quot;5&quot;,
+  &quot;status&quot;: &quot;offline&quot;,
+  &quot;assignedAt&quot;: &quot;2026-11-18T03:00:00Z&quot;,
+  &quot;createdAt&quot;: &quot;2026-11-18T02:00:00Z&quot;,
+  &quot;slamX&quot;: null,
+  &quot;slamY&quot;: null,
+  &quot;lat&quot;: null,
+  &quot;lng&quot;: null,
+  &quot;batteryVoltage&quot;: null,
+  &quot;lastSeenAt&quot;: null,
+  &quot;parkName&quot;: null,
+  &quot;managerId&quot;: null,
+  &quot;managerName&quot;: null,
+  &quot;managerLoginId&quot;: null
+}</code></pre>
+<p>주요 업무 오류: 404 robot_not_found. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.30. 내 공원 로봇 이름 수정</h2>
+<h3>PATCH /robots/{robot_id}</h3>
+<p>기능: 수정 가능한 필드는 name뿐입니다. 기기 식별 번호·경로·시간표는 바뀌지 않습니다. 이름은 앞뒤 공백 제거 후 1~100자입니다.</p>
+<p>권한: 승인된 manager Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">PATCH /robots/6</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>path</p></td><td><p>robot_id</p></td><td><p>필수</p></td><td><p>integer</p></td><td><p>최솟값: 1; 최댓값: 9223372036854775807</p></td></tr></tbody></table>
+<p>본문: RobotNameInput — 필드 상세는 4장 공통 데이터 계약에 모두 기재했습니다.</p>
+<pre><code class="language-json">{
+  &quot;name&quot;: &quot;순찰 로봇&quot;
+}</code></pre>
+<h4>응답</h4>
+<p>성공: HTTP 200 · RobotResponse</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;6&quot;,
+  &quot;name&quot;: &quot;순찰 로봇&quot;,
+  &quot;serialNo&quot;: &quot;jub3&quot;,
+  &quot;parkId&quot;: &quot;5&quot;,
+  &quot;status&quot;: &quot;offline&quot;,
+  &quot;assignedAt&quot;: &quot;2026-11-18T03:00:00Z&quot;,
+  &quot;createdAt&quot;: &quot;2026-11-18T02:00:00Z&quot;,
+  &quot;slamX&quot;: null,
+  &quot;slamY&quot;: null,
+  &quot;lat&quot;: null,
+  &quot;lng&quot;: null,
+  &quot;batteryVoltage&quot;: null,
+  &quot;lastSeenAt&quot;: null,
+  &quot;parkName&quot;: null,
+  &quot;managerId&quot;: null,
+  &quot;managerName&quot;: null,
+  &quot;managerLoginId&quot;: null
+}</code></pre>
+<p>주요 업무 오류: 404 robot_not_found. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.31. 내 공원 변경 요청 이력</h2>
+<h3>GET /park-change-requests</h3>
+<p>기능: 내 계정의 최신 요청 최대 50개를 id 내림차순으로 반환합니다. 다른 관리자의 요청은 보이지 않습니다. 별도 페이지 query는 없습니다.</p>
+<p>권한: 승인된 manager Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">GET /park-change-requests</code></pre>
+<p>요청 본문: 없음.</p>
+<h4>응답</h4>
+<p>성공: HTTP 200 · ParkChangeResponse[]</p>
+<pre><code class="language-json">[
+  {
+    &quot;id&quot;: &quot;31&quot;,
+    &quot;parkId&quot;: &quot;5&quot;,
+    &quot;userId&quot;: &quot;12&quot;,
+    &quot;applicantName&quot;: &quot;공원 관리자&quot;,
+    &quot;applicantLoginId&quot;: &quot;manager01&quot;,
+    &quot;currentCatalogId&quot;: &quot;69&quot;,
+    &quot;currentParkName&quot;: &quot;예시공원&quot;,
+    &quot;requestedCatalogId&quot;: &quot;70&quot;,
+    &quot;requestedParkName&quot;: &quot;다른 예시공원&quot;,
+    &quot;requestedParkAddress&quot;: &quot;서울특별시 다른 예시 주소&quot;,
+    &quot;reason&quot;: &quot;담당 공원이 변경되었어요&quot;,
+    &quot;status&quot;: &quot;pending&quot;,
+    &quot;rejectReason&quot;: null,
+    &quot;createdAt&quot;: &quot;2026-11-18T03:00:00Z&quot;,
+    &quot;reviewedAt&quot;: null,
+    &quot;conflictingManagerName&quot;: null
+  }
+]</code></pre>
+<p>오류: 5장의 공통 인증·입력 검증·서버 오류를 적용합니다.</p>
+<h2>3.32. 담당 공원 변경 신청</h2>
+<h3>POST /park-change-requests</h3>
+<p>기능: 승인된 manager가 현재 공원과 다른 활성 공원으로 변경을 신청합니다. reason은 공백 제거 후 1~200자입니다. 공원당 pending 요청은 하나만 허용합니다. 이미 관리자가 있는 공원도 신청은 가능하며 conflictingManagerName으로 알려주고 실제 승인은 충돌을 거부합니다. 신청 단계에서는 기존 설정을 유지합니다.</p>
+<p>권한: 승인된 manager Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">POST /park-change-requests</code></pre>
+<p>본문: ParkChangeInput — 필드 상세는 4장 공통 데이터 계약에 모두 기재했습니다.</p>
+<pre><code class="language-json">{
+  &quot;catalogId&quot;: &quot;70&quot;,
+  &quot;reason&quot;: &quot;담당 공원이 변경되었어요&quot;
+}</code></pre>
+<h4>응답</h4>
+<p>성공: HTTP 201 · ParkChangeResponse</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;31&quot;,
+  &quot;parkId&quot;: &quot;5&quot;,
+  &quot;userId&quot;: &quot;12&quot;,
+  &quot;applicantName&quot;: &quot;공원 관리자&quot;,
+  &quot;applicantLoginId&quot;: &quot;manager01&quot;,
+  &quot;currentCatalogId&quot;: &quot;69&quot;,
+  &quot;currentParkName&quot;: &quot;예시공원&quot;,
+  &quot;requestedCatalogId&quot;: &quot;70&quot;,
+  &quot;requestedParkName&quot;: &quot;다른 예시공원&quot;,
+  &quot;requestedParkAddress&quot;: &quot;서울특별시 다른 예시 주소&quot;,
+  &quot;reason&quot;: &quot;담당 공원이 변경되었어요&quot;,
+  &quot;status&quot;: &quot;pending&quot;,
+  &quot;rejectReason&quot;: null,
+  &quot;createdAt&quot;: &quot;2026-11-18T03:00:00Z&quot;,
+  &quot;reviewedAt&quot;: null,
+  &quot;conflictingManagerName&quot;: null
+}</code></pre>
+<p>주요 업무 오류: 404 park_not_found; 409 park_change_pending; 422 same_park. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.33. 내 공원 변경 요청 취소</h2>
+<h3>POST /park-change-requests/{request_id}/cancel</h3>
+<p>기능: 내 pending 요청만 취소합니다. 타인 요청과 없는 요청은 동일한 404입니다. cancelled와 reviewedAt을 기록하며 기존 공원·로봇·설정은 유지합니다.</p>
+<p>권한: 승인된 manager Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">POST /park-change-requests/31/cancel</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>path</p></td><td><p>request_id</p></td><td><p>필수</p></td><td><p>integer</p></td><td><p>최솟값: 1; 최댓값: 9223372036854775807</p></td></tr></tbody></table>
+<p>요청 본문: 없음.</p>
+<h4>응답</h4>
+<p>성공: HTTP 200 · ParkChangeResponse</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;31&quot;,
+  &quot;parkId&quot;: &quot;5&quot;,
+  &quot;userId&quot;: &quot;12&quot;,
+  &quot;applicantName&quot;: &quot;공원 관리자&quot;,
+  &quot;applicantLoginId&quot;: &quot;manager01&quot;,
+  &quot;currentCatalogId&quot;: &quot;69&quot;,
+  &quot;currentParkName&quot;: &quot;예시공원&quot;,
+  &quot;requestedCatalogId&quot;: &quot;70&quot;,
+  &quot;requestedParkName&quot;: &quot;다른 예시공원&quot;,
+  &quot;requestedParkAddress&quot;: &quot;서울특별시 다른 예시 주소&quot;,
+  &quot;reason&quot;: &quot;담당 공원이 변경되었어요&quot;,
+  &quot;status&quot;: &quot;cancelled&quot;,
+  &quot;rejectReason&quot;: null,
+  &quot;createdAt&quot;: &quot;2026-11-18T03:00:00Z&quot;,
+  &quot;reviewedAt&quot;: &quot;2026-11-18T03:10:00Z&quot;,
+  &quot;conflictingManagerName&quot;: null
+}</code></pre>
+<p>주요 업무 오류: 404 park_change_not_found; 409 park_change_not_pending. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.34. 총관리자 — 공원 변경 요청 목록</h2>
+<h3>GET /admin/park-change-requests</h3>
+<p>기능: status 기본 pending, all은 전체입니다. createdAt·id 내림차순으로 반환합니다. limit 기본값은 100으로 가입 신청 목록(20)과 다릅니다.</p>
+<p>권한: 총관리자(super_admin) Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">GET /admin/park-change-requests?status=pending&amp;limit=100&amp;offset=0</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>query</p></td><td><p>status</p></td><td><p>선택</p></td><td><p>string</p></td><td><p>허용: all, pending, approved, rejected, cancelled; 기본값: &quot;pending&quot;</p></td></tr><tr><td><p>query</p></td><td><p>limit</p></td><td><p>선택</p></td><td><p>integer</p></td><td><p>최솟값: 1; 최댓값: 100; 기본값: 100</p></td></tr><tr><td><p>query</p></td><td><p>offset</p></td><td><p>선택</p></td><td><p>integer</p></td><td><p>최솟값: 0; 최댓값: 9223372036854775807; 기본값: 0</p></td></tr></tbody></table>
+<p>요청 본문: 없음.</p>
+<h4>응답</h4>
+<p>성공: HTTP 200 · ParkChangeResponse[]</p>
+<pre><code class="language-json">[
+  {
+    &quot;id&quot;: &quot;31&quot;,
+    &quot;parkId&quot;: &quot;5&quot;,
+    &quot;userId&quot;: &quot;12&quot;,
+    &quot;applicantName&quot;: &quot;공원 관리자&quot;,
+    &quot;applicantLoginId&quot;: &quot;manager01&quot;,
+    &quot;currentCatalogId&quot;: &quot;69&quot;,
+    &quot;currentParkName&quot;: &quot;예시공원&quot;,
+    &quot;requestedCatalogId&quot;: &quot;70&quot;,
+    &quot;requestedParkName&quot;: &quot;다른 예시공원&quot;,
+    &quot;requestedParkAddress&quot;: &quot;서울특별시 다른 예시 주소&quot;,
+    &quot;reason&quot;: &quot;담당 공원이 변경되었어요&quot;,
+    &quot;status&quot;: &quot;pending&quot;,
+    &quot;rejectReason&quot;: null,
+    &quot;createdAt&quot;: &quot;2026-11-18T03:00:00Z&quot;,
+    &quot;reviewedAt&quot;: null,
+    &quot;conflictingManagerName&quot;: null
+  }
+]</code></pre>
+<p>오류: 5장의 공통 인증·입력 검증·서버 오류를 적용합니다.</p>
+<h2>3.35. 총관리자 — 공원 변경 승인</h2>
+<h3>POST /admin/park-change-requests/{request_id}/approve</h3>
+<p>기능: 본문이 없습니다. pending 요청이며 신청 당시 공원과 현재 공원이 같아야 합니다. 대상 공원에 다른 승인 관리자가 없어야 하고 모든 배정 로봇이 idle/offline이어야 합니다. 운영 parkId와 로봇 배정은 유지하고 catalogId를 바꿉니다. 기존 경로·지점·시간표·좌표 기준점을 초기화하고 routeSetupDone=false로 만듭니다. 새 공원에서 순찰 설정을 다시 해야 합니다.</p>
+<p>권한: 총관리자(super_admin) Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">POST /admin/park-change-requests/31/approve</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>path</p></td><td><p>request_id</p></td><td><p>필수</p></td><td><p>integer</p></td><td><p>최솟값: 1; 최댓값: 9223372036854775807</p></td></tr></tbody></table>
+<p>요청 본문: 없음.</p>
+<h4>응답</h4>
+<p>성공: HTTP 200 · ParkChangeResponse</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;31&quot;,
+  &quot;parkId&quot;: &quot;5&quot;,
+  &quot;userId&quot;: &quot;12&quot;,
+  &quot;applicantName&quot;: &quot;공원 관리자&quot;,
+  &quot;applicantLoginId&quot;: &quot;manager01&quot;,
+  &quot;currentCatalogId&quot;: &quot;69&quot;,
+  &quot;currentParkName&quot;: &quot;예시공원&quot;,
+  &quot;requestedCatalogId&quot;: &quot;70&quot;,
+  &quot;requestedParkName&quot;: &quot;다른 예시공원&quot;,
+  &quot;requestedParkAddress&quot;: &quot;서울특별시 다른 예시 주소&quot;,
+  &quot;reason&quot;: &quot;담당 공원이 변경되었어요&quot;,
+  &quot;status&quot;: &quot;approved&quot;,
+  &quot;rejectReason&quot;: null,
+  &quot;createdAt&quot;: &quot;2026-11-18T03:00:00Z&quot;,
+  &quot;reviewedAt&quot;: &quot;2026-11-18T03:10:00Z&quot;,
+  &quot;conflictingManagerName&quot;: null
+}</code></pre>
+<p>주요 업무 오류: 404 park_change_not_found; 409 park_change_not_pending / park_change_stale / park_catalog_inactive / park_already_approved / robot_not_available. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.36. 총관리자 — 공원 변경 반려</h2>
+<h3>POST /admin/park-change-requests/{request_id}/reject</h3>
+<p>기능: pending 요청만 반려합니다. reason은 1~1000자입니다. 요청 상태·반려 사유·검토 시각을 기록하고 현재 공원·설정·로봇 배정은 유지합니다.</p>
+<p>권한: 총관리자(super_admin) Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">POST /admin/park-change-requests/31/reject</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>path</p></td><td><p>request_id</p></td><td><p>필수</p></td><td><p>integer</p></td><td><p>최솟값: 1; 최댓값: 9223372036854775807</p></td></tr></tbody></table>
+<p>본문: RejectionInput — 필드 상세는 4장 공통 데이터 계약에 모두 기재했습니다.</p>
+<pre><code class="language-json">{
+  &quot;reason&quot;: &quot;담당 공원 확인이 필요해요&quot;
+}</code></pre>
+<h4>응답</h4>
+<p>성공: HTTP 200 · ParkChangeResponse</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;31&quot;,
+  &quot;parkId&quot;: &quot;5&quot;,
+  &quot;userId&quot;: &quot;12&quot;,
+  &quot;applicantName&quot;: &quot;공원 관리자&quot;,
+  &quot;applicantLoginId&quot;: &quot;manager01&quot;,
+  &quot;currentCatalogId&quot;: &quot;69&quot;,
+  &quot;currentParkName&quot;: &quot;예시공원&quot;,
+  &quot;requestedCatalogId&quot;: &quot;70&quot;,
+  &quot;requestedParkName&quot;: &quot;다른 예시공원&quot;,
+  &quot;requestedParkAddress&quot;: &quot;서울특별시 다른 예시 주소&quot;,
+  &quot;reason&quot;: &quot;담당 공원이 변경되었어요&quot;,
+  &quot;status&quot;: &quot;rejected&quot;,
+  &quot;rejectReason&quot;: &quot;담당 공원 확인이 필요해요&quot;,
+  &quot;createdAt&quot;: &quot;2026-11-18T03:00:00Z&quot;,
+  &quot;reviewedAt&quot;: &quot;2026-11-18T03:10:00Z&quot;,
+  &quot;conflictingManagerName&quot;: null
+}</code></pre>
+<p>주요 업무 오류: 404 park_change_not_found; 409 park_change_not_pending. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.37. 총관리자 — 운영 공원 목록</h2>
+<h3>GET /admin/parks</h3>
+<p>기능: 승인된 공원만 id 오름차순으로 반환합니다. 담당 관리자와 배정된 로봇 수를 포함합니다. 공원 목록 카탈로그 검색과 다릅니다.</p>
+<p>권한: 총관리자(super_admin) Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">GET /admin/parks?limit=100&amp;offset=0</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>query</p></td><td><p>limit</p></td><td><p>선택</p></td><td><p>integer</p></td><td><p>최솟값: 1; 최댓값: 100; 기본값: 100</p></td></tr><tr><td><p>query</p></td><td><p>offset</p></td><td><p>선택</p></td><td><p>integer</p></td><td><p>최솟값: 0; 최댓값: 9223372036854775807; 기본값: 0</p></td></tr></tbody></table>
+<p>요청 본문: 없음.</p>
+<h4>응답</h4>
+<p>성공: HTTP 200 · AdminParkResponse[]</p>
+<pre><code class="language-json">[
+  {
+    &quot;id&quot;: &quot;5&quot;,
+    &quot;catalogId&quot;: &quot;69&quot;,
+    &quot;name&quot;: &quot;예시공원&quot;,
+    &quot;address&quot;: &quot;서울특별시 예시 주소&quot;,
+    &quot;managerId&quot;: &quot;12&quot;,
+    &quot;managerName&quot;: &quot;공원 관리자&quot;,
+    &quot;managerLoginId&quot;: &quot;manager01&quot;,
+    &quot;status&quot;: &quot;approved&quot;,
+    &quot;robotCount&quot;: 2
+  }
+]</code></pre>
+<p>오류: 5장의 공통 인증·입력 검증·서버 오류를 적용합니다.</p>
+<h2>3.38. 총관리자 — 로봇 공원 배정·이동·회수</h2>
+<h3>PATCH /admin/robots/{robot_id}/assignment</h3>
+<p>기능: parkId는 승인된 운영 공원 ID이며 null이면 회수입니다. 필드 생략은 허용하지 않습니다. idle/offline만 처리하고 활성 공원으로만 배정합니다. 이동·회수 시 이전 공원의 해당 로봇 경로를 비활성화하고 지점을 숨기며 시간표를 제거합니다. 다른 로봇 설정은 보존합니다. 새 공원의 미배정 초안이 있으면 복사합니다. 상태를 임의로 online으로 바꾸지 않습니다.</p>
+<p>권한: 총관리자(super_admin) Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">PATCH /admin/robots/6/assignment</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>path</p></td><td><p>robot_id</p></td><td><p>필수</p></td><td><p>integer</p></td><td><p>최솟값: 1; 최댓값: 9223372036854775807</p></td></tr></tbody></table>
+<p>본문: AssignmentInput — 필드 상세는 4장 공통 데이터 계약에 모두 기재했습니다.</p>
+<pre><code class="language-json">{
+  &quot;parkId&quot;: &quot;5&quot;
+}</code></pre>
+<h4>응답</h4>
+<p>성공: HTTP 200 · RobotResponse</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;6&quot;,
+  &quot;name&quot;: &quot;jub3&quot;,
+  &quot;serialNo&quot;: &quot;jub3&quot;,
+  &quot;parkId&quot;: &quot;5&quot;,
+  &quot;status&quot;: &quot;offline&quot;,
+  &quot;assignedAt&quot;: &quot;2026-11-18T03:00:00Z&quot;,
+  &quot;createdAt&quot;: &quot;2026-11-18T02:00:00Z&quot;,
+  &quot;slamX&quot;: null,
+  &quot;slamY&quot;: null,
+  &quot;lat&quot;: null,
+  &quot;lng&quot;: null,
+  &quot;batteryVoltage&quot;: null,
+  &quot;lastSeenAt&quot;: null,
+  &quot;parkName&quot;: &quot;예시공원&quot;,
+  &quot;managerId&quot;: &quot;12&quot;,
+  &quot;managerName&quot;: &quot;공원 관리자&quot;,
+  &quot;managerLoginId&quot;: &quot;manager01&quot;
+}</code></pre>
+<p>주요 업무 오류: 404 robot_not_found; 409 robot_assignment_changed / robot_not_available / park_not_approved / park_catalog_inactive. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.39. 최초·추가 로봇 배정 요청</h2>
+<h3>POST /robot-assignment-requests</h3>
+<p>기능: 승인된 manager의 로그인 정보로 신청자와 운영 공원을 결정합니다. robotCount는 추가 요청 대수(정수 1~100)이며 기존 배정 로봇을 포함한 총 대수가 아닙니다. reason은 필수이며 앞뒤 공백 제거 후 1~1000자입니다. 누락·빈 문자열·공백만 입력하면 422 validation_error입니다. 공원별 pending 요청은 한 건만 허용하고 요청만으로 기기 등록·배정은 하지 않습니다. userId·parkId 등의 추가 입력은 거부합니다.</p>
+<p>권한: 승인된 manager Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">POST /robot-assignment-requests</code></pre>
+<p>본문: RobotAssignmentRequestInput — 필드 상세는 4장 공통 데이터 계약에 모두 기재했습니다.</p>
+<pre><code class="language-json">{
+  &quot;robotCount&quot;: 2,
+  &quot;reason&quot;: &quot;추가 순찰이 필요해요&quot;
+}</code></pre>
+<h4>응답</h4>
+<p>성공: HTTP 201 · RobotAssignmentRequestResponse</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;41&quot;,
+  &quot;userId&quot;: &quot;12&quot;,
+  &quot;parkId&quot;: &quot;5&quot;,
+  &quot;catalogId&quot;: &quot;69&quot;,
+  &quot;parkName&quot;: &quot;예시공원&quot;,
+  &quot;applicantName&quot;: &quot;공원 관리자&quot;,
+  &quot;applicantLoginId&quot;: &quot;manager01&quot;,
+  &quot;robotCount&quot;: 2,
+  &quot;reason&quot;: &quot;추가 순찰이 필요해요&quot;,
+  &quot;status&quot;: &quot;pending&quot;,
+  &quot;rejectReason&quot;: null,
+  &quot;reviewedBy&quot;: null,
+  &quot;reviewedAt&quot;: null,
+  &quot;createdAt&quot;: &quot;2026-11-18T03:00:00Z&quot;,
+  &quot;assignedRobotIds&quot;: []
+}</code></pre>
+<p>주요 업무 오류: 409 robot_assignment_request_pending / park_not_approved / park_catalog_inactive. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.40. 내 로봇 배정 요청 이력</h2>
+<h3>GET /robot-assignment-requests</h3>
+<p>기능: 현재 계정의 요청만 조회합니다. status 기본 all이며 최신 생성 시각·ID 순으로 내려줍니다. assignedRobotIds는 승인 당시 로봇 ID 이력으로 회수 이후에도 유지합니다.</p>
+<p>권한: 승인된 manager Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">GET /robot-assignment-requests?status=pending&amp;limit=20&amp;offset=0</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>query</p></td><td><p>status</p></td><td><p>선택</p></td><td><p>string</p></td><td><p>허용: all, pending, approved, rejected, cancelled; 기본값: &quot;all&quot;</p></td></tr><tr><td><p>query</p></td><td><p>limit</p></td><td><p>선택</p></td><td><p>integer</p></td><td><p>최솟값: 1; 최댓값: 100; 기본값: 20</p></td></tr><tr><td><p>query</p></td><td><p>offset</p></td><td><p>선택</p></td><td><p>integer</p></td><td><p>최솟값: 0; 최댓값: 9223372036854775807; 기본값: 0</p></td></tr></tbody></table>
+<p>요청 본문: 없음.</p>
+<h4>응답</h4>
+<p>성공: HTTP 200 · RobotAssignmentRequestResponse[]</p>
+<pre><code class="language-json">[
+  {
+    &quot;id&quot;: &quot;41&quot;,
+    &quot;userId&quot;: &quot;12&quot;,
+    &quot;parkId&quot;: &quot;5&quot;,
+    &quot;catalogId&quot;: &quot;69&quot;,
+    &quot;parkName&quot;: &quot;예시공원&quot;,
+    &quot;applicantName&quot;: &quot;공원 관리자&quot;,
+    &quot;applicantLoginId&quot;: &quot;manager01&quot;,
+    &quot;robotCount&quot;: 2,
+    &quot;reason&quot;: &quot;추가 순찰이 필요해요&quot;,
+    &quot;status&quot;: &quot;pending&quot;,
+    &quot;rejectReason&quot;: null,
+    &quot;reviewedBy&quot;: null,
+    &quot;reviewedAt&quot;: null,
+    &quot;createdAt&quot;: &quot;2026-11-18T03:00:00Z&quot;,
+    &quot;assignedRobotIds&quot;: []
+  }
+]</code></pre>
+<p>오류: 5장의 공통 인증·입력 검증·서버 오류를 적용합니다.</p>
+<h2>3.41. 내 로봇 배정 요청 취소</h2>
+<h3>POST /robot-assignment-requests/{request_id}/cancel</h3>
+<p>기능: 본문 없이 자신의 pending 요청만 취소합니다. 타인의 요청과 없는 요청은 동일한 404입니다. reviewedBy에 취소한 관리자 ID, reviewedAt에 취소 시각을 기록하고 기존 배정은 유지합니다.</p>
+<p>권한: 승인된 manager Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">POST /robot-assignment-requests/31/cancel</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>path</p></td><td><p>request_id</p></td><td><p>필수</p></td><td><p>integer</p></td><td><p>최솟값: 1; 최댓값: 9223372036854775807</p></td></tr></tbody></table>
+<p>요청 본문: 없음.</p>
+<h4>응답</h4>
+<p>성공: HTTP 200 · RobotAssignmentRequestResponse</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;41&quot;,
+  &quot;userId&quot;: &quot;12&quot;,
+  &quot;parkId&quot;: &quot;5&quot;,
+  &quot;catalogId&quot;: &quot;69&quot;,
+  &quot;parkName&quot;: &quot;예시공원&quot;,
+  &quot;applicantName&quot;: &quot;공원 관리자&quot;,
+  &quot;applicantLoginId&quot;: &quot;manager01&quot;,
+  &quot;robotCount&quot;: 2,
+  &quot;reason&quot;: &quot;추가 순찰이 필요해요&quot;,
+  &quot;status&quot;: &quot;cancelled&quot;,
+  &quot;rejectReason&quot;: null,
+  &quot;reviewedBy&quot;: &quot;12&quot;,
+  &quot;reviewedAt&quot;: &quot;2026-11-18T03:10:00Z&quot;,
+  &quot;createdAt&quot;: &quot;2026-11-18T03:00:00Z&quot;,
+  &quot;assignedRobotIds&quot;: []
+}</code></pre>
+<p>주요 업무 오류: 404 robot_assignment_request_not_found; 409 robot_assignment_request_not_pending. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.42. 총관리자 — 로봇 배정 요청 목록</h2>
+<h3>GET /admin/robot-assignment-requests</h3>
+<p>기능: status 기본 pending, all로 전체 요청을 조회합니다. limit 기본 20, 최대 100입니다. 최신 생성 시각·ID 순으로 반환합니다.</p>
+<p>권한: 총관리자(super_admin) Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">GET /admin/robot-assignment-requests?status=pending&amp;limit=20&amp;offset=0</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>query</p></td><td><p>status</p></td><td><p>선택</p></td><td><p>string</p></td><td><p>허용: all, pending, approved, rejected, cancelled; 기본값: &quot;pending&quot;</p></td></tr><tr><td><p>query</p></td><td><p>limit</p></td><td><p>선택</p></td><td><p>integer</p></td><td><p>최솟값: 1; 최댓값: 100; 기본값: 20</p></td></tr><tr><td><p>query</p></td><td><p>offset</p></td><td><p>선택</p></td><td><p>integer</p></td><td><p>최솟값: 0; 최댓값: 9223372036854775807; 기본값: 0</p></td></tr></tbody></table>
+<p>요청 본문: 없음.</p>
+<h4>응답</h4>
+<p>성공: HTTP 200 · RobotAssignmentRequestResponse[]</p>
+<pre><code class="language-json">[
+  {
+    &quot;id&quot;: &quot;41&quot;,
+    &quot;userId&quot;: &quot;12&quot;,
+    &quot;parkId&quot;: &quot;5&quot;,
+    &quot;catalogId&quot;: &quot;69&quot;,
+    &quot;parkName&quot;: &quot;예시공원&quot;,
+    &quot;applicantName&quot;: &quot;공원 관리자&quot;,
+    &quot;applicantLoginId&quot;: &quot;manager01&quot;,
+    &quot;robotCount&quot;: 2,
+    &quot;reason&quot;: &quot;추가 순찰이 필요해요&quot;,
+    &quot;status&quot;: &quot;pending&quot;,
+    &quot;rejectReason&quot;: null,
+    &quot;reviewedBy&quot;: null,
+    &quot;reviewedAt&quot;: null,
+    &quot;createdAt&quot;: &quot;2026-11-18T03:00:00Z&quot;,
+    &quot;assignedRobotIds&quot;: []
+  }
+]</code></pre>
+<p>오류: 5장의 공통 인증·입력 검증·서버 오류를 적용합니다.</p>
+<h2>3.43. 총관리자 — 요청 승인과 실제 로봇 배정</h2>
+<h3>POST /admin/robot-assignment-requests/{request_id}/approve</h3>
+<p>기능: 요청 대수와 정확히 같은 수의 중복 없는 robotIds를 받습니다. 전부 미배정·idle/offline이어야 하고 신청 당시 승인된 공원·catalogId·manager 역할이 유지되어야 합니다. 요청 승인·배정·이력·초안 경로 복사·알림 저장을 한 트랜잭션으로 처리하며 부분 승인은 하지 않습니다. 모든 신규 로봇에 미배정 초안을 독립 복사하고 기존 로봇 설정은 유지합니다. 실제 로봇 주행 명령은 보내지 않습니다. 푸시는 커밋 후 발송 설정이 켜져 있을 때 처리합니다.</p>
+<p>권한: 총관리자(super_admin) Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">POST /admin/robot-assignment-requests/31/approve</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>path</p></td><td><p>request_id</p></td><td><p>필수</p></td><td><p>integer</p></td><td><p>최솟값: 1; 최댓값: 9223372036854775807</p></td></tr></tbody></table>
+<p>본문: RobotAssignmentApprovalInput — 필드 상세는 4장 공통 데이터 계약에 모두 기재했습니다.</p>
+<pre><code class="language-json">{
+  &quot;robotIds&quot;: [
+    &quot;7&quot;,
+    &quot;8&quot;
+  ]
+}</code></pre>
+<h4>응답</h4>
+<p>성공: HTTP 200 · RobotAssignmentRequestResponse</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;41&quot;,
+  &quot;userId&quot;: &quot;12&quot;,
+  &quot;parkId&quot;: &quot;5&quot;,
+  &quot;catalogId&quot;: &quot;69&quot;,
+  &quot;parkName&quot;: &quot;예시공원&quot;,
+  &quot;applicantName&quot;: &quot;공원 관리자&quot;,
+  &quot;applicantLoginId&quot;: &quot;manager01&quot;,
+  &quot;robotCount&quot;: 2,
+  &quot;reason&quot;: &quot;추가 순찰이 필요해요&quot;,
+  &quot;status&quot;: &quot;approved&quot;,
+  &quot;rejectReason&quot;: null,
+  &quot;reviewedBy&quot;: &quot;8&quot;,
+  &quot;reviewedAt&quot;: &quot;2026-11-18T03:10:00Z&quot;,
+  &quot;createdAt&quot;: &quot;2026-11-18T03:00:00Z&quot;,
+  &quot;assignedRobotIds&quot;: [
+    &quot;7&quot;,
+    &quot;8&quot;
+  ]
+}</code></pre>
+<p>주요 업무 오류: 404 robot_assignment_request_not_found / robot_not_found; 409 robot_assignment_request_not_pending / robot_assignment_request_stale / robot_already_assigned / robot_not_available / park_catalog_inactive; 422 robot_assignment_count_mismatch. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.44. 총관리자 — 로봇 배정 요청 반려</h2>
+<h3>POST /admin/robot-assignment-requests/{request_id}/reject</h3>
+<p>기능: pending 요청만 반려하고 1~1000자 reason을 저장합니다. 로봇 배정은 바꾸지 않습니다. 반려 상태·처리자·시각·알림 기록을 함께 저장합니다.</p>
+<p>권한: 총관리자(super_admin) Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">POST /admin/robot-assignment-requests/31/reject</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>path</p></td><td><p>request_id</p></td><td><p>필수</p></td><td><p>integer</p></td><td><p>최솟값: 1; 최댓값: 9223372036854775807</p></td></tr></tbody></table>
+<p>본문: RejectionInput — 필드 상세는 4장 공통 데이터 계약에 모두 기재했습니다.</p>
+<pre><code class="language-json">{
+  &quot;reason&quot;: &quot;담당 공원 확인이 필요해요&quot;
+}</code></pre>
+<h4>응답</h4>
+<p>성공: HTTP 200 · RobotAssignmentRequestResponse</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;41&quot;,
+  &quot;userId&quot;: &quot;12&quot;,
+  &quot;parkId&quot;: &quot;5&quot;,
+  &quot;catalogId&quot;: &quot;69&quot;,
+  &quot;parkName&quot;: &quot;예시공원&quot;,
+  &quot;applicantName&quot;: &quot;공원 관리자&quot;,
+  &quot;applicantLoginId&quot;: &quot;manager01&quot;,
+  &quot;robotCount&quot;: 2,
+  &quot;reason&quot;: &quot;추가 순찰이 필요해요&quot;,
+  &quot;status&quot;: &quot;rejected&quot;,
+  &quot;rejectReason&quot;: &quot;현재 가용 로봇이 없어요&quot;,
+  &quot;reviewedBy&quot;: &quot;8&quot;,
+  &quot;reviewedAt&quot;: &quot;2026-11-18T03:10:00Z&quot;,
+  &quot;createdAt&quot;: &quot;2026-11-18T03:00:00Z&quot;,
+  &quot;assignedRobotIds&quot;: []
+}</code></pre>
+<p>주요 업무 오류: 404 robot_assignment_request_not_found; 409 robot_assignment_request_not_pending. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.45. 분리수거장 목록</h2>
+<h3>GET /stations</h3>
+<p>기능: 본인 공원의 삭제되지 않은 장소 목록을 반환합니다.</p>
+<p>권한: 승인된 manager Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">GET /stations</code></pre>
+<p>요청 본문: 없음.</p>
+<h4>응답</h4>
+<p>성공: HTTP 200 · StationResponse[]</p>
+<pre><code class="language-json">[
+  {
+    &quot;id&quot;: &quot;1&quot;,
+    &quot;name&quot;: &quot;북문 분리수거장&quot;,
+    &quot;position&quot;: {
+      &quot;latitude&quot;: 37.5433,
+      &quot;longitude&quot;: 127.0332
+    }
+  }
+]</code></pre>
+<p>오류: 5장의 공통 인증·입력 검증·서버 오류를 적용합니다.</p>
+<h2>3.46. 분리수거장 등록</h2>
+<h3>POST /stations</h3>
+<p>기능: 이름·공원 내부 좌표를 등록합니다. 최대 100곳이며 같은 좌표는 중복 등록할 수 없습니다.</p>
+<p>권한: 승인된 manager Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">POST /stations</code></pre>
+<p>본문: StationInput — 필드 상세는 4장 공통 데이터 계약에 모두 기재했습니다.</p>
+<pre><code class="language-json">{
+  &quot;name&quot;: &quot;북문 분리수거장&quot;,
+  &quot;position&quot;: {
+    &quot;latitude&quot;: 37.5433,
+    &quot;longitude&quot;: 127.0332
+  },
+  &quot;catalogId&quot;: &quot;69&quot;
+}</code></pre>
+<h4>응답</h4>
+<p>성공: HTTP 201 · StationResponse</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;1&quot;,
+  &quot;name&quot;: &quot;북문 분리수거장&quot;,
+  &quot;position&quot;: {
+    &quot;latitude&quot;: 37.5433,
+    &quot;longitude&quot;: 127.0332
+  }
+}</code></pre>
+<p>주요 업무 오류: 409 station_position_exists / park_changed; 422 point_outside_park / station_limit_exceeded. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.47. 분리수거장 수정</h2>
+<h3>PATCH /stations/{station_id}</h3>
+<p>기능: 이름과 좌표를 수정합니다. 참조하는 활성 경로를 모두 검증하고 새 버전으로 저장합니다. 과거 경로 좌표는 보존합니다.</p>
+<p>권한: 승인된 manager Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">PATCH /stations/{station_id}</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>path</p></td><td><p>station_id</p></td><td><p>필수</p></td><td><p>integer</p></td><td><p>최솟값: 1; 최댓값: 9223372036854775807</p></td></tr></tbody></table>
+<p>본문: StationInput — 필드 상세는 4장 공통 데이터 계약에 모두 기재했습니다.</p>
+<pre><code class="language-json">{
+  &quot;name&quot;: &quot;북문 분리수거장&quot;,
+  &quot;position&quot;: {
+    &quot;latitude&quot;: 37.5433,
+    &quot;longitude&quot;: 127.0332
+  },
+  &quot;catalogId&quot;: &quot;69&quot;
+}</code></pre>
+<h4>응답</h4>
+<p>성공: HTTP 200 · StationResponse</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;1&quot;,
+  &quot;name&quot;: &quot;북문 분리수거장&quot;,
+  &quot;position&quot;: {
+    &quot;latitude&quot;: 37.5433,
+    &quot;longitude&quot;: 127.0332
+  }
+}</code></pre>
+<p>주요 업무 오류: 404 station_not_found; 409 station_position_exists / park_changed; 422 point_outside_park / point_too_far. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.48. 분리수거장 삭제</h2>
+<h3>DELETE /stations/{station_id}</h3>
+<p>기능: 활성 경로·기본 장소 선택에서 사용하지 않는 장소만 삭제합니다. catalogId는 query입니다.</p>
+<p>권한: 승인된 manager Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">DELETE /stations/{station_id}?catalogId=69</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>path</p></td><td><p>station_id</p></td><td><p>필수</p></td><td><p>integer</p></td><td><p>최솟값: 1; 최댓값: 9223372036854775807</p></td></tr><tr><td><p>query</p></td><td><p>catalogId</p></td><td><p>선택</p></td><td><p>integer / null</p></td><td><p>최솟값: 1; 최댓값: 9223372036854775807</p></td></tr></tbody></table>
+<p>요청 본문: 없음.</p>
+<h4>응답</h4>
+<p>성공: HTTP 204 · 응답 본문 없음</p>
+<p>주요 오류: 404 station_not_found; 409 station_in_use / park_changed. 공통 인증·입력 검증 오류를 함께 적용합니다.</p>
+<h2>3.49. 로봇 기본 분리수거장 선택</h2>
+<h3>PUT /robots/{robot_id}/default-station</h3>
+<p>기능: 본인 공원에 배정된 로봇의 기본 장소를 선택합니다. 경로 생성 전에도 가능하며 기존 경로가 있으면 해당 경로만 새 버전으로 저장합니다.</p>
+<p>권한: 승인된 manager Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">PUT /robots/6/default-station</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>path</p></td><td><p>robot_id</p></td><td><p>필수</p></td><td><p>integer</p></td><td><p>최솟값: 1; 최댓값: 9223372036854775807</p></td></tr></tbody></table>
+<p>본문: StationSelectionInput — 필드 상세는 4장 공통 데이터 계약에 모두 기재했습니다.</p>
+<pre><code class="language-json">{
+  &quot;stationId&quot;: &quot;1&quot;,
+  &quot;catalogId&quot;: &quot;69&quot;
+}</code></pre>
+<h4>응답</h4>
+<p>성공: HTTP 200 · StationResponse</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;1&quot;,
+  &quot;name&quot;: &quot;북문 분리수거장&quot;,
+  &quot;position&quot;: {
+    &quot;latitude&quot;: 37.5433,
+    &quot;longitude&quot;: 127.0332
+  }
+}</code></pre>
+<p>주요 업무 오류: 404 robot_not_found / station_not_found; 409 park_changed; 422 point_too_far. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.50. 내 알림 목록</h2>
+<h3>GET /notifications</h3>
+<p>기능: 자신의 알림만 발생 시각·ID 내림차순으로 반환합니다. type·isRead 필터와 limit·offset을 지원하며 조회만으로 읽음 처리하지 않습니다. 목록은 포장 없는 배열이며 빈 결과는 []입니다. 총관리자도 자신의 알림만 조회합니다.</p>
+<p>권한: 승인된 manager 또는 super_admin Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">GET /notifications?type=robotAssignmentApproved&amp;isRead=false&amp;limit=20&amp;offset=0</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>query</p></td><td><p>type</p></td><td><p>선택</p></td><td><p>string / null</p></td><td><p>최소 문자 수: 1; 최대 문자 수: 100</p></td></tr><tr><td><p>query</p></td><td><p>isRead</p></td><td><p>선택</p></td><td><p>boolean / null</p></td><td><p>-</p></td></tr><tr><td><p>query</p></td><td><p>limit</p></td><td><p>선택</p></td><td><p>integer</p></td><td><p>최솟값: 1; 최댓값: 100; 기본값: 20</p></td></tr><tr><td><p>query</p></td><td><p>offset</p></td><td><p>선택</p></td><td><p>integer</p></td><td><p>최솟값: 0; 최댓값: 9223372036854775807; 기본값: 0</p></td></tr></tbody></table>
+<p>요청 본문: 없음.</p>
+<h4>응답</h4>
+<p>성공: HTTP 200 · NotificationResponse[]</p>
+<pre><code class="language-json">[
+  {
+    &quot;id&quot;: &quot;41&quot;,
+    &quot;type&quot;: &quot;robotAssignmentApproved&quot;,
+    &quot;title&quot;: &quot;로봇 배정이 완료되었어요&quot;,
+    &quot;body&quot;: &quot;예시공원에 로봇 2대를 배정했어요&quot;,
+    &quot;parkId&quot;: &quot;5&quot;,
+    &quot;robotId&quot;: null,
+    &quot;position&quot;: null,
+    &quot;occurredAt&quot;: &quot;2026-11-18T07:00:00Z&quot;,
+    &quot;isRead&quot;: false
+  }
+]</code></pre>
+<p>주요 업무 오류: 503 notifications_unavailable. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.51. 내 미확인 알림 개수</h2>
+<h3>GET /notifications/unread-count</h3>
+<p>기능: 필터·페이지와 관계없이 자신의 전체 미확인 알림 개수를 반환합니다. 0개면 count=0입니다.</p>
+<p>권한: 승인된 manager 또는 super_admin Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">GET /notifications/unread-count</code></pre>
+<p>요청 본문: 없음.</p>
+<h4>응답</h4>
+<p>성공: HTTP 200 · UnreadCountResponse</p>
+<pre><code class="language-json">{
+  &quot;count&quot;: 2
+}</code></pre>
+<p>주요 업무 오류: 503 notifications_unavailable. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.52. 내 알림 상세</h2>
+<h3>GET /notifications/{notification_id}</h3>
+<p>기능: 자신의 알림 내용·발생 시각·위치·읽음 여부를 반환합니다. 타인의 알림과 없는 알림은 동일한 404입니다. 조회 자체로 읽음 상태를 바꾸지 않습니다.</p>
+<p>권한: 승인된 manager 또는 super_admin Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">GET /notifications/41</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>path</p></td><td><p>notification_id</p></td><td><p>필수</p></td><td><p>integer</p></td><td><p>최솟값: 1; 최댓값: 9223372036854775807</p></td></tr></tbody></table>
+<p>요청 본문: 없음.</p>
+<h4>응답</h4>
+<p>성공: HTTP 200 · NotificationResponse</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;41&quot;,
+  &quot;type&quot;: &quot;robotAssignmentApproved&quot;,
+  &quot;title&quot;: &quot;로봇 배정이 완료되었어요&quot;,
+  &quot;body&quot;: &quot;예시공원에 로봇 2대를 배정했어요&quot;,
+  &quot;parkId&quot;: &quot;5&quot;,
+  &quot;robotId&quot;: null,
+  &quot;position&quot;: null,
+  &quot;occurredAt&quot;: &quot;2026-11-18T07:00:00Z&quot;,
+  &quot;isRead&quot;: false
+}</code></pre>
+<p>주요 업무 오류: 404 notification_not_found; 503 notifications_unavailable. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.53. 내 알림 읽음 처리</h2>
+<h3>PATCH /notifications/{notification_id}/read</h3>
+<p>기능: 본문 없이 호출합니다. 반복해도 읽음 상태를 유지하며 발생 시각은 바꾸지 않습니다. 처리 완료·로봇 재확인 명령은 포함하지 않습니다.</p>
+<p>권한: 승인된 manager 또는 super_admin Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">PATCH /notifications/41/read</code></pre>
+<table><thead><tr><th><p>위치</p></th><th><p>이름</p></th><th><p>필수</p></th><th><p>타입</p></th><th><p>제약·기본값</p></th></tr></thead><tbody><tr><td><p>path</p></td><td><p>notification_id</p></td><td><p>필수</p></td><td><p>integer</p></td><td><p>최솟값: 1; 최댓값: 9223372036854775807</p></td></tr></tbody></table>
+<p>요청 본문: 없음.</p>
+<h4>응답</h4>
+<p>성공: HTTP 200 · NotificationResponse</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;41&quot;,
+  &quot;type&quot;: &quot;robotAssignmentApproved&quot;,
+  &quot;title&quot;: &quot;로봇 배정이 완료되었어요&quot;,
+  &quot;body&quot;: &quot;예시공원에 로봇 2대를 배정했어요&quot;,
+  &quot;parkId&quot;: &quot;5&quot;,
+  &quot;robotId&quot;: null,
+  &quot;position&quot;: null,
+  &quot;occurredAt&quot;: &quot;2026-11-18T07:00:00Z&quot;,
+  &quot;isRead&quot;: true
+}</code></pre>
+<p>주요 업무 오류: 404 notification_not_found; 503 notifications_unavailable. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.54. Expo 기기 토큰 등록·갱신</h2>
+<h3>PUT /push-tokens</h3>
+<p>기능: ExpoPushToken 또는 ExponentPushToken 형식과 android/ios를 받습니다. 같은 토큰은 upsert하고 createdAt은 유지하며 updatedAt·현재 소유자·플랫폼·활성 상태를 갱신합니다. 같은 기기로 계정을 바꾸면 새 로그인 계정에 연결합니다. 여러 기기를 등록할 수 있고 토큰 원문은 응답하지 않습니다. userId 같은 추가 입력은 거부합니다.</p>
+<p>권한: 승인된 manager 또는 super_admin Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">PUT /push-tokens</code></pre>
+<p>본문: PushTokenInput — 필드 상세는 4장 공통 데이터 계약에 모두 기재했습니다.</p>
+<pre><code class="language-json">{
+  &quot;token&quot;: &quot;ExpoPushToken[example-device-token]&quot;,
+  &quot;platform&quot;: &quot;android&quot;
+}</code></pre>
+<h4>응답</h4>
+<p>성공: HTTP 200 · PushTokenResponse</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;7&quot;,
+  &quot;platform&quot;: &quot;android&quot;,
+  &quot;isActive&quot;: true,
+  &quot;createdAt&quot;: &quot;2026-11-18T07:00:00Z&quot;,
+  &quot;updatedAt&quot;: &quot;2026-11-18T07:05:00Z&quot;
+}</code></pre>
+<p>주요 업무 오류: 503 notifications_unavailable. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.</p>
+<h2>3.55. 현재 기기 토큰 해제</h2>
+<h3>DELETE /push-tokens</h3>
+<p>기능: 본문 token으로 자신의 토큰만 비활성화합니다. 없는 토큰·다른 계정 소유 토큰도 동일하게 204입니다. 로그아웃 전 인증 토큰이 유효할 때 호출하고 재등록하면 다시 활성화됩니다.</p>
+<p>권한: 승인된 manager 또는 super_admin Bearer 토큰</p>
+<h4>요청</h4>
+<pre><code class="language-http">DELETE /push-tokens</code></pre>
+<p>본문: PushTokenReference — 필드 상세는 4장 공통 데이터 계약에 모두 기재했습니다.</p>
+<pre><code class="language-json">{
+  &quot;token&quot;: &quot;ExpoPushToken[example-device-token]&quot;
+}</code></pre>
+<h4>응답</h4>
+<p>성공: HTTP 204 · 응답 본문 없음</p>
+<p>주요 오류: 503 notifications_unavailable. 공통 인증·입력 검증 오류를 함께 적용합니다.</p>
+<h2>4. 공통 데이터 계약 — 모든 요청·응답 필드</h2>
+<p>각 API의 요청·응답 타입 이름은 이 표의 객체를 가리킵니다. 필수는 JSON 키 존재 조건이며 null 허용 여부는 타입에 별도 표기합니다. 응답의 기본값이 있는 필드도 FastAPI 기본 직렬화에서는 일반적으로 포함됩니다. 가입·재신청·배정 요청·배정 요청 승인·푸시 토큰 입력은 추가 필드를 거부하며, 나머지는 기본적으로 정의되지 않은 필드를 무시합니다.</p>
+<h3>AdminParkResponse</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>id</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>해당 객체 ID. PointInput·ScheduleInput의 임시 ID는 식별 권한으로 쓰지 않음</p></td></tr><tr><td><p>catalogId</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>공원 목록 ID. 운영 공원 ID와 다름</p></td></tr><tr><td><p>name</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>이름. 요청에서 공백 제거 적용 여부는 해당 API 규칙 참고</p></td></tr><tr><td><p>address</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>공원 주소</p></td></tr><tr><td><p>managerId</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>담당 관리자 계정 ID</p></td></tr><tr><td><p>managerName</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>담당 관리자 이름</p></td></tr><tr><td><p>managerLoginId</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>담당 관리자 로그인 아이디</p></td></tr><tr><td><p>status</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>허용: pending, approved, rejected</p></td><td><p>상태 코드. 허용 값은 타입별 제약 참고</p></td></tr><tr><td><p>robotCount</p></td><td><p>integer</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>배정 요청: 추가 요청 대수 / AdminParkResponse: 실제 배정 로봇 수</p></td></tr></tbody></table>
+<h3>ApprovalInput</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>robotIds</p></td><td><p>string[]</p></td><td><p>선택/기본값</p></td><td><p>최대 항목 수: 100</p></td><td><p>중복 불가. 양의 bigint ID 문자열 목록</p></td></tr></tbody></table>
+<h3>AssignmentInput</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>parkId</p></td><td><p>string / null</p></td><td><p>필수</p></td><td><p>정규식: ^[1-9][0-9]{0,18}$</p></td><td><p>운영 공원 ID</p></td></tr></tbody></table>
+<h3>ConfigInput</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>catalogId</p></td><td><p>string / null</p></td><td><p>선택/기본값</p></td><td><p>정규식: ^[1-9][0-9]{0,18}$</p></td><td><p>공원 목록 ID. 운영 공원 ID와 다름</p></td></tr><tr><td><p>defaultStationId</p></td><td><p>string / null</p></td><td><p>선택/기본값</p></td><td><p>정규식: ^[1-9][0-9]{0,18}$</p></td><td><p>해당 API 기능 설명 참고</p></td></tr><tr><td><p>points</p></td><td><p>PointInput[]</p></td><td><p>필수</p></td><td><p>최소 항목 수: 1; 최대 항목 수: 100</p></td><td><p>순찰 순서대로 정렬된 지점 목록</p></td></tr><tr><td><p>station</p></td><td><p>LatLng / null</p></td><td><p>선택/기본값</p></td><td><p>-</p></td><td><p>공원 공유 분리수거장 좌표</p></td></tr><tr><td><p>schedule</p></td><td><p>ScheduleInput[]</p></td><td><p>필수</p></td><td><p>최소 항목 수: 1; 최대 항목 수: 100</p></td><td><p>로봇별 시간표 목록</p></td></tr></tbody></table>
+<h3>ConfigResponse</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>catalogId</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>공원 목록 ID. 운영 공원 ID와 다름</p></td></tr><tr><td><p>robotId</p></td><td><p>string / null</p></td><td><p>선택/기본값</p></td><td><p>-</p></td><td><p>로봇 ID. null은 미배정 초안</p></td></tr><tr><td><p>defaultStationId</p></td><td><p>string / null</p></td><td><p>선택/기본값</p></td><td><p>-</p></td><td><p>해당 API 기능 설명 참고</p></td></tr><tr><td><p>stations</p></td><td><p>StationResponse[]</p></td><td><p>선택/기본값</p></td><td><p>-</p></td><td><p>해당 API 기능 설명 참고</p></td></tr><tr><td><p>parkName</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>담당 공원 이름. 로봇 응답에서는 총관리자 목록·배정 응답에 보강</p></td></tr><tr><td><p>bounds</p></td><td><p>ParkBounds</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>지도 표시 범위</p></td></tr><tr><td><p>area</p></td><td><p>ParkArea</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>공원 다각형 경계</p></td></tr><tr><td><p>station</p></td><td><p>LatLng / null</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>공원 공유 분리수거장 좌표</p></td></tr><tr><td><p>points</p></td><td><p>PointResponse[]</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>순찰 순서대로 정렬된 지점 목록</p></td></tr><tr><td><p>schedule</p></td><td><p>ScheduleResponse[]</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>로봇별 시간표 목록</p></td></tr></tbody></table>
+<h3>ErrorResponse</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>status</p></td><td><p>integer</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>상태 코드. 허용 값은 타입별 제약 참고</p></td></tr><tr><td><p>message</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>사용자 안내 오류 문구</p></td></tr><tr><td><p>code</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>분기용 오류 코드</p></td></tr><tr><td><p>details</p></td><td><p>object / null</p></td><td><p>선택/기본값</p></td><td><p>-</p></td><td><p>검증 오류에서는 field/reason 배열, 일부 업무 오류에서는 객체. 항상 배열은 아님</p></td></tr></tbody></table>
+<h3>HealthResponse</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>status</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>고정값: ok</p></td><td><p>상태 코드. 허용 값은 타입별 제약 참고</p></td></tr><tr><td><p>db</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>고정값: ok</p></td><td><p>DB 연결 상태</p></td></tr></tbody></table>
+<h3>LatLng</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>latitude</p></td><td><p>number</p></td><td><p>필수</p></td><td><p>최솟값: -90.0; 최댓값: 90.0</p></td><td><p>위도. -90~90, NaN·무한대 불가</p></td></tr><tr><td><p>longitude</p></td><td><p>number</p></td><td><p>필수</p></td><td><p>최솟값: -180.0; 최댓값: 180.0</p></td><td><p>경도. -180~180, NaN·무한대 불가</p></td></tr></tbody></table>
+<h3>LoginRequest</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>loginId</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>최소 문자 수: 1; 최대 문자 수: 128</p></td><td><p>로그인 아이디(대소문자 구분)</p></td></tr><tr><td><p>password</p></td><td><p>string (password)</p></td><td><p>필수</p></td><td><p>최소 문자 수: 1; 최대 문자 수: 128</p></td><td><p>영문·숫자를 각각 포함. 서버는 Argon2 해시로 저장하며 응답하지 않음</p></td></tr></tbody></table>
+<h3>LoginResponse</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>accessToken</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>업무 API Bearer 인증</p></td></tr><tr><td><p>tokenType</p></td><td><p>string</p></td><td><p>선택/기본값</p></td><td><p>기본값: &quot;bearer&quot;</p></td><td><p>bearer</p></td></tr><tr><td><p>expiresIn</p></td><td><p>integer</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>초 단위 유효 시간</p></td></tr><tr><td><p>isFirstLogin</p></td><td><p>boolean</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>순찰 초기 설정 필요 여부, 로그인 횟수가 아님</p></td></tr><tr><td><p>role</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>허용: super_admin, manager</p></td><td><p>manager / super_admin</p></td></tr><tr><td><p>parkStatus</p></td><td><p>string / null</p></td><td><p>필수</p></td><td><p>허용: pending, approved, rejected</p></td><td><p>호환용 승인 상태. 총관리자 null</p></td></tr><tr><td><p>routeSetupDone</p></td><td><p>boolean</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>순찰 초기 설정 완료 여부</p></td></tr><tr><td><p>registrationStatus</p></td><td><p>string / null</p></td><td><p>필수</p></td><td><p>허용: pending, approved, rejected</p></td><td><p>가입 승인 상태</p></td></tr></tbody></table>
+<h3>ManagedPark</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>id</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>해당 객체 ID. PointInput·ScheduleInput의 임시 ID는 식별 권한으로 쓰지 않음</p></td></tr><tr><td><p>catalogId</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>공원 목록 ID. 운영 공원 ID와 다름</p></td></tr><tr><td><p>name</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>이름. 요청에서 공백 제거 적용 여부는 해당 API 규칙 참고</p></td></tr><tr><td><p>address</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>공원 주소</p></td></tr><tr><td><p>center</p></td><td><p>LatLng</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>공원 중심 위도·경도</p></td></tr><tr><td><p>bounds</p></td><td><p>ParkBounds</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>지도 표시 범위</p></td></tr><tr><td><p>area</p></td><td><p>ParkArea</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>공원 다각형 경계</p></td></tr><tr><td><p>status</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>허용: pending, approved, rejected</p></td><td><p>상태 코드. 허용 값은 타입별 제약 참고</p></td></tr><tr><td><p>reviewedBy</p></td><td><p>string / null</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>승인·반려·승인 취소 처리자 계정 ID. pending은 null. 신청 취소 시 요청자 ID</p></td></tr><tr><td><p>reviewedAt</p></td><td><p>string (date-time) / null</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>승인·반려·승인 취소 처리 시각. pending은 null. 신청 취소 시 취소 시각</p></td></tr><tr><td><p>rejectReason</p></td><td><p>string / null</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>반려 사유. 반려 전 또는 반려가 아니면 null 가능</p></td></tr><tr><td><p>routeSetupDone</p></td><td><p>boolean</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>순찰 초기 설정 완료 여부</p></td></tr><tr><td><p>anchorPoints</p></td><td><p>object[]</p></td><td><p>선택/기본값</p></td><td><p>-</p></td><td><p>좌표 기준점 목록. 현재 별도 쓰기 API 없음</p></td></tr></tbody></table>
+<h3>NotificationResponse</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>id</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>해당 객체 ID. PointInput·ScheduleInput의 임시 ID는 식별 권한으로 쓰지 않음</p></td></tr><tr><td><p>type</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>알림 종류. 예: robotAssignmentApproved, robotAssignmentRejected</p></td></tr><tr><td><p>title</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>해당 API 기능 설명 참고</p></td></tr><tr><td><p>body</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>알림 상세 내용</p></td></tr><tr><td><p>parkId</p></td><td><p>string / null</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>운영 공원 ID</p></td></tr><tr><td><p>robotId</p></td><td><p>string / null</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>로봇 ID. null은 미배정 초안</p></td></tr><tr><td><p>position</p></td><td><p>LatLng / null</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>해당 순찰 지점의 지도 좌표</p></td></tr><tr><td><p>occurredAt</p></td><td><p>string (date-time)</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>알림 발생 시각(ISO 8601)</p></td></tr><tr><td><p>isRead</p></td><td><p>boolean</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>읽음 여부. 목록·상세 조회만으로 바뀌지 않음</p></td></tr></tbody></table>
+<h3>ParkArea</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>outer</p></td><td><p>LatLng[]</p></td><td><p>필수</p></td><td><p>최소 항목 수: 4</p></td><td><p>외곽 좌표(최소 4개)</p></td></tr><tr><td><p>holes</p></td><td><p>LatLng[][]</p></td><td><p>선택/기본값</p></td><td><p>-</p></td><td><p>외곽 내부의 제외 영역 좌표 목록</p></td></tr></tbody></table>
+<h3>ParkBounds</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>southWest</p></td><td><p>LatLng</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>지도 남서 좌표</p></td></tr><tr><td><p>northEast</p></td><td><p>LatLng</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>지도 북동 좌표</p></td></tr></tbody></table>
+<h3>ParkChangeInput</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>catalogId</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>정규식: ^[1-9][0-9]{0,18}$</p></td><td><p>공원 목록 ID. 운영 공원 ID와 다름</p></td></tr><tr><td><p>reason</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>최소 문자 수: 1; 최대 문자 수: 200</p></td><td><p>신청 또는 반려·취소 사유. 길이는 요청 타입별로 다름</p></td></tr></tbody></table>
+<h3>ParkChangeResponse</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>id</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>해당 객체 ID. PointInput·ScheduleInput의 임시 ID는 식별 권한으로 쓰지 않음</p></td></tr><tr><td><p>parkId</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>운영 공원 ID</p></td></tr><tr><td><p>userId</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>계정 ID</p></td></tr><tr><td><p>applicantName</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>신청자 이름</p></td></tr><tr><td><p>applicantLoginId</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>신청자 로그인 아이디</p></td></tr><tr><td><p>currentCatalogId</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>변경 신청 당시 원본 공원 목록 ID</p></td></tr><tr><td><p>currentParkName</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>변경 신청 당시 원본 공원 이름</p></td></tr><tr><td><p>requestedCatalogId</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>신청한 대상 공원 목록 ID</p></td></tr><tr><td><p>requestedParkName</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>신청한 대상 공원 이름</p></td></tr><tr><td><p>requestedParkAddress</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>대상 공원 주소</p></td></tr><tr><td><p>reason</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>신청 또는 반려·취소 사유. 길이는 요청 타입별로 다름</p></td></tr><tr><td><p>status</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>허용: pending, approved, rejected, cancelled</p></td><td><p>상태 코드. 허용 값은 타입별 제약 참고</p></td></tr><tr><td><p>rejectReason</p></td><td><p>string / null</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>반려 사유. 반려 전 또는 반려가 아니면 null 가능</p></td></tr><tr><td><p>createdAt</p></td><td><p>string (date-time)</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>원본 행 생성 시각</p></td></tr><tr><td><p>reviewedAt</p></td><td><p>string (date-time) / null</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>승인·반려·승인 취소 처리 시각. pending은 null. 신청 취소 시 취소 시각</p></td></tr><tr><td><p>conflictingManagerName</p></td><td><p>string / null</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>대상 공원에 이미 승인된 관리자가 있으면 이름, 없으면 null</p></td></tr></tbody></table>
+<h3>ParkRequestResponse</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>id</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>해당 객체 ID. PointInput·ScheduleInput의 임시 ID는 식별 권한으로 쓰지 않음</p></td></tr><tr><td><p>catalogId</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>공원 목록 ID. 운영 공원 ID와 다름</p></td></tr><tr><td><p>name</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>이름. 요청에서 공백 제거 적용 여부는 해당 API 규칙 참고</p></td></tr><tr><td><p>address</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>공원 주소</p></td></tr><tr><td><p>center</p></td><td><p>LatLng</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>공원 중심 위도·경도</p></td></tr><tr><td><p>bounds</p></td><td><p>ParkBounds</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>지도 표시 범위</p></td></tr><tr><td><p>area</p></td><td><p>ParkArea</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>공원 다각형 경계</p></td></tr><tr><td><p>status</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>허용: pending, approved, rejected</p></td><td><p>상태 코드. 허용 값은 타입별 제약 참고</p></td></tr><tr><td><p>reviewedBy</p></td><td><p>string / null</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>승인·반려·승인 취소 처리자 계정 ID. pending은 null. 신청 취소 시 요청자 ID</p></td></tr><tr><td><p>reviewedAt</p></td><td><p>string (date-time) / null</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>승인·반려·승인 취소 처리 시각. pending은 null. 신청 취소 시 취소 시각</p></td></tr><tr><td><p>rejectReason</p></td><td><p>string / null</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>반려 사유. 반려 전 또는 반려가 아니면 null 가능</p></td></tr><tr><td><p>routeSetupDone</p></td><td><p>boolean</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>순찰 초기 설정 완료 여부</p></td></tr><tr><td><p>anchorPoints</p></td><td><p>object[]</p></td><td><p>선택/기본값</p></td><td><p>-</p></td><td><p>좌표 기준점 목록. 현재 별도 쓰기 API 없음</p></td></tr><tr><td><p>userId</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>계정 ID</p></td></tr><tr><td><p>applicantName</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>신청자 이름</p></td></tr><tr><td><p>applicantLoginId</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>신청자 로그인 아이디</p></td></tr><tr><td><p>applicantEmail</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>신청자 이메일</p></td></tr><tr><td><p>applicantPhone</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>신청자 전화번호</p></td></tr><tr><td><p>registrationStatus</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>허용: pending, approved, rejected</p></td><td><p>가입 승인 상태</p></td></tr><tr><td><p>createdAt</p></td><td><p>string (date-time)</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>원본 행 생성 시각</p></td></tr></tbody></table>
+<h3>ParkResponse</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>id</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>해당 객체 ID. PointInput·ScheduleInput의 임시 ID는 식별 권한으로 쓰지 않음</p></td></tr><tr><td><p>name</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>이름. 요청에서 공백 제거 적용 여부는 해당 API 규칙 참고</p></td></tr><tr><td><p>address</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>공원 주소</p></td></tr><tr><td><p>distance</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>현재 공원 검색 서버는 빈 문자열</p></td></tr><tr><td><p>bounds</p></td><td><p>ParkBounds</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>지도 표시 범위</p></td></tr><tr><td><p>area</p></td><td><p>ParkArea</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>공원 다각형 경계</p></td></tr></tbody></table>
+<h3>ParkSelection</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>catalogId</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>정규식: ^[1-9][0-9]{0,18}$</p></td><td><p>공원 목록 ID. 운영 공원 ID와 다름</p></td></tr></tbody></table>
+<h3>PointInput</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>id</p></td><td><p>string / null</p></td><td><p>선택/기본값</p></td><td><p>최대 문자 수: 100</p></td><td><p>해당 객체 ID. PointInput·ScheduleInput의 임시 ID는 식별 권한으로 쓰지 않음</p></td></tr><tr><td><p>name</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>최소 문자 수: 1; 최대 문자 수: 100</p></td><td><p>이름. 요청에서 공백 제거 적용 여부는 해당 API 규칙 참고</p></td></tr><tr><td><p>position</p></td><td><p>LatLng</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>해당 순찰 지점의 지도 좌표</p></td></tr></tbody></table>
+<h3>PointResponse</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>id</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>해당 객체 ID. PointInput·ScheduleInput의 임시 ID는 식별 권한으로 쓰지 않음</p></td></tr><tr><td><p>name</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>최소 문자 수: 1; 최대 문자 수: 100</p></td><td><p>이름. 요청에서 공백 제거 적용 여부는 해당 API 규칙 참고</p></td></tr><tr><td><p>position</p></td><td><p>LatLng</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>해당 순찰 지점의 지도 좌표</p></td></tr></tbody></table>
+<h3>ProfileResponse</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>name</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>이름. 요청에서 공백 제거 적용 여부는 해당 API 규칙 참고</p></td></tr><tr><td><p>email</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>가입·재신청 시 소문자로 정규화</p></td></tr><tr><td><p>role</p></td><td><p>string</p></td><td><p>선택/기본값</p></td><td><p>허용: super_admin, manager; 기본값: &quot;manager&quot;</p></td><td><p>manager / super_admin</p></td></tr><tr><td><p>parkStatus</p></td><td><p>string / null</p></td><td><p>선택/기본값</p></td><td><p>허용: pending, approved, rejected</p></td><td><p>호환용 승인 상태. 총관리자 null</p></td></tr><tr><td><p>routeSetupDone</p></td><td><p>boolean</p></td><td><p>선택/기본값</p></td><td><p>기본값: false</p></td><td><p>순찰 초기 설정 완료 여부</p></td></tr><tr><td><p>registrationStatus</p></td><td><p>string / null</p></td><td><p>선택/기본값</p></td><td><p>허용: pending, approved, rejected</p></td><td><p>가입 승인 상태</p></td></tr></tbody></table>
+<h3>PushTokenInput</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>token</p></td><td><p>string (password)</p></td><td><p>필수</p></td><td><p>최소 문자 수: 1; 최대 문자 수: 4096</p></td><td><p>ExpoPushToken[...] 또는 ExponentPushToken[...]. 요청 전용</p></td></tr><tr><td><p>platform</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>허용: android, ios</p></td><td><p>android 또는 ios</p></td></tr></tbody></table>
+<h3>PushTokenReference</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>token</p></td><td><p>string (password)</p></td><td><p>필수</p></td><td><p>최소 문자 수: 1; 최대 문자 수: 4096</p></td><td><p>ExpoPushToken[...] 또는 ExponentPushToken[...]. 요청 전용</p></td></tr></tbody></table>
+<h3>PushTokenResponse</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>id</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>해당 객체 ID. PointInput·ScheduleInput의 임시 ID는 식별 권한으로 쓰지 않음</p></td></tr><tr><td><p>platform</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>허용: android, ios</p></td><td><p>android 또는 ios</p></td></tr><tr><td><p>isActive</p></td><td><p>boolean</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>기기 토큰 활성 여부</p></td></tr><tr><td><p>createdAt</p></td><td><p>string (date-time)</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>원본 행 생성 시각</p></td></tr><tr><td><p>updatedAt</p></td><td><p>string (date-time)</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>마지막 토큰 등록·갱신 시각</p></td></tr></tbody></table>
+<h3>ReapplicationSession</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>reapplicationToken</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>재신청 전용. 30분 유효, 본문에 전달</p></td></tr><tr><td><p>expiresIn</p></td><td><p>integer</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>초 단위 유효 시간</p></td></tr><tr><td><p>loginId</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>로그인 아이디(대소문자 구분)</p></td></tr><tr><td><p>name</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>이름. 요청에서 공백 제거 적용 여부는 해당 API 규칙 참고</p></td></tr><tr><td><p>email</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>가입·재신청 시 소문자로 정규화</p></td></tr><tr><td><p>phone</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>가입·재신청에서 하이픈·공백 제거 후 숫자 9~15자</p></td></tr><tr><td><p>catalogId</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>공원 목록 ID. 운영 공원 ID와 다름</p></td></tr><tr><td><p>rejectReason</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>반려 사유. 반려 전 또는 반려가 아니면 null 가능</p></td></tr><tr><td><p>park</p></td><td><p>ParkResponse / null</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>재신청 시 기존 활성 공원 선택 정보. 비활성 공원은 null</p></td></tr></tbody></table>
+<h3>ReapplyRequest</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>password</p></td><td><p>string (password)</p></td><td><p>필수</p></td><td><p>최소 문자 수: 8; 최대 문자 수: 128</p></td><td><p>영문·숫자를 각각 포함. 서버는 Argon2 해시로 저장하며 응답하지 않음</p></td></tr><tr><td><p>name</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>최소 문자 수: 1; 최대 문자 수: 100</p></td><td><p>이름. 요청에서 공백 제거 적용 여부는 해당 API 규칙 참고</p></td></tr><tr><td><p>phone</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>최소 문자 수: 9; 최대 문자 수: 30</p></td><td><p>가입·재신청에서 하이픈·공백 제거 후 숫자 9~15자</p></td></tr><tr><td><p>email</p></td><td><p>string (email)</p></td><td><p>필수</p></td><td><p>최대 문자 수: 254</p></td><td><p>가입·재신청 시 소문자로 정규화</p></td></tr><tr><td><p>catalogId</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>정규식: ^[1-9][0-9]{0,18}$</p></td><td><p>공원 목록 ID. 운영 공원 ID와 다름</p></td></tr><tr><td><p>reapplicationToken</p></td><td><p>string (password)</p></td><td><p>필수</p></td><td><p>최소 문자 수: 1; 최대 문자 수: 4096</p></td><td><p>재신청 전용. 30분 유효, 본문에 전달</p></td></tr></tbody></table>
+<h3>RegisterRequest</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>password</p></td><td><p>string (password)</p></td><td><p>필수</p></td><td><p>최소 문자 수: 8; 최대 문자 수: 128</p></td><td><p>영문·숫자를 각각 포함. 서버는 Argon2 해시로 저장하며 응답하지 않음</p></td></tr><tr><td><p>name</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>최소 문자 수: 1; 최대 문자 수: 100</p></td><td><p>이름. 요청에서 공백 제거 적용 여부는 해당 API 규칙 참고</p></td></tr><tr><td><p>phone</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>최소 문자 수: 9; 최대 문자 수: 30</p></td><td><p>가입·재신청에서 하이픈·공백 제거 후 숫자 9~15자</p></td></tr><tr><td><p>email</p></td><td><p>string (email)</p></td><td><p>필수</p></td><td><p>최대 문자 수: 254</p></td><td><p>가입·재신청 시 소문자로 정규화</p></td></tr><tr><td><p>catalogId</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>정규식: ^[1-9][0-9]{0,18}$</p></td><td><p>공원 목록 ID. 운영 공원 ID와 다름</p></td></tr><tr><td><p>loginId</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>정규식: ^[A-Za-z0-9]{4,16}$</p></td><td><p>로그인 아이디(대소문자 구분)</p></td></tr></tbody></table>
+<h3>RegisterResponse</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>name</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>이름. 요청에서 공백 제거 적용 여부는 해당 API 규칙 참고</p></td></tr><tr><td><p>email</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>가입·재신청 시 소문자로 정규화</p></td></tr><tr><td><p>role</p></td><td><p>string</p></td><td><p>선택/기본값</p></td><td><p>허용: super_admin, manager; 기본값: &quot;manager&quot;</p></td><td><p>manager / super_admin</p></td></tr><tr><td><p>parkStatus</p></td><td><p>string / null</p></td><td><p>선택/기본값</p></td><td><p>허용: pending, approved, rejected</p></td><td><p>호환용 승인 상태. 총관리자 null</p></td></tr><tr><td><p>routeSetupDone</p></td><td><p>boolean</p></td><td><p>선택/기본값</p></td><td><p>기본값: false</p></td><td><p>순찰 초기 설정 완료 여부</p></td></tr><tr><td><p>registrationStatus</p></td><td><p>string / null</p></td><td><p>선택/기본값</p></td><td><p>허용: pending, approved, rejected</p></td><td><p>가입 승인 상태</p></td></tr><tr><td><p>id</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>해당 객체 ID. PointInput·ScheduleInput의 임시 ID는 식별 권한으로 쓰지 않음</p></td></tr></tbody></table>
+<h3>RejectionInput</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>reason</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>최소 문자 수: 1; 최대 문자 수: 1000</p></td><td><p>신청 또는 반려·취소 사유. 길이는 요청 타입별로 다름</p></td></tr></tbody></table>
+<h3>RobotAssignmentApprovalInput</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>robotIds</p></td><td><p>string[]</p></td><td><p>필수</p></td><td><p>최소 항목 수: 1; 최대 항목 수: 100</p></td><td><p>중복 불가. 양의 bigint ID 문자열 목록</p></td></tr></tbody></table>
+<h3>RobotAssignmentRequestInput</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>robotCount</p></td><td><p>integer</p></td><td><p>필수</p></td><td><p>최솟값: 1.0; 최댓값: 100.0</p></td><td><p>배정 요청: 추가 요청 대수 / AdminParkResponse: 실제 배정 로봇 수</p></td></tr><tr><td><p>reason</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>최소 문자 수: 1; 최대 문자 수: 1000</p></td><td><p>신청 또는 반려·취소 사유. 길이는 요청 타입별로 다름</p></td></tr></tbody></table>
+<h3>RobotAssignmentRequestResponse</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>id</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>해당 객체 ID. PointInput·ScheduleInput의 임시 ID는 식별 권한으로 쓰지 않음</p></td></tr><tr><td><p>userId</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>계정 ID</p></td></tr><tr><td><p>parkId</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>운영 공원 ID</p></td></tr><tr><td><p>catalogId</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>공원 목록 ID. 운영 공원 ID와 다름</p></td></tr><tr><td><p>parkName</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>담당 공원 이름. 로봇 응답에서는 총관리자 목록·배정 응답에 보강</p></td></tr><tr><td><p>applicantName</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>신청자 이름</p></td></tr><tr><td><p>applicantLoginId</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>신청자 로그인 아이디</p></td></tr><tr><td><p>robotCount</p></td><td><p>integer</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>배정 요청: 추가 요청 대수 / AdminParkResponse: 실제 배정 로봇 수</p></td></tr><tr><td><p>reason</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>신청 또는 반려·취소 사유. 길이는 요청 타입별로 다름</p></td></tr><tr><td><p>status</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>허용: pending, approved, rejected, cancelled</p></td><td><p>상태 코드. 허용 값은 타입별 제약 참고</p></td></tr><tr><td><p>rejectReason</p></td><td><p>string / null</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>반려 사유. 반려 전 또는 반려가 아니면 null 가능</p></td></tr><tr><td><p>reviewedBy</p></td><td><p>string / null</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>승인·반려·승인 취소 처리자 계정 ID. pending은 null. 신청 취소 시 요청자 ID</p></td></tr><tr><td><p>reviewedAt</p></td><td><p>string (date-time) / null</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>승인·반려·승인 취소 처리 시각. pending은 null. 신청 취소 시 취소 시각</p></td></tr><tr><td><p>createdAt</p></td><td><p>string (date-time)</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>원본 행 생성 시각</p></td></tr><tr><td><p>assignedRobotIds</p></td><td><p>string[]</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>요청 승인 당시 배정된 로봇 ID. 회수 이후에도 이력 보존</p></td></tr></tbody></table>
+<h3>RobotInput</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>name</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>최소 문자 수: 1; 최대 문자 수: 100</p></td><td><p>이름. 요청에서 공백 제거 적용 여부는 해당 API 규칙 참고</p></td></tr><tr><td><p>serialNo</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>최소 문자 수: 1; 최대 문자 수: 100</p></td><td><p>변경되지 않는 고유 기기 식별 번호</p></td></tr></tbody></table>
+<h3>RobotNameInput</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>name</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>최소 문자 수: 1; 최대 문자 수: 100</p></td><td><p>이름. 요청에서 공백 제거 적용 여부는 해당 API 규칙 참고</p></td></tr></tbody></table>
+<h3>RobotResponse</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>id</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>해당 객체 ID. PointInput·ScheduleInput의 임시 ID는 식별 권한으로 쓰지 않음</p></td></tr><tr><td><p>name</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>이름. 요청에서 공백 제거 적용 여부는 해당 API 규칙 참고</p></td></tr><tr><td><p>serialNo</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>변경되지 않는 고유 기기 식별 번호</p></td></tr><tr><td><p>parkId</p></td><td><p>string / null</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>운영 공원 ID</p></td></tr><tr><td><p>status</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>허용: idle, working, emptying, offline, error</p></td><td><p>상태 코드. 허용 값은 타입별 제약 참고</p></td></tr><tr><td><p>assignedAt</p></td><td><p>string (date-time) / null</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>공원 배정 시각. 미배정 null</p></td></tr><tr><td><p>createdAt</p></td><td><p>string (date-time)</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>원본 행 생성 시각</p></td></tr><tr><td><p>slamX</p></td><td><p>number / null</p></td><td><p>선택/기본값</p></td><td><p>-</p></td><td><p>로봇 SLAM x 좌표. 측정 전 null</p></td></tr><tr><td><p>slamY</p></td><td><p>number / null</p></td><td><p>선택/기본값</p></td><td><p>-</p></td><td><p>로봇 SLAM y 좌표. 측정 전 null</p></td></tr><tr><td><p>lat</p></td><td><p>number / null</p></td><td><p>선택/기본값</p></td><td><p>-</p></td><td><p>로봇 지도 위도. 측정 전 null</p></td></tr><tr><td><p>lng</p></td><td><p>number / null</p></td><td><p>선택/기본값</p></td><td><p>-</p></td><td><p>로봇 지도 경도. 측정 전 null</p></td></tr><tr><td><p>batteryVoltage</p></td><td><p>number / null</p></td><td><p>선택/기본값</p></td><td><p>-</p></td><td><p>배터리 전압(V). 퍼센트가 아님. 미수신 null</p></td></tr><tr><td><p>lastSeenAt</p></td><td><p>string (date-time) / null</p></td><td><p>선택/기본값</p></td><td><p>-</p></td><td><p>최근 로봇 데이터 수신 시각</p></td></tr><tr><td><p>parkName</p></td><td><p>string / null</p></td><td><p>선택/기본값</p></td><td><p>-</p></td><td><p>담당 공원 이름. 로봇 응답에서는 총관리자 목록·배정 응답에 보강</p></td></tr><tr><td><p>managerId</p></td><td><p>string / null</p></td><td><p>선택/기본값</p></td><td><p>-</p></td><td><p>담당 관리자 계정 ID</p></td></tr><tr><td><p>managerName</p></td><td><p>string / null</p></td><td><p>선택/기본값</p></td><td><p>-</p></td><td><p>담당 관리자 이름</p></td></tr><tr><td><p>managerLoginId</p></td><td><p>string / null</p></td><td><p>선택/기본값</p></td><td><p>-</p></td><td><p>담당 관리자 로그인 아이디</p></td></tr></tbody></table>
+<h3>RouteInput</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>catalogId</p></td><td><p>string / null</p></td><td><p>선택/기본값</p></td><td><p>정규식: ^[1-9][0-9]{0,18}$</p></td><td><p>공원 목록 ID. 운영 공원 ID와 다름</p></td></tr><tr><td><p>defaultStationId</p></td><td><p>string / null</p></td><td><p>선택/기본값</p></td><td><p>정규식: ^[1-9][0-9]{0,18}$</p></td><td><p>해당 API 기능 설명 참고</p></td></tr><tr><td><p>points</p></td><td><p>PointInput[]</p></td><td><p>필수</p></td><td><p>최소 항목 수: 1; 최대 항목 수: 100</p></td><td><p>순찰 순서대로 정렬된 지점 목록</p></td></tr></tbody></table>
+<h3>RouteResponse</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>catalogId</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>공원 목록 ID. 운영 공원 ID와 다름</p></td></tr><tr><td><p>robotId</p></td><td><p>string / null</p></td><td><p>선택/기본값</p></td><td><p>-</p></td><td><p>로봇 ID. null은 미배정 초안</p></td></tr><tr><td><p>defaultStationId</p></td><td><p>string / null</p></td><td><p>선택/기본값</p></td><td><p>-</p></td><td><p>해당 API 기능 설명 참고</p></td></tr><tr><td><p>id</p></td><td><p>string / null</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>해당 객체 ID. PointInput·ScheduleInput의 임시 ID는 식별 권한으로 쓰지 않음</p></td></tr><tr><td><p>start</p></td><td><p>LatLng / null</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>경로 출발 분리수거장 좌표</p></td></tr><tr><td><p>points</p></td><td><p>PointResponse[]</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>순찰 순서대로 정렬된 지점 목록</p></td></tr><tr><td><p>end</p></td><td><p>LatLng / null</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>경로 복귀 분리수거장 좌표</p></td></tr><tr><td><p>appliesFrom</p></td><td><p>string</p></td><td><p>선택/기본값</p></td><td><p>고정값: nextPatrol; 기본값: &quot;nextPatrol&quot;</p></td><td><p>nextPatrol: 다음 순찰 적용</p></td></tr></tbody></table>
+<h3>ScheduleInput</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>id</p></td><td><p>string / null</p></td><td><p>선택/기본값</p></td><td><p>최대 문자 수: 100</p></td><td><p>해당 객체 ID. PointInput·ScheduleInput의 임시 ID는 식별 권한으로 쓰지 않음</p></td></tr><tr><td><p>time</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>정규식: ^(?:[01][0-9]|2[0-3]):[0-5][0-9]$</p></td><td><p>현지 시각 HH:mm</p></td></tr><tr><td><p>label</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>최소 문자 수: 1; 최대 문자 수: 100</p></td><td><p>시간표 이름</p></td></tr><tr><td><p>on</p></td><td><p>boolean</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>시간표 사용 여부</p></td></tr><tr><td><p>repeat</p></td><td><p>string</p></td><td><p>선택/기본값</p></td><td><p>허용: daily, weekdays, weekends; 기본값: &quot;daily&quot;</p></td><td><p>daily 매일 / weekdays 평일 / weekends 주말</p></td></tr></tbody></table>
+<h3>ScheduleResponse</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>id</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>해당 객체 ID. PointInput·ScheduleInput의 임시 ID는 식별 권한으로 쓰지 않음</p></td></tr><tr><td><p>time</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>정규식: ^(?:[01][0-9]|2[0-3]):[0-5][0-9]$</p></td><td><p>현지 시각 HH:mm</p></td></tr><tr><td><p>label</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>최소 문자 수: 1; 최대 문자 수: 100</p></td><td><p>시간표 이름</p></td></tr><tr><td><p>on</p></td><td><p>boolean</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>시간표 사용 여부</p></td></tr><tr><td><p>repeat</p></td><td><p>string</p></td><td><p>선택/기본값</p></td><td><p>허용: daily, weekdays, weekends; 기본값: &quot;daily&quot;</p></td><td><p>daily 매일 / weekdays 평일 / weekends 주말</p></td></tr></tbody></table>
+<h3>SetupResponse</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>routeSetupDone</p></td><td><p>boolean</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>순찰 초기 설정 완료 여부</p></td></tr></tbody></table>
+<h3>StationInput</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>catalogId</p></td><td><p>string / null</p></td><td><p>선택/기본값</p></td><td><p>정규식: ^[1-9][0-9]{0,18}$</p></td><td><p>공원 목록 ID. 운영 공원 ID와 다름</p></td></tr><tr><td><p>name</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>최소 문자 수: 1; 최대 문자 수: 100</p></td><td><p>이름. 요청에서 공백 제거 적용 여부는 해당 API 규칙 참고</p></td></tr><tr><td><p>position</p></td><td><p>LatLng</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>해당 순찰 지점의 지도 좌표</p></td></tr></tbody></table>
+<h3>StationResponse</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>id</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>해당 객체 ID. PointInput·ScheduleInput의 임시 ID는 식별 권한으로 쓰지 않음</p></td></tr><tr><td><p>name</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>이름. 요청에서 공백 제거 적용 여부는 해당 API 규칙 참고</p></td></tr><tr><td><p>position</p></td><td><p>LatLng</p></td><td><p>필수</p></td><td><p>-</p></td><td><p>해당 순찰 지점의 지도 좌표</p></td></tr></tbody></table>
+<h3>StationSelectionInput</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>catalogId</p></td><td><p>string / null</p></td><td><p>선택/기본값</p></td><td><p>정규식: ^[1-9][0-9]{0,18}$</p></td><td><p>공원 목록 ID. 운영 공원 ID와 다름</p></td></tr><tr><td><p>stationId</p></td><td><p>string</p></td><td><p>필수</p></td><td><p>정규식: ^[1-9][0-9]{0,18}$</p></td><td><p>해당 API 기능 설명 참고</p></td></tr></tbody></table>
+<h3>UnreadCountResponse</h3>
+<table><thead><tr><th><p>필드</p></th><th><p>타입·null</p></th><th><p>키 필수</p></th><th><p>제약·기본값</p></th><th><p>설명</p></th></tr></thead><tbody><tr><td><p>count</p></td><td><p>integer</p></td><td><p>필수</p></td><td><p>최솟값: 0.0</p></td><td><p>내 전체 미확인 알림 개수</p></td></tr></tbody></table>
+<h2>5. 오류 응답 전체</h2>
+<p>API의 성공 응답만 보고 오류를 판단하지 않습니다. HTTP 상태와 code를 함께 사용합니다. OpenAPI에 공통 오류 상태가 일괄 등록되어 있으므로 모든 경로에서 나열된 모든 업무 오류가 실제로 발생한다는 뜻은 아닙니다.</p>
+<pre><code class="language-json">{
+  &quot;status&quot;: 403,
+  &quot;message&quot;: &quot;총관리자의 회원가입 승인을 기다리고 있어요. 승인 후 로그인해 주세요&quot;,
+  &quot;code&quot;: &quot;registration_pending&quot;
+}</code></pre>
+<pre><code class="language-json">{
+  &quot;status&quot;: 422,
+  &quot;message&quot;: &quot;입력값을 확인해 주세요&quot;,
+  &quot;code&quot;: &quot;validation_error&quot;,
+  &quot;details&quot;: [
+    {
+      &quot;field&quot;: &quot;body.email&quot;,
+      &quot;reason&quot;: &quot;입력값의 형식이 올바르지 않아요&quot;
+    }
+  ]
+}</code></pre>
+<pre><code class="language-json">{
+  &quot;status&quot;: 422,
+  &quot;message&quot;: &quot;기존 지점과 약 1.2km 떨어져 있어요. 1km 이내로 지정해 주세요&quot;,
+  &quot;code&quot;: &quot;point_too_far&quot;,
+  &quot;details&quot;: {
+    &quot;distanceMeters&quot;: 1200,
+    &quot;maxDistanceMeters&quot;: 1000
+  }
+}</code></pre>
+<p>details는 값이 있을 때만 포함합니다. 검증 오류 field는 body.email, query.robotId, path.robot_id 같은 위치를 나타냅니다. 401의 경우 WWW-Authenticate: Bearer 헤더를 포함할 수 있습니다.</p>
+<table><thead><tr><th><p>HTTP</p></th><th><p>code</p></th><th><p>발생 조건·안내</p></th></tr></thead><tbody><tr><td><p>401</p></td><td><p>invalid_credentials</p></td><td><p>아이디 또는 비밀번호를 확인해 주세요</p></td></tr><tr><td><p>401</p></td><td><p>invalid_token</p></td><td><p>로그인이 필요하거나 인증이 만료됐어요. 다시 로그인해 주세요</p></td></tr><tr><td><p>403</p></td><td><p>manager_required</p></td><td><p>하위관리자 계정으로 공원을 신청해 주세요</p></td></tr><tr><td><p>403</p></td><td><p>park_not_approved</p></td><td><p>총관리자의 공원 승인을 기다려 주세요</p></td></tr><tr><td><p>403</p></td><td><p>registration_incomplete</p></td><td><p>담당 공원이 포함된 가입 신청이 필요해요. 총관리자에게 문의해 주세요</p></td></tr><tr><td><p>403</p></td><td><p>registration_pending</p></td><td><p>총관리자의 회원가입 승인을 기다리고 있어요. 승인 후 로그인해 주세요</p></td></tr><tr><td><p>403</p></td><td><p>registration_rejected</p></td><td><p>회원가입 신청이 반려되었어요. 총관리자에게 문의해 주세요</p></td></tr><tr><td><p>403</p></td><td><p>super_admin_required</p></td><td><p>총관리자만 사용할 수 있어요</p></td></tr><tr><td><p>404</p></td><td><p>not_found</p></td><td><p>요청한 주소를 찾을 수 없어요</p></td></tr><tr><td><p>404</p></td><td><p>notification_not_found</p></td><td><p>알림을 찾을 수 없어요</p></td></tr><tr><td><p>404</p></td><td><p>park_change_not_found</p></td><td><p>공원 변경 요청을 찾을 수 없어요</p></td></tr><tr><td><p>404</p></td><td><p>park_not_found</p></td><td><p>선택한 공원을 찾을 수 없어요</p></td></tr><tr><td><p>404</p></td><td><p>park_request_not_found</p></td><td><p>공원 신청을 찾을 수 없어요</p></td></tr><tr><td><p>404</p></td><td><p>registration_not_found</p></td><td><p>회원가입 신청을 찾을 수 없어요</p></td></tr><tr><td><p>404</p></td><td><p>robot_assignment_request_not_found</p></td><td><p>로봇 배정 요청을 찾을 수 없어요</p></td></tr><tr><td><p>404</p></td><td><p>robot_not_found</p></td><td><p>선택한 로봇을 찾을 수 없어요</p></td></tr><tr><td><p>404</p></td><td><p>station_not_found</p></td><td><p>이 공원의 분리수거장을 찾을 수 없어요</p></td></tr><tr><td><p>405</p></td><td><p>method_not_allowed</p></td><td><p>허용되지 않는 요청 방식이에요</p></td></tr><tr><td><p>409</p></td><td><p>account_exists</p></td><td><p>이미 사용 중인 아이디 또는 이메일이에요</p></td></tr><tr><td><p>409</p></td><td><p>approved_park_change_forbidden</p></td><td><p>승인된 공원은 임의로 변경할 수 없어요. 총관리자에게 문의해 주세요</p></td></tr><tr><td><p>409</p></td><td><p>default_station_required</p></td><td><p>여러 분리수거장 중 기본 장소를 선택해 주세요</p></td></tr><tr><td><p>409</p></td><td><p>invalid_applicant_role</p></td><td><p>하위관리자의 신청만 승인할 수 있어요</p></td></tr><tr><td><p>409</p></td><td><p>park_already_approved</p></td><td><p>이미 담당 관리자가 있는 공원이에요</p></td></tr><tr><td><p>409</p></td><td><p>park_catalog_inactive</p></td><td><p>현재 운영할 수 없는 공원이에요</p></td></tr><tr><td><p>409</p></td><td><p>park_change_not_pending</p></td><td><p>대기 중인 공원 변경 요청만 처리할 수 있어요</p></td></tr><tr><td><p>409</p></td><td><p>park_change_pending</p></td><td><p>이미 대기 중인 공원 변경 요청이 있어요</p></td></tr><tr><td><p>409</p></td><td><p>park_change_stale</p></td><td><p>담당 공원 상태가 변경됐어요. 요청을 다시 확인해 주세요</p></td></tr><tr><td><p>409</p></td><td><p>park_changed</p></td><td><p>담당 공원이 변경됐어요. 새 공원 설정을 다시 불러와 주세요</p></td></tr><tr><td><p>409</p></td><td><p>park_not_approved</p></td><td><p>승인된 담당 공원이 필요해요</p></td></tr><tr><td><p>409</p></td><td><p>park_request_not_pending</p></td><td><p>대기 중인 신청만 처리할 수 있어요</p></td></tr><tr><td><p>409</p></td><td><p>park_required</p></td><td><p>먼저 관리할 공원을 선택해 주세요</p></td></tr><tr><td><p>409</p></td><td><p>registration_not_approved</p></td><td><p>승인된 관리자만 승인을 취소할 수 있어요</p></td></tr><tr><td><p>409</p></td><td><p>registration_not_rejected</p></td><td><p>이미 처리된 가입 신청이에요. 다시 로그인해 주세요</p></td></tr><tr><td><p>409</p></td><td><p>robot_already_assigned</p></td><td><p>이미 공원에 배정된 로봇이 있어요</p></td></tr><tr><td><p>409</p></td><td><p>robot_assignment_changed</p></td><td><p>로봇 배정이 변경됐어요. 다시 불러와 주세요</p></td></tr><tr><td><p>409</p></td><td><p>robot_assignment_request_not_pending</p></td><td><p>대기 중인 로봇 배정 요청만 처리할 수 있어요</p></td></tr><tr><td><p>409</p></td><td><p>robot_assignment_request_pending</p></td><td><p>이미 대기 중인 로봇 배정 요청이 있어요</p></td></tr><tr><td><p>409</p></td><td><p>robot_assignment_request_stale</p></td><td><p>신청 당시 공원 상태가 변경됐어요. 요청을 다시 확인해 주세요</p></td></tr><tr><td><p>409</p></td><td><p>robot_not_available</p></td><td><p>대기 또는 오프라인 상태의 로봇만 배정할 수 있어요</p></td></tr><tr><td><p>409</p></td><td><p>robot_serial_exists</p></td><td><p>이미 등록된 기기 식별 번호예요</p></td></tr><tr><td><p>409</p></td><td><p>settings_conflict</p></td><td><p>설정이 변경됐어요. 다시 불러온 뒤 저장해 주세요</p></td></tr><tr><td><p>409</p></td><td><p>setup_incomplete</p></td><td><p>분리수거장·순찰 지점·시간표를 먼저 저장해 주세요</p></td></tr><tr><td><p>409</p></td><td><p>station_in_use</p></td><td><p>기본 분리수거장으로 사용 중이에요. 다른 장소를 먼저 선택해 주세요</p></td></tr><tr><td><p>409</p></td><td><p>station_position_exists</p></td><td><p>같은 위치의 분리수거장이 이미 있어요</p></td></tr><tr><td><p>409</p></td><td><p>station_required</p></td><td><p>먼저 분리수거장 위치를 등록해 주세요</p></td></tr><tr><td><p>422</p></td><td><p>duplicate_schedule</p></td><td><p>겹치는 순찰 시각은 한 번만 지정해 주세요</p></td></tr><tr><td><p>422</p></td><td><p>point_outside_park</p></td><td><p>공원 경계 안의 위치를 선택해 주세요</p></td></tr><tr><td><p>422</p></td><td><p>point_too_far</p></td><td><p>기존 지점과 거리가 멀어요(계산한 거리 포함)</p></td></tr><tr><td><p>422</p></td><td><p>robot_assignment_count_mismatch</p></td><td><p>요청한 대수만큼 로봇을 선택해 주세요</p></td></tr><tr><td><p>422</p></td><td><p>robot_required</p></td><td><p>경로를 설정할 로봇을 선택해 주세요</p></td></tr><tr><td><p>422</p></td><td><p>same_park</p></td><td><p>현재 공원과 다른 공원을 선택해 주세요</p></td></tr><tr><td><p>422</p></td><td><p>station_limit_exceeded</p></td><td><p>분리수거장은 공원당 100곳까지 등록할 수 있어요</p></td></tr><tr><td><p>422</p></td><td><p>station_position_mismatch</p></td><td><p>선택한 분리수거장과 좌표가 달라요</p></td></tr><tr><td><p>422</p></td><td><p>validation_error</p></td><td><p>입력값을 확인해 주세요</p></td></tr><tr><td><p>500</p></td><td><p>internal_error</p></td><td><p>서버에서 문제가 생겼어요</p></td></tr><tr><td><p>503</p></td><td><p>auth_not_configured</p></td><td><p>서버의 JWT_SECRET 설정을 확인해 주세요</p></td></tr><tr><td><p>503</p></td><td><p>db_unavailable</p></td><td><p>DB에 연결하지 못했어요. .env 의 DATABASE_URL을 확인해 주세요</p></td></tr><tr><td><p>503</p></td><td><p>notifications_unavailable</p></td><td><p>알림 정보를 처리하지 못했어요. 다시 시도해 주세요</p></td></tr><tr><td><p>503</p></td><td><p>park_catalog_unavailable</p></td><td><p>공원 목록을 불러오지 못했어요. 잠시 후 다시 시도해 주세요</p></td></tr><tr><td><p>503</p></td><td><p>patrol_unavailable</p></td><td><p>순찰 설정을 처리하지 못했어요. 잠시 후 다시 시도해 주세요</p></td></tr><tr><td><p>503</p></td><td><p>registration_unavailable</p></td><td><p>재신청을 저장하지 못했어요. 다시 시도해 주세요</p></td></tr></tbody></table>
+<p>공통 인증: 401 invalid_token(누락·만료·변조·잘못된 용도), 403 registration_pending/rejected/incomplete(가입 승인 상태), 403 manager_required 또는 super_admin_required(역할), 503 auth_not_configured(JWT 설정). 순찰·운영·승인 서비스의 DB 오류는 503 patrol_unavailable, DB 유일 제약 등의 저장 충돌은 409 settings_conflict로 변환될 수 있습니다. 네트워크 연결 실패의 status=0/network_error는 앱·웹 클라이언트 자체 오류로 HTTP 응답 코드가 아닙니다.</p>
+<h2>6. 화면별 호출 순서</h2>
+<table><thead><tr><th><p>흐름</p></th><th><p>호출 순서·분기</p></th></tr></thead><tbody><tr><td><p>신규 가입</p></td><td><p>GET /parks → POST /auth/register → pending 안내 → 총관리자 승인 → POST /auth/login → GET /me·GET /park·GET /robots</p></td></tr><tr><td><p>반려 재신청</p></td><td><p>POST /auth/login(403 registration_rejected) → POST /auth/reapplication-session → 반려 사유 안내 → 정보 수정·공원 확인 → POST /auth/reapply → pending 안내 → 총관리자 재승인 → 로그인</p></td></tr><tr><td><p>가입 승인</p></td><td><p>총관리자 로그인 → GET /admin/registrations?status=pending → 필요 시 GET /admin/robots?unassigned=true → POST /admin/registrations/{user_id}/approve</p></td></tr><tr><td><p>초기 순찰 설정</p></td><td><p>GET /park·GET /robots → 대상 robotId 선택 → GET /route?robotId=... → PUT /route?robotId=... (body.catalogId 포함) → 홈</p></td></tr><tr><td><p>분리 저장</p></td><td><p>PUT /station?catalogId=... → PUT /routes?robotId=... (body.catalogId) → PUT /schedules?robotId=...&amp;catalogId=... → POST /route/complete?robotId=...&amp;catalogId=...</p></td></tr><tr><td><p>공원 변경</p></td><td><p>GET /parks → POST /park-change-requests → 총관리자 목록·승인 → 기존 편집 저장은 409 park_changed → 새 /park·/route 조회 → 새 공원 순찰 설정</p></td></tr><tr><td><p>로봇 배정</p></td><td><p>GET /admin/parks·GET /admin/robots → PATCH /admin/robots/{robot_id}/assignment → 앱에서 GET /robots 재조회</p></td></tr><tr><td><p>최초·추가 로봇 요청</p></td><td><p>POST /robot-assignment-requests → GET /robot-assignment-requests → 총관리자 GET /admin/robot-assignment-requests → 미배정 로봇 선택 → POST /admin/robot-assignment-requests/{request_id}/approve → GET /robots 재조회. 프론트는 이번 변경에서 미수정.</p></td></tr></tbody></table>
+<h2>7. 구현 범위·제거된 API·별도 구현 예정</h2>
+<table><thead><tr><th><p>구분</p></th><th><p>현재 상태</p></th></tr></thead><tbody><tr><td><p>구현된 HTTP API</p></td><td><p>위에 전부 작성한 55개. 서버 상태·검색·계정·재신청·순찰 설정·승인·공원 변경·로봇 관리·배정 요청.</p></td></tr><tr><td><p>배정 요청 알림</p></td><td><p>승인·반려 시 알림과 Expo 기기별 발송 대기열을 함께 저장합니다. 커밋 후 발송하며 프론트는 미수정입니다. 실제 수신에는 앱 기기 토큰·Expo 자격 증명·서버 설정이 필요합니다.</p></td></tr><tr><td><p>제거됨</p></td><td><p>GET /admin/parks/{park_id}/reports: 현재 라우터에서 제거됨. daily_reports, agent_runs, agent_steps 테이블과 해당 서버 사용 코드도 제거됨.</p></td></tr><tr><td><p>DB만 생성됨</p></td><td><p>detections(탐지), robot_tasks(작업 이력)는 테이블만 있고 수신·조회 HTTP API는 아직 없습니다. notifications·push_tokens는 본인 조회·읽음·기기 등록·해제 API를 구현했습니다.</p></td></tr><tr><td><p>탐지·이미지</p></td><td><p>Cloudflare 이미지 경로 저장 필드만 존재. 업로드·서명 URL·이미지 조회 API는 미구현.</p></td></tr><tr><td><p>푸시·알림</p></td><td><p>알림 API와 Expo 발송·재시도·영수증 처리를 구현했습니다. EXPO_PUSH_ENABLED 기본 false이며 주기 워커 python -m app.scripts.send_notification_pushes --watch가 필요합니다. 공개 임의 발송 API는 없고 프론트 연결은 별도입니다.</p></td></tr><tr><td><p>로봇 실제 실행·실시간</p></td><td><p>순찰 시작/중지/분리수거장 이동 명령, 센서 상태 수신, 작업/탐지 결과 수신, 지도 마커, 배터리 % 계산, 실시간 영상·원격 조종·WebSocket 상태 API는 위 서버 라우터에 없음.</p></td></tr><tr><td><p>경로 계산</p></td><td><p>POST /routes/preview 및 실제 주행 가능한 polyline·예상 시간·도달 불가 사유 API는 미구현. 순찰 지점 저장과 다름. KAN-23의 프론트 요청사항은 구현 완료로 표기하지 않음.</p></td></tr><tr><td><p>계정 기타</p></td><td><p>서버 로그아웃·토큰 갱신·비밀번호 찾기·계정 삭제·일반 프로필 수정 API는 미구현. 재신청은 반려 계정에 한정.</p></td></tr><tr><td><p>앱 목업</p></td><td><p>EXPO_PUBLIC_API_URL이 비면 목업. 주소가 있으면 SERVER_READY(auth, me, parks, park, route)만 서버 연결하며 나머지 알림·보고·지도 등은 목업일 수 있음. 앱 화면 존재를 서버 API 구현으로 해석하지 않음.</p></td></tr><tr><td><p>호환 경로 4개</p></td><td><p>PUT /park, GET /admin/park-requests, POST /admin/parks/{park_id}/approve, POST /admin/parks/{park_id}/reject. 현재 라우터에는 남아 있으며 새 가입·승인 흐름을 우선 사용.</p></td></tr></tbody></table>
+<h2>8. 명세 검증 기준</h2>
+<ul><li><p>server/app/main.py와 routers/api.py가 실제 등록한 전체 HTTP 경로를 FastAPI OpenAPI와 대조했습니다. Method+Path 조합 55개가 모두 명세에 존재하는지 자동 확인했습니다.</p></li><li><p>각 요청·응답 예시는 실제 Pydantic 모델로 검증했습니다. 입력 검증기, 권한·업무 오류·상태 전환은 services/auth.py, patrol.py, approval.py, operations.py, parks.py, health.py 및 core/security.py·errors.py와 대조했습니다.</p></li><li><p>공원·로봇 DB의 실제 계정 정보나 인증 키는 문서에 넣지 않았습니다. 모든 계정·좌표·토큰은 형식 설명용 예시입니다.</p></li><li><p>DB 테이블이 있다는 이유만으로 HTTP API를 구현 완료로 적지 않았습니다. 원격 서버 버전·배포 주소·HTTPS·프록시 구성은 실제 배포 환경에서 별도 확인합니다.</p></li></ul>

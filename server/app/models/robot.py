@@ -11,9 +11,7 @@ from app.core.db import Base
 class Robot(Base):
     __tablename__ = "robots"
     __table_args__ = (
-        CheckConstraint(
-            "status IN ('idle', 'working', 'emptying', 'charging', 'offline', 'error')", name="robot_status"
-        ),
+        CheckConstraint("status IN ('idle', 'working', 'emptying', 'offline', 'error')", name="robot_status"),
         CheckConstraint(
             "(park_id IS NULL AND assigned_at IS NULL) OR (park_id IS NOT NULL AND assigned_at IS NOT NULL)",
             name="robot_assignment",

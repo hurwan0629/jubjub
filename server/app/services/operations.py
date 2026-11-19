@@ -1,15 +1,16 @@
 """공원 변경 승인·로봇 배정·보고 조회의 권한과 데이터 일관성을 관리해요."""
 
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
 from app.models import Park, ParkCatalogEntry, Robot, User
-from app.models.operations import DailyReport, ParkChangeRequest
+from app.models.operations import ParkChangeRequest
 from app.models.patrol import Route, Schedule
-from app.schemas.operations import AdminParkResponse, AdminReportResponse, ParkChangeInput, ParkChangeResponse
+from app.models.station import StationSelection
+from app.schemas.operations import AdminParkResponse, ParkChangeInput, ParkChangeResponse
 from app.services.approval import _robot_response
 from app.services.auth import require_manager, require_super_admin
 from app.services.patrol import (
@@ -183,11 +184,11 @@ def approve_change(db: Session, user: User, request_id: int):
     park.catalog = target
     park.anchor_points = []
     park.route_setup_done = False
-    park.approved_by = user.id
-    park.approved_at = datetime.now(UTC)
+    park.reviewed_by = user.id
+    park.reviewed_at = datetime.now(UTC)
     request.status = "approved"
     request.reviewed_by = user.id
-    request.reviewed_at = park.approved_at
+    request.reviewed_at = park.reviewed_at
     db.flush()
     return _change_response(db, request)
 
@@ -280,6 +281,9 @@ def assign_robot(db: Session, user: User, robot_id: int, target_park_id: int | N
         return admin_robot_response(db, robot)
     source = parks.get(robot.park_id)
     if source:
+        db.execute(
+            delete(StationSelection).where(StationSelection.park_id == source.id, StationSelection.robot_id == robot.id)
+        )
         for route in db.scalars(
             select(Route).where(Route.park_id == source.id, Route.robot_id == robot.id, Route.is_active.is_(True))
         ):
@@ -296,31 +300,3 @@ def assign_robot(db: Session, user: User, robot_id: int, target_park_id: int | N
         inherit_draft(db, db.get(User, target.user_id), target, [robot])
     db.flush()
     return admin_robot_response(db, robot)
-
-
-@transaction()
-def park_reports(
-    db: Session, user: User, park_id: int, report_date: date | None, expected_catalog_id: int | None = None
-):
-    require_super_admin(user)
-    park = db.get(Park, park_id)
-    if park is None:
-        raise AppError(404, "공원을 찾을 수 없어요", code="park_not_found")
-    if expected_catalog_id is not None and park.catalog_id != expected_catalog_id:
-        raise AppError(409, "담당 공원이 변경됐어요. 공원 목록에서 다시 선택해 주세요", code="park_changed")
-    statement = select(DailyReport).where(DailyReport.catalog_id == park.catalog_id)
-    if report_date is not None:
-        statement = statement.where(DailyReport.date == report_date)
-    reports = db.scalars(statement.order_by(DailyReport.date.desc()).limit(31))
-    fields = ("pickups", "stationVisits", "patrolsDone", "patrolsPlanned", "materials", "hourly", "insights", "events")
-    return [
-        AdminReportResponse(
-            id=str(report.id),
-            park_id=str(park.id),
-            date=report.date,
-            summary=report.summary,
-            created_at=report.created_at,
-            **{key: report.payload[key] for key in fields if key in report.payload},
-        )
-        for report in reports
-    ]

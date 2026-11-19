@@ -21,7 +21,7 @@ export type AdminRobot = {
   managerId?: string | null;
   managerName?: string | null;
   managerLoginId?: string | null;
-  status: 'idle' | 'working' | 'emptying' | 'charging' | 'offline' | 'error';
+  status: 'idle' | 'working' | 'emptying' | 'offline' | 'error';
   slamX: number | null;
   slamY: number | null;
   lat: number | null;

@@ -3,17 +3,22 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { login, onboardingScreen } from '@/api/auth';
+import { onboardingScreen } from '@/api/auth';
 import { ApiError } from '@/api/client';
+import type { ReapplicationSession } from '@/api/types';
 import { Button, Icon, LinkRow, Text, TextField } from '@/components';
+import { useAuth } from '@/hooks/useAuth';
 import { icons } from '@/icons';
 import type { RootParams } from '@/navigation';
 import { space } from '@/theme';
 
 import { AuthLayout } from './AuthLayout';
+import { RegistrationRejectedDialog } from './RegistrationRejectedDialog';
 
 /** C-01 가입 승인 후 로그인 → 최초 순찰 설정 또는 홈. 승인 대기·반려는 오류 안내. */
 export function LoginScreen({ navigation }: NativeStackScreenProps<RootParams, 'Login'>) {
+  const { login, prepareReapplication } = useAuth();
+  const [rejected, setRejected] = useState<ReapplicationSession | null>(null);
   const [id, setId] = useState('');
   const [pw, setPw] = useState('');
   const [busy, setBusy] = useState(false);
@@ -29,6 +34,15 @@ export function LoginScreen({ navigation }: NativeStackScreenProps<RootParams, '
       // 뒤로 가기로 로그인 화면에 돌아오지 않게 바꿔 끼워요. Main의 첫 탭이 A-01 홈이에요.
       navigation.replace(onboardingScreen(session));
     } catch (e) {
+      if (e instanceof ApiError && e.code === 'registration_rejected') {
+        try {
+          setRejected(await prepareReapplication({ loginId: id.trim(), password: pw }));
+          setPw('');
+        } catch (failure) {
+          setError(failure instanceof ApiError ? failure.message : '반려 정보를 불러오지 못했어요. 다시 시도해 주세요');
+        }
+        return;
+      }
       // 403 가입 승인 대기·반려도 서버가 보낸 문구를 그대로 보여 줘요.
       setError(e instanceof ApiError ? e.message : '로그인하지 못했어요. 잠시 후 다시 시도해 주세요');
     } finally {
@@ -77,6 +91,16 @@ export function LoginScreen({ navigation }: NativeStackScreenProps<RootParams, '
           계정이 기억나지 않으면 담당자에게 문의해 주세요.
         </Text>
       </View>
+      <RegistrationRejectedDialog
+        reason={rejected?.rejectReason ?? null}
+        onClose={() => setRejected(null)}
+        onReapply={() => {
+          if (!rejected) return;
+          const reapplication = rejected;
+          setRejected(null);
+          navigation.navigate('SignUpEmail', { reapplication });
+        }}
+      />
     </AuthLayout>
   );
 }

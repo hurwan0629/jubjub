@@ -78,9 +78,9 @@ export async function saveRouteConfig(config: RouteConfig): Promise<RouteConfig>
     await saveMockSession();
     return mockResponse(config, 300);
   }
-  const { catalogId, station, points, schedule } = config;
+  const { catalogId, defaultStationId, station, points, schedule } = config;
   return request(routePath(config.robotId), {
     method: 'PUT',
-    body: JSON.stringify({ catalogId, station, points, schedule }),
+    body: JSON.stringify({ catalogId, defaultStationId, station, points, schedule }),
   });
 }

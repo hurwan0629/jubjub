@@ -471,7 +471,6 @@ export function RobotList() {
                       idle: '대기',
                       working: '작업 중',
                       emptying: '비우는 중',
-                      charging: '충전 중',
                       offline: '오프라인',
                       error: '오류',
                     }[r.status]

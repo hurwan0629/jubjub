@@ -15,7 +15,6 @@ const STATUS = {
   idle: '대기',
   working: '순찰 중',
   emptying: '비우는 중',
-  charging: '충전 중',
   offline: '연결 끊김',
   error: '오류',
 };

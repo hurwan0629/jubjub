@@ -1,6 +1,6 @@
 """공원 변경 승인과 총관리자 운영 화면의 실제 데이터 흐름을 검증해요."""
 
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 
@@ -83,14 +83,14 @@ def test_conflict_and_working_robot_block_approval_without_changes(setup_client)
     client, db = setup_client
     park = choose(client)
     req = request_change(client)
-    other = Park(user_id=2, catalog_id=2, status="approved", approved_by=10, approved_at=datetime.now(UTC))
+    other = Park(user_id=2, catalog_id=2, status="approved", reviewed_by=10, reviewed_at=datetime.now(UTC))
     db.add(other)
     db.commit()
     response = client.post(f"/admin/park-change-requests/{req['id']}/approve", headers=admin(), json={})
     assert response.status_code == 409
     assert client.get("/park").json()["catalogId"] == "1"
     assert client.get("/admin/park-change-requests", headers=admin()).json()[0]["conflictingManagerName"] is not None
-    other.status, other.approved_by, other.approved_at = "pending", None, None
+    other.status, other.reviewed_by, other.reviewed_at = "pending", None, None
     db.add(
         Robot(
             name="작업 중",
@@ -111,7 +111,7 @@ def test_admin_robot_assignment_keeps_other_robot_route_and_blocks_busy(setup_cl
     now = datetime.now(UTC)
     for rid in (1, 2):
         db.add(Robot(id=rid, name=f"로봇 {rid}", serial_no=f"ops-{rid}", park_id=int(park["id"]), assigned_at=now))
-    target = Park(user_id=2, catalog_id=2, status="approved", approved_by=10, approved_at=now)
+    target = Park(user_id=2, catalog_id=2, status="approved", reviewed_by=10, reviewed_at=now)
     db.add(target)
     db.commit()
     assert client.put("/route?robotId=1", json=config()).status_code == 200
@@ -129,39 +129,18 @@ def test_admin_robot_assignment_keeps_other_robot_route_and_blocks_busy(setup_cl
     assert client.patch("/admin/robots/1/assignment", headers=admin(), json={"parkId": None}).status_code == 409
 
 
-def test_reports_and_admin_data_are_authorized_and_filter_by_physical_park(setup_client):
-    from app.models.operations import DailyReport
-
-    client, db = setup_client
-    park = choose(client)
-    db.add(
-        DailyReport(
-            park_id=int(park["id"]),
-            catalog_id=1,
-            date=date(2026, 11, 17),
-            summary="기록된 일일 보고",
-            payload={"pickups": 4, "materials": [{"material": "can", "count": 4}]},
-        )
-    )
-    db.commit()
+def test_admin_data_is_authorized(setup_client):
+    client, _ = setup_client
+    choose(client)
     assert client.get("/admin/parks").status_code == 403
     assert client.get("/admin/park-change-requests").status_code == 403
     assert client.patch("/admin/robots/999/assignment", json={"parkId": None}).status_code == 403
-    parks = client.get("/admin/parks", headers=admin()).json()
-    assert parks[0]["managerId"] == "1"
-    report_path = f"/admin/parks/{park['id']}/reports"
-    result = client.get(report_path, headers=admin(), params={"date": "2026-11-17"}).json()
-    assert result[0]["pickups"] == 4
-    assert result[0]["summary"] == "기록된 일일 보고"
-    assert client.get(report_path, headers=admin(), params={"date": "2026-11-16"}).json() == []
-    req = request_change(client)
-    assert client.post(f"/admin/park-change-requests/{req['id']}/approve", headers=admin(), json={}).status_code == 200
-    assert client.get(report_path, headers=admin(), params={"date": "2026-11-17"}).json() == []
+    assert client.get("/admin/parks", headers=admin()).json()[0]["managerId"] == "1"
 
 
 def test_pre_approval_editor_and_report_identity_cannot_cross_park_change(setup_client):
     client, _ = setup_client
-    park = choose(client)
+    choose(client)
     previous = client.put("/route", json=config()).json()
     request = request_change(client)
     assert (
@@ -174,7 +153,6 @@ def test_pre_approval_editor_and_report_identity_cannot_cross_park_change(setup_
     assert client.put("/route", json=config()).status_code == 409
     assert client.put("/schedules?catalogId=1", json=previous["schedule"]).status_code == 409
     assert client.put("/station?catalogId=1", json=config()["station"]).status_code == 409
-    assert client.get(f"/admin/parks/{park['id']}/reports?catalogId=1", headers=admin()).status_code == 409
     assert client.put("/route", json=config() | {"catalogId": "2"}).status_code == 200
 
 
@@ -189,7 +167,7 @@ def test_change_validation_and_request_ownership(setup_client):
     ):
         assert client.post("/park-change-requests", json=body).status_code == 422
     request = request_change(client)
-    other = Park(user_id=2, catalog_id=2, status="approved", approved_by=10, approved_at=datetime.now(UTC))
+    other = Park(user_id=2, catalog_id=2, status="approved", reviewed_by=10, reviewed_at=datetime.now(UTC))
     db.add(other)
     db.commit()
     token, _ = create_access_token(2)
