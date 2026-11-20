@@ -40,8 +40,8 @@ def select_park(body: ParkSelection, db: DB, user: Admin):
 
 
 @router.get("/station", response_model=LatLng | None, summary="분리수거장 위치 조회")
-def get_station(db: DB, user: Admin):
-    return patrol.get_station(db, user)
+def get_station(db: DB, user: Admin, robot_id: RobotID = None):
+    return patrol.get_station(db, user, robot_id)
 
 
 @router.put("/station", response_model=LatLng, summary="분리수거장 위치 저장")

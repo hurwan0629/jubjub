@@ -2,7 +2,7 @@
 
 from sqlalchemy import select
 
-from app.models import Park, PatrolPoint, RecyclingStation, Robot, Route, StationSelection
+from app.models import Park, PatrolPoint, RecyclingStation, Robot, Route
 from tests import patrol_fixtures
 from tests.patrol_fixtures import choose, config
 from tests.test_robot_patrol import assign
@@ -22,7 +22,6 @@ def test_revoke_releases_station_references_but_keeps_route_history(setup_client
     result = client.post("/admin/registrations/1/revoke", headers=admin(), json={"reason": "reassign"})
     assert result.status_code == 200, result.text
     assert db.get(Robot, 1).park_id is None
-    assert db.scalar(select(StationSelection)) is None
     assert not db.get(Route, old_id).is_active
     assert db.get(RecyclingStation, db.get(Route, old_id).default_station_id) is not None
 
@@ -40,7 +39,7 @@ def test_consumed_draft_default_does_not_block_station_deletion(setup_client):
     db.commit()
     assert client.post("/admin/registrations/1/approve", headers=admin(), json={"robotIds": ["1"]}).status_code == 200
     assert client.get("/route?robotId=1").json()["defaultStationId"] == a["id"]
-    assert client.put("/robots/1/default-station", json={"stationId": b["id"]}).status_code == 200
+    save(client, 1, b["id"])
     assert client.delete(f"/stations/{a['id']}").status_code == 204
 
 
@@ -85,21 +84,39 @@ def test_multiple_stations_are_selected_per_robot_and_moving_one_preserves_other
     assert not db.get(Route, int(before["id"])).is_active
 
 
-def test_default_can_be_selected_before_route_and_in_use_station_cannot_be_deleted(setup_client):
+def test_selection_is_saved_only_with_route_and_in_use_station_cannot_be_deleted(setup_client):
     client, db = setup_client
     park = choose(client)
     assign(db, int(park["id"]), 1)
     a, b = station(client, "A"), station(client, "B", 37.501)
-    assert client.get("/route?robotId=1").status_code == 409
-    assert client.put("/robots/1/default-station", json={"stationId": a["id"], "catalogId": "1"}).status_code == 200
-    assert client.get("/route?robotId=1").json()["defaultStationId"] == a["id"]
-    assert client.delete(f"/stations/{a['id']}?catalogId=1").status_code == 409
+    before = client.get("/route?robotId=1")
+    assert before.status_code == 200
+    assert before.json()["defaultStationId"] is None
+    assert before.json()["station"] is None
+    assert client.get("/routes?robotId=1").json()["start"] is None
+    assert client.get("/station?robotId=1").json() is None
+    assert client.put("/robots/1/default-station", json={"stationId": a["id"]}).status_code == 404
     save(client, 1, a["id"])
-    assert client.put("/robots/1/default-station", json={"stationId": b["id"], "catalogId": "1"}).status_code == 200
+    assert client.delete(f"/stations/{a['id']}?catalogId=1").status_code == 409
+    save(client, 1, b["id"])
     assert client.get("/routes?robotId=1").json()["start"] == b["position"]
+    assert client.get("/station?robotId=1").json() == b["position"]
     assert client.delete(f"/stations/{a['id']}?catalogId=1").status_code == 204
     assert [item["id"] for item in client.get("/stations").json()] == [b["id"]]
-    assert client.put("/robots/1/default-station", json={"stationId": a["id"]}).status_code == 404
+    assert "station_selections" not in db.get_bind().dialect.get_table_names(db.connection())
+
+
+def test_single_registered_station_is_not_selected_until_route_saved(setup_client):
+    client, _ = setup_client
+    choose(client)
+    a = station(client, "A")
+    response = client.get("/route")
+    assert response.status_code == 200
+    assert response.json()["stations"] == [a]
+    assert response.json()["station"] is None
+    assert response.json()["defaultStationId"] is None
+    assert client.get("/station").json() is None
+    assert client.delete(f"/stations/{a['id']}").status_code == 204
 
 
 def test_legacy_coordinate_api_is_rejected_when_multiple_stations_exist(setup_client):

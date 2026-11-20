@@ -9,7 +9,6 @@ from app.core.errors import AppError
 from app.models import Park, ParkCatalogEntry, Robot, User
 from app.models.operations import ParkChangeRequest
 from app.models.patrol import Route, Schedule
-from app.models.station import StationSelection
 from app.schemas.operations import AdminParkResponse, ParkChangeInput, ParkChangeResponse
 from app.services.approval import _robot_response
 from app.services.auth import require_manager, require_super_admin
@@ -281,9 +280,6 @@ def assign_robot(db: Session, user: User, robot_id: int, target_park_id: int | N
         return admin_robot_response(db, robot)
     source = parks.get(robot.park_id)
     if source:
-        db.execute(
-            delete(StationSelection).where(StationSelection.park_id == source.id, StationSelection.robot_id == robot.id)
-        )
         for route in db.scalars(
             select(Route).where(Route.park_id == source.id, Route.robot_id == robot.id, Route.is_active.is_(True))
         ):

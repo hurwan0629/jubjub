@@ -97,19 +97,6 @@ class StationResponse(ParkSchema):
     position: LatLng
 
 
-class StationSelectionInput(ParkSchema):
-    model_config = ConfigDict(extra="forbid")
-    catalog_id: str | None = Field(default=None, pattern=r"^[1-9][0-9]{0,18}$")
-    station_id: str = Field(pattern=r"^[1-9][0-9]{0,18}$")
-
-    @field_validator("station_id")
-    @classmethod
-    def station_range(cls, value):
-        if int(value) > 9223372036854775807:
-            raise ValueError("올바른 분리수거장 번호를 지정해 주세요")
-        return value
-
-
 class RouteResponse(ParkSchema):
     catalog_id: str
     robot_id: str | None = None

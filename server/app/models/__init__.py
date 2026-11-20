@@ -11,7 +11,7 @@ from app.models.park_catalog import ParkCatalogEntry
 from app.models.patrol import Park, PatrolPoint, Route, RoutePoint, Schedule
 from app.models.robot import Robot
 from app.models.robot_assignment import RobotAssignmentRequest, RobotAssignmentRequestRobot
-from app.models.station import RecyclingStation, StationSelection
+from app.models.station import RecyclingStation
 from app.models.telemetry import Detection, Notification, PushToken, RobotTask
 from app.models.user import User
 
@@ -28,7 +28,6 @@ __all__ = [
     "RobotAssignmentRequest",
     "RobotAssignmentRequestRobot",
     "RecyclingStation",
-    "StationSelection",
     "ParkChangeRequest",
     "Detection",
     "RobotTask",

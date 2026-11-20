@@ -1,4 +1,4 @@
-"""분리수거장 목록과 로봇별 기본 선택을 관리해요."""
+"""분리수거장 목록과 활성 경로의 참조를 관리해요."""
 
 from datetime import UTC, datetime
 
@@ -6,18 +6,15 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
-from app.models import RecyclingStation, Route, StationSelection, User
-from app.schemas.patrol import StationInput, StationSelectionInput
+from app.models import RecyclingStation, Route, User
+from app.schemas.patrol import StationInput
 from app.services.patrol import (
     _ensure_catalog,
     _inside,
     _park,
     _position,
-    _robot_id,
-    _route,
     _route_input,
     _save_route,
-    _select_station,
     _station_by_id,
     _station_list,
     _station_response,
@@ -101,23 +98,7 @@ def delete_station(db: Session, user: User, station_id: int, catalog_id: int | N
     item = _station_by_id(db, park, station_id)
     if db.scalar(
         select(Route.id).where(Route.park_id == park.id, Route.default_station_id == item.id, Route.is_active.is_(True))
-    ) or db.scalar(
-        select(StationSelection.id).where(StationSelection.park_id == park.id, StationSelection.station_id == item.id)
     ):
         raise AppError(409, "기본 분리수거장으로 사용 중이에요. 다른 장소를 먼저 선택해 주세요", code="station_in_use")
     item.deleted_at = datetime.now(UTC)
     db.flush()
-
-
-@transaction(write=True)
-def select_default_station(db: Session, user: User, robot_id: int, body: StationSelectionInput):
-    park = _park(db, user)
-    _ensure_catalog(db, park, body.catalog_id)
-    rid = _robot_id(db, park, robot_id)
-    station = _station_by_id(db, park, body.station_id)
-    route = _route(db, park, rid)
-    if route is not None and route.default_station_id != station.id:
-        _save_route(db, user, park, _route_input(db, route), rid, station)
-    else:
-        _select_station(db, park, rid, station)
-    return _station_response(station)
