@@ -1031,6 +1031,26 @@
             "HTTPBearer": []
           }
         ],
+        "parameters": [
+          {
+            "name": "robotId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 9223372036854775807,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Robotid"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -6823,13 +6843,13 @@
         }
       }
     },
-    "/robots/{robot_id}/default-station": {
+    "/detections/{detection_id}/photo": {
       "put": {
         "tags": [
-          "stations"
+          "photos"
         ],
-        "summary": "로봇별 기본 분리수거장 선택",
-        "operationId": "select_default_station_robots__robot_id__default_station_put",
+        "summary": "탐지 사진을 비공개 R2에 저장",
+        "operationId": "upload_photo_detections__detection_id__photo_put",
         "security": [
           {
             "HTTPBearer": []
@@ -6837,35 +6857,138 @@
         ],
         "parameters": [
           {
-            "name": "robot_id",
+            "name": "detection_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "integer",
               "maximum": 9223372036854775807,
               "minimum": 1,
-              "title": "Robot Id"
+              "title": "Detection Id"
             }
           }
         ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/StationSelectionInput"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/StationResponse"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "photos"
+        ],
+        "summary": "담당 공원 사진의 10분 유효 주소 조회",
+        "operationId": "read_photo_detections__detection_id__photo_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "detection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "title": "Detection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
               }
             }
           },
@@ -9016,33 +9139,6 @@
           "position"
         ],
         "title": "StationResponse"
-      },
-      "StationSelectionInput": {
-        "properties": {
-          "catalogId": {
-            "anyOf": [
-              {
-                "type": "string",
-                "pattern": "^[1-9][0-9]{0,18}$"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Catalogid"
-          },
-          "stationId": {
-            "type": "string",
-            "pattern": "^[1-9][0-9]{0,18}$",
-            "title": "Stationid"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "stationId"
-        ],
-        "title": "StationSelectionInput"
       },
       "UnreadCountResponse": {
         "properties": {

@@ -1,6 +1,6 @@
 # JUBJUB API 명세서
 
-기준일: 2026-11-19 (KST) · 현재 로컬 구현 기준 전체 55개 HTTP API(기존 호환 경로 4개 포함). KAN-23의 기능 → 요청 → 응답 형식으로 전체를 다시 작성했습니다. 이 문서는 변경분 목록이 아닌 전체 명세입니다. 코드 기준이며 원격 서버 배포 완료를 의미하지 않습니다.
+기준일: 2026-11-20 (KST) · 현재 로컬 구현 기준 전체 56개 HTTP API(기존 호환 경로 4개 포함). KAN-23의 기능 → 요청 → 응답 형식으로 전체를 다시 작성했습니다. 이 문서는 변경분 목록이 아닌 전체 명세입니다. 코드 기준이며 원격 서버 배포 완료를 의미하지 않습니다.
 
 기존 명세 형식: [KAN-23](https://kdt-3team-finalterm.atlassian.net/browse/KAN-23)
 
@@ -57,7 +57,7 @@ Authorization: Bearer <accessToken>
 | 7 | 내 계정 조회 | GET | /me | 승인된 하위·총관리자 |
 | 8 | 담당 공원 조회 | GET | /park | 승인된 하위관리자 |
 | 9 | 담당 공원 선택 — 기존 호환 API | PUT | /park | 승인된 하위관리자 |
-| 10 | 공유 분리수거장 조회 | GET | /station | 승인된 하위관리자 |
+| 10 | 선택한 분리수거장 조회 | GET | /station | 승인된 하위관리자 |
 | 11 | 공유 분리수거장 저장 | PUT | /station | 승인된 하위관리자 |
 | 12 | 로봇별 순찰 경로 조회 | GET | /routes | 승인된 하위관리자 |
 | 13 | 로봇별 순찰 지점·순서 저장 | PUT | /routes | 승인된 하위관리자 |
@@ -96,13 +96,14 @@ Authorization: Bearer <accessToken>
 | 46 | 분리수거장 등록 | POST | /stations | 승인된 하위관리자 |
 | 47 | 분리수거장 수정 | PATCH | /stations/{station_id} | 승인된 하위관리자 |
 | 48 | 분리수거장 삭제 | DELETE | /stations/{station_id} | 승인된 하위관리자 |
-| 49 | 로봇 기본 분리수거장 선택 | PUT | /robots/{robot_id}/default-station | 승인된 하위관리자 |
-| 50 | 내 알림 목록 | GET | /notifications | 승인된 하위·총관리자 |
-| 51 | 내 미확인 알림 개수 | GET | /notifications/unread-count | 승인된 하위·총관리자 |
-| 52 | 내 알림 상세 | GET | /notifications/{notification_id} | 승인된 하위·총관리자 |
-| 53 | 내 알림 읽음 처리 | PATCH | /notifications/{notification_id}/read | 승인된 하위·총관리자 |
-| 54 | Expo 기기 토큰 등록·갱신 | PUT | /push-tokens | 승인된 하위·총관리자 |
-| 55 | 현재 기기 토큰 해제 | DELETE | /push-tokens | 승인된 하위·총관리자 |
+| 49 | 탐지 사진 업로드 | PUT | /detections/{detection_id}/photo | 승인된 하위관리자 |
+| 50 | 탐지 사진 임시 주소 조회 | GET | /detections/{detection_id}/photo | 승인된 하위관리자 |
+| 51 | 내 알림 목록 | GET | /notifications | 승인된 하위·총관리자 |
+| 52 | 내 미확인 알림 개수 | GET | /notifications/unread-count | 승인된 하위·총관리자 |
+| 53 | 내 알림 상세 | GET | /notifications/{notification_id} | 승인된 하위·총관리자 |
+| 54 | 내 알림 읽음 처리 | PATCH | /notifications/{notification_id}/read | 승인된 하위·총관리자 |
+| 55 | Expo 기기 토큰 등록·갱신 | PUT | /push-tokens | 승인된 하위·총관리자 |
+| 56 | 현재 기기 토큰 해제 | DELETE | /push-tokens | 승인된 하위·총관리자 |
 
 ## 3.01. 서버·DB 상태 확인
 
@@ -613,19 +614,23 @@ PUT /park
 
 주요 업무 오류: 404 park_not_found; 409 approved_park_change_forbidden. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.
 
-## 3.10. 공유 분리수거장 조회
+## 3.10. 선택한 분리수거장 조회
 
 ### GET /station
 
-기능: 공원 공통 분리수거장 좌표를 반환합니다. 미등록이면 null입니다. 로봇별 분리수거장을 따로 두지 않습니다. 여러 장소가 등록되면 단일 좌표 방식은 409 default_station_required이며 defaultStationId로 선택해야 합니다.
+기능: robotId에 해당하는 활성 경로의 default_station_id로 좌표를 조회합니다. 경로가 없으면 null이며 등록 목록에서 자동 선택하지 않습니다.
 
 권한: 승인된 manager Bearer 토큰
 
 #### 요청
 
 ```http
-GET /station
+GET /station?robotId=6
 ```
+
+| 위치 | 이름 | 필수 | 타입 | 제약·기본값 |
+| --- | --- | --- | --- | --- |
+| query | robotId | 선택 | integer / null | 최솟값: 1; 최댓값: 9223372036854775807 |
 
 요청 본문: 없음.
 
@@ -640,7 +645,7 @@ GET /station
 }
 ```
 
-주요 업무 오류: ; 409 default_station_required; 404 station_not_found. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.
+오류: 5장의 공통 인증·입력 검증·서버 오류를 적용합니다.
 
 ## 3.11. 공유 분리수거장 저장
 
@@ -729,7 +734,8 @@ GET /routes?robotId=6
     "latitude": 37.5433,
     "longitude": 127.0332
   },
-  "appliesFrom": "nextPatrol"
+  "appliesFrom": "nextPatrol",
+  "defaultStationId": "1"
 }
 ```
 
@@ -797,7 +803,8 @@ PUT /routes?robotId=6
     "latitude": 37.5433,
     "longitude": 127.0332
   },
-  "appliesFrom": "nextPatrol"
+  "appliesFrom": "nextPatrol",
+  "defaultStationId": "1"
 }
 ```
 
@@ -977,7 +984,8 @@ GET /route?robotId=6
       "repeat": "daily",
       "id": "30"
     }
-  ]
+  ],
+  "defaultStationId": "1"
 }
 ```
 
@@ -1096,7 +1104,8 @@ PUT /route?robotId=6
       "repeat": "daily",
       "id": "30"
     }
-  ]
+  ],
+  "defaultStationId": "1"
 }
 ```
 
@@ -2828,7 +2837,7 @@ PATCH /stations/{station_id}
 
 ### DELETE /stations/{station_id}
 
-기능: 활성 경로·기본 장소 선택에서 사용하지 않는 장소만 삭제합니다. catalogId는 query입니다.
+기능: 활성 경로의 default_station_id에서 참조하지 않는 장소만 삭제합니다. catalogId는 query입니다.
 
 권한: 승인된 manager Bearer 토큰
 
@@ -2851,51 +2860,73 @@ DELETE /stations/{station_id}?catalogId=69
 
 주요 오류: 404 station_not_found; 409 station_in_use / park_changed. 공통 인증·입력 검증 오류를 함께 적용합니다.
 
-## 3.49. 로봇 기본 분리수거장 선택
+## 3.49. 탐지 사진 업로드
 
-### PUT /robots/{robot_id}/default-station
+### PUT /detections/{detection_id}/photo
 
-기능: 본인 공원에 배정된 로봇의 기본 장소를 선택합니다. 경로 생성 전에도 가능하며 기존 경로가 있으면 해당 경로만 새 버전으로 저장합니다.
+기능: JPEG/PNG 원본 바이트를 Content-Type image/jpeg 또는 image/png로 보냅니다. 기본 최대 5MiB, 2천만 픽셀입니다. 담당 공원의 기존 탐지만 가능하며 비공개 R2 저장 후 DB에 경로를 기록합니다. 이미 등록된 R2 사진은 덮어쓰지 않습니다.
 
 권한: 승인된 manager Bearer 토큰
 
 #### 요청
 
 ```http
-PUT /robots/6/default-station
+PUT /detections/{detection_id}/photo
 ```
 
 | 위치 | 이름 | 필수 | 타입 | 제약·기본값 |
 | --- | --- | --- | --- | --- |
-| path | robot_id | 필수 | integer | 최솟값: 1; 최댓값: 9223372036854775807 |
+| path | detection_id | 필수 | integer | 최솟값: 1; 최댓값: 9223372036854775807 |
 
-본문: StationSelectionInput — 필드 상세는 4장 공통 데이터 계약에 모두 기재했습니다.
-
-```json
-{
-  "stationId": "1",
-  "catalogId": "69"
-}
-```
+요청 본문: 없음.
 
 #### 응답
 
-성공: HTTP 200 · StationResponse
+성공: HTTP 200 · object
 
 ```json
 {
-  "id": "1",
-  "name": "북문 분리수거장",
-  "position": {
-    "latitude": 37.5433,
-    "longitude": 127.0332
-  }
+  "detectionId": "1",
+  "imagePath": "parks/5/detections/1/<UUID>.jpg"
 }
 ```
 
-주요 업무 오류: 404 robot_not_found / station_not_found; 409 park_changed; 422 point_too_far. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.
+주요 업무 오류: 404 detection_not_found; 409 photo_already_exists / photo_conflict; 413 photo_too_large; 415 photo_type_unsupported; 422 photo_invalid; 503 photo_storage_unavailable / photo_db_unavailable. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.
 
-## 3.50. 내 알림 목록
+## 3.50. 탐지 사진 임시 주소 조회
+
+### GET /detections/{detection_id}/photo
+
+기능: 담당 공원 탐지의 R2 사진을 볼 수 있는 600초 유효 URL을 반환합니다. Cache-Control: no-store이며 만료 후 다시 요청합니다.
+
+권한: 승인된 manager Bearer 토큰
+
+#### 요청
+
+```http
+GET /detections/{detection_id}/photo
+```
+
+| 위치 | 이름 | 필수 | 타입 | 제약·기본값 |
+| --- | --- | --- | --- | --- |
+| path | detection_id | 필수 | integer | 최솟값: 1; 최댓값: 9223372036854775807 |
+
+요청 본문: 없음.
+
+#### 응답
+
+성공: HTTP 200 · object
+
+```json
+{
+  "url": "https://<R2-endpoint>/<bucket>/<object>?<temporary-signature>",
+  "expiresIn": 600
+}
+```
+
+주요 업무 오류: 404 detection_not_found / photo_not_found; 503 photo_storage_unavailable / photo_db_unavailable. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.
+
+## 3.51. 내 알림 목록
 
 ### GET /notifications
 
@@ -2940,7 +2971,7 @@ GET /notifications?type=robotAssignmentApproved&isRead=false&limit=20&offset=0
 
 주요 업무 오류: 503 notifications_unavailable. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.
 
-## 3.51. 내 미확인 알림 개수
+## 3.52. 내 미확인 알림 개수
 
 ### GET /notifications/unread-count
 
@@ -2968,7 +2999,7 @@ GET /notifications/unread-count
 
 주요 업무 오류: 503 notifications_unavailable. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.
 
-## 3.52. 내 알림 상세
+## 3.53. 내 알림 상세
 
 ### GET /notifications/{notification_id}
 
@@ -3008,7 +3039,7 @@ GET /notifications/41
 
 주요 업무 오류: 404 notification_not_found; 503 notifications_unavailable. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.
 
-## 3.53. 내 알림 읽음 처리
+## 3.54. 내 알림 읽음 처리
 
 ### PATCH /notifications/{notification_id}/read
 
@@ -3048,7 +3079,7 @@ PATCH /notifications/41/read
 
 주요 업무 오류: 404 notification_not_found; 503 notifications_unavailable. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.
 
-## 3.54. Expo 기기 토큰 등록·갱신
+## 3.55. Expo 기기 토큰 등록·갱신
 
 ### PUT /push-tokens
 
@@ -3087,7 +3118,7 @@ PUT /push-tokens
 
 주요 업무 오류: 503 notifications_unavailable. 공통 인증·입력 검증 오류는 5장을 함께 적용합니다.
 
-## 3.55. 현재 기기 토큰 해제
+## 3.56. 현재 기기 토큰 해제
 
 ### DELETE /push-tokens
 
@@ -3564,13 +3595,6 @@ DELETE /push-tokens
 | name | string | 필수 | - | 이름. 요청에서 공백 제거 적용 여부는 해당 API 규칙 참고 |
 | position | LatLng | 필수 | - | 해당 순찰 지점의 지도 좌표 |
 
-### StationSelectionInput
-
-| 필드 | 타입·null | 키 필수 | 제약·기본값 | 설명 |
-| --- | --- | --- | --- | --- |
-| catalogId | string / null | 선택/기본값 | 정규식: ^[1-9][0-9]{0,18}$ | 공원 목록 ID. 운영 공원 ID와 다름 |
-| stationId | string | 필수 | 정규식: ^[1-9][0-9]{0,18}$ | 해당 API 기능 설명 참고 |
-
 ### UnreadCountResponse
 
 | 필드 | 타입·null | 키 필수 | 제약·기본값 | 설명 |
@@ -3627,11 +3651,13 @@ details는 값이 있을 때만 포함합니다. 검증 오류 field는 body.ema
 | 403 | registration_pending | 총관리자의 회원가입 승인을 기다리고 있어요. 승인 후 로그인해 주세요 |
 | 403 | registration_rejected | 회원가입 신청이 반려되었어요. 총관리자에게 문의해 주세요 |
 | 403 | super_admin_required | 총관리자만 사용할 수 있어요 |
+| 404 | detection_not_found | 이 공원의 탐지 정보를 찾을 수 없어요 |
 | 404 | not_found | 요청한 주소를 찾을 수 없어요 |
 | 404 | notification_not_found | 알림을 찾을 수 없어요 |
 | 404 | park_change_not_found | 공원 변경 요청을 찾을 수 없어요 |
 | 404 | park_not_found | 선택한 공원을 찾을 수 없어요 |
 | 404 | park_request_not_found | 공원 신청을 찾을 수 없어요 |
+| 404 | photo_not_found | 등록된 R2 사진이 없어요 |
 | 404 | registration_not_found | 회원가입 신청을 찾을 수 없어요 |
 | 404 | robot_assignment_request_not_found | 로봇 배정 요청을 찾을 수 없어요 |
 | 404 | robot_not_found | 선택한 로봇을 찾을 수 없어요 |
@@ -3650,6 +3676,8 @@ details는 값이 있을 때만 포함합니다. 검증 오류 field는 body.ema
 | 409 | park_not_approved | 승인된 담당 공원이 필요해요 |
 | 409 | park_request_not_pending | 대기 중인 신청만 처리할 수 있어요 |
 | 409 | park_required | 먼저 관리할 공원을 선택해 주세요 |
+| 409 | photo_already_exists | 이미 사진이 등록된 탐지예요 |
+| 409 | photo_conflict | 사진 정보가 변경되었어요. 다시 조회해 주세요 |
 | 409 | registration_not_approved | 승인된 관리자만 승인을 취소할 수 있어요 |
 | 409 | registration_not_rejected | 이미 처리된 가입 신청이에요. 다시 로그인해 주세요 |
 | 409 | robot_already_assigned | 이미 공원에 배정된 로봇이 있어요 |
@@ -3664,7 +3692,10 @@ details는 값이 있을 때만 포함합니다. 검증 오류 field는 body.ema
 | 409 | station_in_use | 기본 분리수거장으로 사용 중이에요. 다른 장소를 먼저 선택해 주세요 |
 | 409 | station_position_exists | 같은 위치의 분리수거장이 이미 있어요 |
 | 409 | station_required | 먼저 분리수거장 위치를 등록해 주세요 |
+| 413 | photo_too_large | 사진 파일이 너무 커요 |
+| 415 | photo_type_unsupported | JPEG 또는 PNG 사진을 보내 주세요 |
 | 422 | duplicate_schedule | 겹치는 순찰 시각은 한 번만 지정해 주세요 |
+| 422 | photo_invalid | 올바른 사진 파일을 보내 주세요 |
 | 422 | point_outside_park | 공원 경계 안의 위치를 선택해 주세요 |
 | 422 | point_too_far | 기존 지점과 거리가 멀어요(계산한 거리 포함) |
 | 422 | robot_assignment_count_mismatch | 요청한 대수만큼 로봇을 선택해 주세요 |
@@ -3679,6 +3710,9 @@ details는 값이 있을 때만 포함합니다. 검증 오류 field는 body.ema
 | 503 | notifications_unavailable | 알림 정보를 처리하지 못했어요. 다시 시도해 주세요 |
 | 503 | park_catalog_unavailable | 공원 목록을 불러오지 못했어요. 잠시 후 다시 시도해 주세요 |
 | 503 | patrol_unavailable | 순찰 설정을 처리하지 못했어요. 잠시 후 다시 시도해 주세요 |
+| 503 | photo_db_unavailable | 사진 정보를 저장하지 못했어요 |
+| 503 | photo_storage_not_configured | R2 사진 저장소 설정을 확인해 주세요 |
+| 503 | photo_storage_unavailable | 사진 주소를 만들지 못했어요 |
 | 503 | registration_unavailable | 재신청을 저장하지 못했어요. 다시 시도해 주세요 |
 
 공통 인증: 401 invalid_token(누락·만료·변조·잘못된 용도), 403 registration_pending/rejected/incomplete(가입 승인 상태), 403 manager_required 또는 super_admin_required(역할), 503 auth_not_configured(JWT 설정). 순찰·운영·승인 서비스의 DB 오류는 503 patrol_unavailable, DB 유일 제약 등의 저장 충돌은 409 settings_conflict로 변환될 수 있습니다. 네트워크 연결 실패의 status=0/network_error는 앱·웹 클라이언트 자체 오류로 HTTP 응답 코드가 아닙니다.
@@ -3700,7 +3734,7 @@ details는 값이 있을 때만 포함합니다. 검증 오류 field는 body.ema
 
 | 구분 | 현재 상태 |
 | --- | --- |
-| 구현된 HTTP API | 위에 전부 작성한 55개. 서버 상태·검색·계정·재신청·순찰 설정·승인·공원 변경·로봇 관리·배정 요청. |
+| 구현된 HTTP API | 위에 전부 작성한 56개. 서버 상태·검색·계정·재신청·순찰 설정·승인·공원 변경·로봇 관리·배정 요청. |
 | 배정 요청 알림 | 승인·반려 시 알림과 Expo 기기별 발송 대기열을 함께 저장합니다. 커밋 후 발송하며 프론트는 미수정입니다. 실제 수신에는 앱 기기 토큰·Expo 자격 증명·서버 설정이 필요합니다. |
 | 제거됨 | GET /admin/parks/{park_id}/reports: 현재 라우터에서 제거됨. daily_reports, agent_runs, agent_steps 테이블과 해당 서버 사용 코드도 제거됨. |
 | DB만 생성됨 | detections(탐지), robot_tasks(작업 이력)는 테이블만 있고 수신·조회 HTTP API는 아직 없습니다. notifications·push_tokens는 본인 조회·읽음·기기 등록·해제 API를 구현했습니다. |
@@ -3714,7 +3748,7 @@ details는 값이 있을 때만 포함합니다. 검증 오류 field는 body.ema
 
 ## 8. 명세 검증 기준
 
-- server/app/main.py와 routers/api.py가 실제 등록한 전체 HTTP 경로를 FastAPI OpenAPI와 대조했습니다. Method+Path 조합 55개가 모두 명세에 존재하는지 자동 확인했습니다.
+- server/app/main.py와 routers/api.py가 실제 등록한 전체 HTTP 경로를 FastAPI OpenAPI와 대조했습니다. Method+Path 조합 56개가 모두 명세에 존재하는지 자동 확인했습니다.
 - 각 요청·응답 예시는 실제 Pydantic 모델로 검증했습니다. 입력 검증기, 권한·업무 오류·상태 전환은 services/auth.py, patrol.py, approval.py, operations.py, parks.py, health.py 및 core/security.py·errors.py와 대조했습니다.
 - 공원·로봇 DB의 실제 계정 정보나 인증 키는 문서에 넣지 않았습니다. 모든 계정·좌표·토큰은 형식 설명용 예시입니다.
 - DB 테이블이 있다는 이유만으로 HTTP API를 구현 완료로 적지 않았습니다. 원격 서버 버전·배포 주소·HTTPS·프록시 구성은 실제 배포 환경에서 별도 확인합니다.

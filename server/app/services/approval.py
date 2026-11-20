@@ -2,11 +2,11 @@
 
 from datetime import UTC, datetime
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
-from app.models import Park, Robot, Route, StationSelection, User
+from app.models import Park, Robot, Route, User
 from app.schemas.approval import ApprovalInput, ParkRequestResponse, RejectionInput, RobotInput, RobotResponse
 from app.services.auth import require_super_admin
 from app.services.patrol import _managed, _park, inherit_draft, transaction
@@ -154,11 +154,6 @@ def revoke(db: Session, user: User, park_id: int, body: RejectionInput):
         robot.assigned_at = None
     if robots:
         released_ids = [robot.id for robot in robots]
-        db.execute(
-            delete(StationSelection).where(
-                StationSelection.park_id == park.id, StationSelection.robot_id.in_(released_ids)
-            )
-        )
         db.execute(
             update(Route)
             .where(Route.park_id == park.id, Route.robot_id.in_(released_ids), Route.is_active.is_(True))

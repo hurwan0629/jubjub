@@ -371,8 +371,8 @@ add(
 add(
     "GET",
     "/station",
-    "공유 분리수거장 조회",
-    "공원 공통 분리수거장 좌표를 반환합니다. 미등록이면 null입니다. 로봇별 분리수거장을 따로 두지 않습니다.",
+    "선택한 분리수거장 조회",
+    "robotId에 해당하는 활성 경로의 default_station_id로 좌표를 조회합니다. 경로가 없으면 null이며 등록 목록에서 자동 선택하지 않습니다.",
 )
 add(
     "PUT",
@@ -609,7 +609,6 @@ examples.update(
     {
         "StationInput": {"name": "북문 분리수거장", "position": loc, "catalogId": "69"},
         "StationResponse": {"id": "1", "name": "북문 분리수거장", "position": loc},
-        "StationSelectionInput": {"stationId": "1", "catalogId": "69"},
     }
 )
 add("GET", "/stations", "분리수거장 목록", "본인 공원의 삭제되지 않은 장소 목록을 반환합니다.")
@@ -631,17 +630,10 @@ add(
     "DELETE",
     "/stations/{station_id}",
     "분리수거장 삭제",
-    "활성 경로·기본 장소 선택에서 사용하지 않는 장소만 삭제합니다. catalogId는 query입니다.",
+    "활성 경로의 default_station_id에서 참조하지 않는 장소만 삭제합니다. catalogId는 query입니다.",
     "404 station_not_found; 409 station_in_use / park_changed",
 )
-add(
-    "PUT",
-    "/robots/{robot_id}/default-station",
-    "로봇 기본 분리수거장 선택",
-    "본인 공원에 배정된 로봇의 기본 장소를 선택합니다. 경로 생성 전에도 가능하며 기존 경로가 있으면 해당 경로만 새 버전으로 저장합니다.",
-    "404 robot_not_found / station_not_found; 409 park_changed; 422 point_too_far",
-)
-for method, path in [("get", "/station"), ("put", "/station"), ("put", "/route"), ("put", "/routes")]:
+for method, path in [("put", "/station"), ("put", "/route"), ("put", "/routes")]:
     title, note, errs = spec[(method, path)]
     spec[(method, path)] = (
         title,
@@ -650,6 +642,22 @@ for method, path in [("get", "/station"), ("put", "/station"), ("put", "/route")
         errs + "; 409 default_station_required; 404 station_not_found",
     )
 
+examples["ConfigResponse"]["defaultStationId"] = "1"
+examples["RouteResponse"]["defaultStationId"] = "1"
+add(
+    "PUT",
+    "/detections/{detection_id}/photo",
+    "탐지 사진 업로드",
+    "JPEG/PNG 원본 바이트를 Content-Type image/jpeg 또는 image/png로 보냅니다. 기본 최대 5MiB, 2천만 픽셀입니다. 담당 공원의 기존 탐지만 가능하며 비공개 R2 저장 후 DB에 경로를 기록합니다. 이미 등록된 R2 사진은 덮어쓰지 않습니다.",
+    "404 detection_not_found; 409 photo_already_exists / photo_conflict; 413 photo_too_large; 415 photo_type_unsupported; 422 photo_invalid; 503 photo_storage_unavailable / photo_db_unavailable",
+)
+add(
+    "GET",
+    "/detections/{detection_id}/photo",
+    "탐지 사진 임시 주소 조회",
+    "담당 공원 탐지의 R2 사진을 볼 수 있는 600초 유효 URL을 반환합니다. Cache-Control: no-store이며 만료 후 다시 요청합니다.",
+    "404 detection_not_found / photo_not_found; 503 photo_storage_unavailable / photo_db_unavailable",
+)
 extend_notification_spec(examples, add)
 assert set(spec) == {(m, p) for p, item in schema["paths"].items() for m in item}, "전체 API 누락 또는 추가"
 for name, value in examples.items():
@@ -670,7 +678,7 @@ for name, value in examples.items():
 
 heading(1, "JUBJUB API 명세서")
 para(
-    f"기준일: 2026-11-19 (KST) · 현재 로컬 구현 기준 전체 {len(spec)}개 HTTP API(기존 호환 경로 4개 포함). KAN-23의 기능 → 요청 → 응답 형식으로 전체를 다시 작성했습니다. 이 문서는 변경분 목록이 아닌 전체 명세입니다. 코드 기준이며 원격 서버 배포 완료를 의미하지 않습니다."
+    f"기준일: 2026-11-20 (KST) · 현재 로컬 구현 기준 전체 {len(spec)}개 HTTP API(기존 호환 경로 4개 포함). KAN-23의 기능 → 요청 → 응답 형식으로 전체를 다시 작성했습니다. 이 문서는 변경분 목록이 아닌 전체 명세입니다. 코드 기준이며 원격 서버 배포 완료를 의미하지 않습니다."
 )
 ht.append('<p><a href="https://kdt-3team-finalterm.atlassian.net/browse/KAN-23" data-card-appearance="inline"></a></p>')
 ht.append(
@@ -844,7 +852,14 @@ for i, ((method, path), (title, note, errors)) in enumerate(spec.items(), 1):
         para("주요 오류: " + errors + ". 공통 인증·입력 검증 오류를 함께 적용합니다.")
         continue
     para("성공: HTTP " + success[0] + " · " + typ(response_schema))
-    val = example(response_schema)
+    if path.endswith("/photo"):
+        val = (
+            {"detectionId": "1", "imagePath": "parks/5/detections/1/<UUID>.jpg"}
+            if method == "put"
+            else {"url": "https://<R2-endpoint>/<bucket>/<object>?<temporary-signature>", "expiresIn": 600}
+        )
+    else:
+        val = example(response_schema)
     if path.endswith("/read"):
         val["isRead"] = True
     elif "robot-assignment-requests" in path:
@@ -1150,9 +1165,9 @@ bullets(
     ]
 )
 out_md = "\n\n".join(md) + "\n"
-out_html = "\n".join(ht).replace("기준일: 2026-11-18", '기준일: <time datetime="2026-11-19">2026-11-19</time>') + "\n"
+out_html = "\n".join(ht).replace("기준일: 2026-11-18", '기준일: <time datetime="2026-11-20">2026-11-20</time>') + "\n"
 (ROOT / "API_SPEC.md").write_text(out_md, encoding="utf-8")
-(ROOT / "data/api-spec-20261118.html").write_text(out_html, encoding="utf-8")
+(ROOT / "data/api-spec-20261120.html").write_text(out_html, encoding="utf-8")
 (ROOT / "data/current-openapi.json").write_text(json.dumps(schema, ensure_ascii=False, indent=2), encoding="utf-8")
 print(
     json.dumps(

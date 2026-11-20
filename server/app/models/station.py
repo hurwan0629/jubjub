@@ -1,4 +1,4 @@
-"""공원의 분리수거장 목록과 로봇별 기본 선택을 저장해요."""
+"""공원의 분리수거장 목록을 저장해요. 선택은 경로에서 관리해요."""
 
 from datetime import datetime
 
@@ -34,28 +34,3 @@ class RecyclingStation(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-
-
-class StationSelection(Base):
-    __tablename__ = "station_selections"
-    __table_args__ = (
-        Index(
-            "uq_station_selections_robot",
-            "park_id",
-            "robot_id",
-            unique=True,
-            postgresql_where=text("robot_id IS NOT NULL"),
-            sqlite_where=text("robot_id IS NOT NULL"),
-        ),
-        Index(
-            "uq_station_selections_draft",
-            "park_id",
-            unique=True,
-            postgresql_where=text("robot_id IS NULL"),
-            sqlite_where=text("robot_id IS NULL"),
-        ),
-    )
-    id: Mapped[int] = mapped_column(ID, Identity(always=True), primary_key=True)
-    park_id: Mapped[int] = mapped_column(ForeignKey("parks.id"))
-    robot_id: Mapped[int | None] = mapped_column(ForeignKey("robots.id"))
-    station_id: Mapped[int] = mapped_column(ForeignKey("recycling_stations.id"), index=True)

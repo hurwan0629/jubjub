@@ -13,7 +13,7 @@ from app.core.errors import AppError
 from app.models import Robot, User
 from app.models.park_catalog import ParkCatalogEntry
 from app.models.patrol import Park, PatrolPoint, Route, RoutePoint, Schedule
-from app.models.station import RecyclingStation, StationSelection
+from app.models.station import RecyclingStation
 from app.schemas.parks import LatLng
 from app.schemas.patrol import (
     ConfigInput,
@@ -128,26 +128,8 @@ def _station_by_id(db: Session, park: Park, station_id: int | str) -> RecyclingS
 
 
 def _station(db: Session, park: Park, robot_id: int | None = None) -> RecyclingStation | None:
-    selection = db.scalar(
-        select(StationSelection).where(StationSelection.park_id == park.id, StationSelection.robot_id == robot_id)
-    )
-    if selection:
-        return _station_by_id(db, park, selection.station_id)
     route = _route(db, park, robot_id)
-    if route and route.default_station_id is not None:
-        return _station_by_id(db, park, route.default_station_id)
-    return _single_station(db, park)
-
-
-def _select_station(db: Session, park: Park, robot_id: int | None, station: RecyclingStation):
-    selection = db.scalar(
-        select(StationSelection).where(StationSelection.park_id == park.id, StationSelection.robot_id == robot_id)
-    )
-    if selection is None:
-        db.add(StationSelection(park_id=park.id, robot_id=robot_id, station_id=station.id))
-    else:
-        selection.station_id = station.id
-    db.flush()
+    return _station_by_id(db, park, route.default_station_id) if route else None
 
 
 def _station_response(station: RecyclingStation) -> StationResponse:
@@ -249,7 +231,6 @@ def _managed(park: Park) -> ManagedPark:
 
 
 def _hide_points(db: Session, park: Park):
-    db.execute(delete(StationSelection).where(StationSelection.park_id == park.id))
     for station in db.scalars(
         select(RecyclingStation).where(RecyclingStation.park_id == park.id, RecyclingStation.deleted_at.is_(None))
     ):
@@ -289,7 +270,9 @@ def _save_route(
     station: RecyclingStation | None = None,
 ) -> Route:
     station = station or (
-        _station_by_id(db, park, body.default_station_id) if body.default_station_id else _station(db, park, robot_id)
+        _station_by_id(db, park, body.default_station_id)
+        if body.default_station_id
+        else (_station(db, park, robot_id) or _single_station(db, park))
     )
     if station is None:
         raise AppError(409, "먼저 분리수거장 위치를 등록해 주세요", code="station_required")
@@ -314,7 +297,6 @@ def _save_route(
         db.add(point)
         db.flush()
         db.add(RoutePoint(route_id=route.id, seq=seq, point_id=point.id))
-    _select_station(db, park, robot_id, station)
     db.flush()
     return route
 
@@ -357,11 +339,10 @@ def _save_schedules(db: Session, park: Park, body: list[ScheduleInput], robot_id
 def _route_response(db: Session, park: Park, robot_id: int | None = None) -> RouteResponse:
     route = _route(db, park, robot_id)
     station = _station_by_id(db, park, route.default_station_id) if route else _station(db, park, robot_id)
-    selected = _station(db, park, robot_id)
     return RouteResponse(
         catalog_id=str(park.catalog_id),
         robot_id=str(robot_id) if robot_id is not None else None,
-        default_station_id=str(selected.id) if selected else None,
+        default_station_id=str(station.id) if station else None,
         id=str(route.id) if route else None,
         start=_position(station),
         end=_position(station),
@@ -435,8 +416,9 @@ def select_park(db: Session, user: User, body: ParkSelection):
 
 
 @transaction()
-def get_station(db: Session, user: User):
-    return _position(_single_station(db, _park(db, user)))
+def get_station(db: Session, user: User, robot_id: int | None = None):
+    park = _park(db, user)
+    return _position(_station(db, park, _robot_id(db, park, robot_id)))
 
 
 def _route_input(db: Session, route: Route) -> RouteInput:
@@ -570,9 +552,6 @@ def inherit_draft(db: Session, user: User, park: Park, robots: list[Robot]):
             _save_schedules(db, park, schedules, robot.id)
     if draft and robots:
         draft.is_active = False
-        db.execute(
-            delete(StationSelection).where(StationSelection.park_id == park.id, StationSelection.robot_id.is_(None))
-        )
         for point in _points(db, draft):
             point.deleted_at = datetime.now(UTC)
         db.execute(delete(Schedule).where(Schedule.park_id == park.id, Schedule.robot_id.is_(None)))

@@ -34,6 +34,14 @@ class Settings(BaseSettings):
     # 사진 저장 폴더
     photo_dir: Path = Path("./storage/photos")
 
+    # R2 비공개 사진 저장소. 키 값은 repr·로그에 노출하지 않아요.
+    r2_account_id: str = Field(default="", repr=False)
+    r2_endpoint: str = Field(default="", repr=False)
+    r2_access_key_id: SecretStr = SecretStr("")
+    r2_secret_access_key: SecretStr = SecretStr("")
+    r2_bucket_name: str = ""
+    photo_max_bytes: int = Field(default=5 * 1024 * 1024, ge=1, le=20 * 1024 * 1024)
+
     # 운영 에이전트 LLM
     llm_api_key: str = ""
     llm_model: str = ""

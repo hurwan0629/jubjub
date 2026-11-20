@@ -118,6 +118,8 @@ alembic downgrade -1                                     # 하나 되돌리기
 
 생성된 `alembic/versions/` 파일은 꼭 열어서 확인하고 커밋해요. DB를 같이 쓰기 때문에 `upgrade`는 팀에 알리고 실행해요.
 
+기본 분리수거장은 활성 `routes.default_station_id`에서만 조회해요. `station_selections` 및 `PUT /robots/{robot_id}/default-station`은 0014에서 제거했어요. 선택 변경은 `PUT /route` 또는 `PUT /routes` 요청에 `defaultStationId`를 함께 보내요. 경로 저장 전에는 선택값이 null이며, 등록된 장소는 `GET /stations`로 조회해요. `GET /station?robotId=...`도 해당 활성 경로의 장소를 반환해요. 0014는 기존 선택 중 활성 경로와 다른 값이 있으면 중단하므로, 해당 선택을 경로에 반영한 뒤 재실행해 주세요.
+
 ## 린트 · 포맷 · 테스트
 
 ```bash
@@ -149,3 +151,6 @@ VS Code에 Ruff 확장을 설치하면 저장할 때 자동으로 포맷돼요.
 ## 의존성 바꾸기
 
 `requirements.txt`는 버전을 고정해요. 패키지를 추가하면 `pip install <패키지>==<버전>` 후 파일에 한 줄 추가하고, PR에 적어 주세요.
+# R2 사진 저장 연동
+
+비공개 사진 업로드·임시 조회 API와 연결 확인 방법은 [R2.md](R2.md)를 참고해 주세요.
