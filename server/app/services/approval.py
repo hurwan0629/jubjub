@@ -9,7 +9,7 @@ from app.core.errors import AppError
 from app.models import Park, Robot, User
 from app.schemas.approval import ApprovalInput, ParkRequestResponse, RejectionInput, RobotInput, RobotResponse
 from app.services.auth import require_super_admin
-from app.services.patrol import _managed, _park, transaction
+from app.services.patrol import _managed, transaction
 
 
 def _robot_response(robot: Robot) -> RobotResponse:
@@ -126,14 +126,6 @@ def list_robots(db: Session, user: User, unassigned: bool, limit: int, offset: i
     if unassigned:
         statement = statement.where(Robot.park_id.is_(None))
     return [_robot_response(robot) for robot in db.scalars(statement.order_by(Robot.id).limit(limit).offset(offset))]
-
-
-@transaction()
-def my_robots(db: Session, user: User):
-    park = _park(db, user)
-    return [
-        _robot_response(robot) for robot in db.scalars(select(Robot).where(Robot.park_id == park.id).order_by(Robot.id))
-    ]
 
 
 def registration_park_id(db: Session, user: User, applicant_id: int) -> int:

@@ -575,7 +575,7 @@ start와 end는 분리수거장입니다. points에는 순찰 지점만 있으�
 | --- | --- | --- | --- |
 | 로봇 등록 | POST /admin/robots | 총관리자 | 201 RobotResponse |
 | 전체·미배정 조회 | GET /admin/robots | 총관리자 | 200 RobotResponse[] |
-| 내 담당 공원의 로봇 조회 | GET /robots | 승인된 관리자 | 200 RobotResponse[] |
+| 내 담당 공원의 로봇 조회 | GET /robots | 승인된 관리자 | 200 ManagedRobot[] (13-1 참고) |
 
 ### POST /admin/robots 요청
 
@@ -605,6 +605,120 @@ name/serialNo는 공백 제거 후 1~100자이며 serialNo는 유일해야 합�
 조회 응답은 위 형식의 배열이며 없으면 []입니다. GET /admin/robots는 unassigned=false(기본)/true, limit=20(1~100), offset=0(0~10000)를 받습니다. unassigned=true는 parkId=null만 반환하며 로봇 가용 상태 필터는 아닙니다. 로봇 상태는 idle/working/charging/offline/error입니다.
 
 중복 기기 번호는 `409 robot_serial_exists`입니다. 등록만으로 로봇을 공원에 배정하지 않으며, 기존 승인 이후 별도 배정·회수·재배치 API는 아직 없습니다.
+
+## 13-1. 관리자 앱 — 로봇 목록·순찰 제어·로봇 요청 (A-01 홈 · A-13 로봇 목록)
+
+모두 승인된 관리자 토큰이 필요하고, 내 공원에 배정된 로봇만 다룹니다. 기준: Figma Page 5 "A-01 홈: 순찰 멈추기 (시안)", "A-13 로봇 목록".
+
+| 기능 | API | 성공 |
+| --- | --- | --- |
+| 로봇 목록 | GET /robots | 200 ManagedRobot[] |
+| 이름 바꾸기 | PATCH /robots/{id} `{"name"}` | 200 ManagedRobot |
+| 순찰 멈추기 | POST /robots/{id}/pause `{"mode": "stay" \| "return"}` | 200 ManagedRobot |
+| 순찰 다시 시작 · 지금 순찰 시작 | POST /robots/{id}/resume | 200 ManagedRobot |
+| 확인 중인 로봇 요청 | GET /robot-requests/current | 200 RobotRequest 또는 null |
+| 로봇 배정·추가 요청 | POST /robot-requests `{"count": 1~5, "memo"?: 300자}` | 201 RobotRequest |
+| 요청 취소 | POST /robot-requests/{id}/cancel | 200 RobotRequest |
+| 총관리자: 요청 목록 | GET /admin/robot-requests?status=pending | 200 (RobotRequest + parkId·parkName·requestedBy)[] |
+
+**ManagedRobot**
+
+```json
+{
+  "id": "1",
+  "name": "Jubi 1",
+  "state": "patrolling",
+  "battery": 72,
+  "nearPoint": "잔디광장",
+  "nextPoint": "공연장 앞",
+  "remainingPoints": 2,
+  "pausedAt": null,
+  "nextPatrolAt": "17:00",
+  "routePointCount": 3,
+  "patrolsPerDay": 4,
+  "todayPickups": 0
+}
+```
+
+- `state`: robots.status와 patrol_state를 합친 값. offline→`disconnected`, working→`patrolling`/`paused`/`returning`, 그 밖에는 `idle`(분리수거장 대기)·`charging`·`error`.
+- `battery`·`nearPoint`·`nextPoint`·`remainingPoints`는 로봇 브리지가 채우는 값이라 아직 null일 수 있어요. `todayPickups`는 수거 기록 테이블이 생기기 전까지 0이에요.
+- `nextPatrolAt`·`patrolsPerDay`는 켜진 시간표(한국 시각, daily/weekdays/weekends)로 계산해요. `routePointCount`는 지금 쓰는 경로의 지점 수예요.
+
+**규칙과 오류**
+
+- 이름은 앞뒤 공백 제거 후 1~10자, 공원 안에서 겹치면 `409 robot_name_taken`.
+- 멈추기는 순찰 중(`patrolling`)이나 돌아가는 중(`returning`)에서만 돼요. 아니면 `409 robot_not_patrolling`. `return`은 순찰 중일 때만 (`409 robot_already_returning`).
+- 다시 시작은 `paused`(남은 지점부터 이어서)·`idle`(시간표를 기다리지 않고 바로)에서만 돼요. 아니면 `409 robot_not_ready`.
+- 멈춘 동안에는 시간표가 와도 자동으로 다시 시작하지 않는 계약이에요. 실제 로봇에 명령을 보내는 브리지는 아직 없어서 상태만 기록해요.
+- 공원마다 확인 중인 요청은 하나: `409 robot_request_exists`. 확인 중이 아닌 요청 취소는 `409 robot_request_not_pending`. 총관리자의 요청 승인·반려 API는 아직 없어요.
+- 다른 공원 로봇·요청은 `404 robot_not_found`·`404 robot_request_not_found`.
+- 테이블: robots에 patrol_state·paused_at·battery·near_point·next_point·remaining_points 추가, robot_requests 신규 (마이그레이션 `20261120_0005`).
+
+## 13-2. 관리자 앱 — 알림 · 공원 변경 요청 · 운영 설정 · 알림 설정 (A-05 · A-06 · C-02 · A-12)
+
+모두 승인된 관리자 토큰이 필요하고 내 공원 것만 다뤄요. 마이그레이션 `20261120_0006`.
+
+| 기능 | API | 성공 |
+| --- | --- | --- |
+| 알림 목록 | GET /notifications?type=&limit=50 | 200 NotificationItem[] (최신순) |
+| 알림 상세 | GET /notifications/{id} | 200 NotificationDetail |
+| 확인 | POST /notifications/{id}/ack | 200 NotificationDetail |
+| 처리 완료 표시 | POST /notifications/{id}/resolve | 200 (집기 불가는 재확인을 대기열에 넣어요) |
+| 로봇 재확인 요청 | POST /notifications/{id}/recheck | 200 (집기 불가만, 아니면 `409 recheck_not_supported`) |
+| 확인 중인 공원 변경 | GET /park-change-requests/current | 200 ParkChange 또는 null |
+| 공원 변경 요청 | POST /park-change-requests `{"catalogId", "memo"?}` | 201 |
+| 요청 취소 | POST /park-change-requests/{id}/cancel | 200 |
+| 총관리자: 목록 · 승인 · 반려 | GET /admin/park-change-requests, POST …/{id}/approve, POST …/{id}/reject `{"reasonKind"?, "reason"}` | 200 |
+| 운영 설정 | GET · PUT /settings/operation `{"chargeAt", "emptyAt", "agentPaused"}` (0~100) | 200 |
+| 알림 설정 | GET · PATCH /settings/notifications `{"unpickable"?, "dailyReport"?}` | 200 |
+
+- NotificationItem: `id, type(robotError·unpickable·lowBattery·dailyReport·parkChange), status(new·acked·resolved), title, place, time('방금'·'11:02'·'어제 22:00'·'11월 17일'), note, pinned`.
+- NotificationDetail: 위 항목 + `happenedAt('오늘 09:50'), photoUrl, detection{label, confidence}, recheck{status(requested·stillThere·cleared), queuePosition, eta, checkedAt, photoUrl}, robotIssue{kind, since, lastPlace, battery, chargerDistanceM}, parkChange{result, requestedOn, currentPark, requestedPark, reasonKind, reason, robotNames}`. 유형마다 해당 묶음만 채워요.
+- 알림은 서버가 만들어요(`services/manager.create_notification`). 지금은 공원 변경 승인·반려 때 만들고, 로봇 오류·집기 불가·배터리 부족은 로봇 브리지·에이전트가 생기면 넣어요.
+- 공원 변경: 지금 공원(`same_park`)·이미 담당자가 있는 공원(`park_already_managed`)은 거부, 공원마다 확인 중 요청 하나(`park_change_exists`). 승인하면 같은 parks 행의 catalog_id를 바꿔 로봇이 같이 옮겨 가고, 경로·지점·시간표를 지우고 route_setup_done=false로 되돌려요(다음 로그인에서 처음 설정). 승인·반려 모두 관리자에게 `parkChange` 알림을 남겨요.
+- GET /parks 결과에 `hasManager`(승인된 담당 관리자가 있음)를 더했어요.
+- 운영 설정은 parks.charge_at·empty_at·agent_paused에 저장만 해요. 에이전트·로봇이 이 값을 읽는 부분은 아직 없어요.
+
+## 13-3. 관리자 앱 — 판단 로그 (A-08 · A-09 · 홈 "에이전트가 방금 한 일")
+
+| 기능 | API | 성공 |
+| --- | --- | --- |
+| 목록 | GET /logs?type=&date=YYYY-MM-DD&order=desc\|asc&limit=100 | 200 DecisionItem[] |
+| 상세 | GET /logs/{id} | 200 DecisionDetail |
+
+- 원천은 agent_runs(공원) · agent_steps(판단 하나)예요. 새 테이블은 없어요. `date`는 한국 날짜 기준이고 형식이 틀리면 `422 invalid_date`.
+- DecisionItem: `id, type(plan·recapture·pick·store·empty·notify·route·teleop·report — 모르는 step_type은 plan), time(HH:mm), title, summary, details, photoUrl`.
+- DecisionDetail: 위 항목 + `happenedAt, heading, tag, kicker{text, tone}, headline{text, tone}, photoSlot, shots[{photoUrl, caption, highlight}], facts[{label, value}], reason, boxes[{title, body}], cards[{title, lines, emphasis}], footer`.
+- 화면 묶음은 에이전트가 agent_steps.output에 같은 이름(summary · photoUrl · heading · tag · kicker · headline · photoSlot · shots · facts · reason · boxes · cards · footer)으로 남기면 그대로 보여요. facts가 없으면 decision(고른 행동) · reason(이유)으로 표를 만들어요.
+- 관리자가 경로를 저장하면(PUT /route · PUT /routes) 생기는 `route` 기록은 서버가 "현재 저장된 순찰 지점"과 바꾼 주체 · 적용 시점을 채워요.
+
+## 13-4. 관리자 앱 — 기간 보고 · 지도 현황 (A-10 · A-02 · A-03)
+
+| 기능 | API | 성공 |
+| --- | --- | --- |
+| 기간 보고 | GET /reports?from=YYYY-MM-DD&to=YYYY-MM-DD (한국 날짜, 둘 다 포함, 최대 92일) | 200 PeriodReport |
+| 지도 현황 | GET /map/overview | 200 MapOverview |
+
+- PeriodReport: `from, to, pickups, changePercent(바로 앞 같은 길이 기간 대비 %, 비교 기록이 없으면 null), pickSuccessRate(줍기 성공 ÷ (성공 + 집기 불가 알림), 없으면 null), patrols, stationVisits, byMaterial[{slot, count}], byPoint[{name, percent}], unresolved[{kind, title, body}]`. 오류: `422 invalid_date · invalid_period · period_too_long`.
+- MapOverview: `parkName, bounds, area, markers[{id, type(station·unpickable), label, position, detail?}], route(지점 순서 + 처음으로), heat[{position, weight 0~1}], updatedAt`. 집기 불가 마커의 detail은 `place, material, confidence, lastSeen, photoUrl, notificationId`.
+- 새 테이블은 없어요. 원천: agent_steps.output(pick: success · slot · point · position, plan: missedPoints), empty 단계 수, agent_runs.trigger=patrol, 알림(집기 불가 · 로봇 오류, payload.position · detection · photoUrl), 순찰 설정(분리수거장 · 경로).
+- 히트맵은 최근 7일 줍기 위치를 약 10m 칸(소수점 넷째 자리)으로 묶어 가장 많은 칸을 1로 맞춰요.
+- 로봇 위치는 아직 저장하지 않아서 지도에 로봇 마커는 서버에서 오지 않아요 (로봇 브리지가 생기면 추가).
+
+## 13-5. 관리자 앱 — 분리수거장 관리 (C-02)
+
+| 기능 | API | 성공 |
+| --- | --- | --- |
+| 목록 | GET /stations | 200 Station[] |
+| 추가 | POST /stations `{"name": 1~20자, "position"}` | 201 Station |
+| 이름 · 위치 바꾸기 | PATCH /stations/{id} `{"name"?, "position"?}` | 200 Station |
+| 삭제 | DELETE /stations/{id} | 200 Station[] (남은 목록) |
+| 로봇이 비우러 갈 곳 | PUT /robots/{id}/station `{"stationId"}` | 200 Station[] |
+
+- Station: `id, name, position, primary(경로가 기준으로 삼는 기본 분리수거장), robots[{id, name}](이곳을 비우러 가는 로봇)`.
+- 분리수거장은 공원마다 여러 곳일 수 있어요 (마이그레이션 `20261120_0007`에서 한 곳 제한을 없애고 robots.station_id를 추가했어요). station_id가 비어 있는 로봇은 기본 분리수거장을 써요.
+- 삭제: 쓰는 로봇이 있으면 `409 station_in_use` (details에 로봇 목록), 마지막 한 곳은 `409 last_station`. 기본 분리수거장을 지우면 남은 곳 중 가장 먼저 등록한 곳이 기본이 돼요.
+- 위치는 공원 경계 안이어야 해요 (`422 point_outside_park`). 순찰 설정의 PUT /station · PUT /route는 기본 분리수거장만 바꾸고 다른 분리수거장은 그대로 둬요.
 
 ---
 

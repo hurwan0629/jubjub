@@ -69,8 +69,3 @@ def list_robots(
     offset: int = Query(0, ge=0, le=10000),
 ):
     return approval.list_robots(db, user, unassigned, limit, offset)
-
-
-@router.get("/robots", response_model=list[RobotResponse])
-def my_robots(db: DB, user: Admin):
-    return approval.my_robots(db, user)

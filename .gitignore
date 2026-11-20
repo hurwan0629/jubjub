@@ -86,3 +86,6 @@ server/storage/
 
 # Local server tests
 server/tests/test_*.py
+
+# 로컬 개발용 SQLite (python -m app.scripts.seed_local)
+server/local.db

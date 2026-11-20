@@ -14,7 +14,7 @@ type FilterChipProps = {
   minWidth?: number;
 };
 
-/** 필터 칩 (선택하면 체크 아이콘) */
+/** 필터 칩 (선택하면 체크 아이콘). Figma Page 5 "필터 칩" */
 export function FilterChip({ label, selected, onPress, minWidth }: FilterChipProps) {
   return (
     <Pressable
@@ -24,7 +24,7 @@ export function FilterChip({ label, selected, onPress, minWidth }: FilterChipPro
       style={[s.chip, selected ? s.chipOn : s.chipOff, minWidth ? { minWidth } : null]}
     >
       {selected ? <Icon source={icons.check} size={16} /> : null}
-      <Text variant="13-semibold" color={selected ? 'card' : 'textSub'}>
+      <Text variant="13-semibold" color={selected ? 'card' : 'chipIdleText'}>
         {label}
       </Text>
     </Pressable>
@@ -49,12 +49,12 @@ const s = StyleSheet.create({
     minWidth: 78,
     paddingHorizontal: space[16],
     borderRadius: radius.pill,
-    borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
   },
-  chipOn: { backgroundColor: colors.brand, borderColor: colors.brand },
-  chipOff: { backgroundColor: colors.card, borderColor: colors.border },
+  // Page 5: 선택 안 된 칩은 테두리 없이 옅은 파랑으로 채워요
+  chipOn: { backgroundColor: colors.brand },
+  chipOff: { backgroundColor: colors.chipIdle },
 });

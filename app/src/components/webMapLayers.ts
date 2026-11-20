@@ -3,6 +3,7 @@ import type * as Leaflet from 'leaflet';
 import type { LatLng } from '@/api/types';
 import { colors } from '@/theme';
 
+import { heatOpacity, heatRadius } from './parkMapTypes';
 import type { ParkMapProps } from './parkMapTypes';
 
 export const mapCoordinate = (p: LatLng): Leaflet.LatLngTuple => [p.latitude, p.longitude];
@@ -11,7 +12,13 @@ export const mapCoordinate = (p: LatLng): Leaflet.LatLngTuple => [p.latitude, p.
 export function drawParkOverlays(
   lib: typeof Leaflet,
   group: Leaflet.LayerGroup,
-  { area, route, markers = [], onMarkerPress }: Pick<ParkMapProps, 'area' | 'route' | 'markers' | 'onMarkerPress'>,
+  {
+    area,
+    route,
+    markers = [],
+    heat = [],
+    onMarkerPress,
+  }: Pick<ParkMapProps, 'area' | 'route' | 'markers' | 'heat' | 'onMarkerPress'>,
   dom: Pick<Document, 'createElement'> = document,
 ) {
   if (area && area.outer.length >= 3) {
@@ -28,6 +35,17 @@ export function drawParkOverlays(
       )
       .addTo(group);
   }
+  heat.forEach((h) => {
+    lib
+      .circle(mapCoordinate(h.position), {
+        radius: heatRadius(h.weight),
+        stroke: false,
+        fillColor: colors.brand,
+        fillOpacity: heatOpacity(h.weight),
+        interactive: false,
+      })
+      .addTo(group);
+  });
   if (route && route.length > 1) {
     lib
       .polyline(route.map(mapCoordinate), { color: colors.brand, weight: 3, dashArray: '5 6', interactive: false })

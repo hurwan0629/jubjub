@@ -137,4 +137,10 @@ export const mockParks: Park[] = [
   parkFrom('hangang', '한강공원', '서울 영등포구 여의동로 330', '2.1km', HANGANG_AREA),
   parkFrom('banpo', '반포한강공원', '서울 서초구 신반포로11길 40', '6.8km', shiftArea(HANGANG_AREA, -0.017, 0.064)),
   parkFrom('ttukseom', '뚝섬한강공원', '서울 광진구 강변북로 139', '12.4km', shiftArea(HANGANG_AREA, 0.002, 0.135)),
+  parkFrom('nanji', '난지한강공원', '서울 마포구 한강난지로 162', '8.2km', shiftArea(HANGANG_AREA, 0.04, -0.03)),
 ];
+
+/** 공원 변경 요청 목업: 이미 담당 관리자가 있는 공원 (C-02 공원 고르기에서 흐리게 보여요) */
+mockParks.forEach((p) => {
+  p.hasManager = p.id === 'hangang' || p.id === 'banpo';
+});

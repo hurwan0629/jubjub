@@ -32,6 +32,35 @@ export const colors = {
   warn: '#ffc94a', // 상태/주의 (주의 옐로: 적재율 80% 이상 등)
   error: '#ef6472', // 상태/오류 (오류 레드)
 
+  // Page 5 시안 (A-01 순찰 멈추기 · A-13 로봇 목록). Figma 변수가 아직 없어 시안 값을 그대로 옮겼어요.
+  textBody: '#586174', // 시트·요약 설명 글자 (글자/보조보다 진해요)
+  textMuted: '#525e75', // 로봇 카드 아래 순찰 경로 요약
+  textPlaceholder: '#a7b0c0', // 입력칸 안내 글자 · 비활성 − 버튼
+  onBrandBadge: '#4356ad', // 파란 로봇 카드 위 "정상" · "충전" 배지
+  highlight: '#ffe078', // 파란 로봇 카드의 아이콘 받침 · "멈춤" · "복귀 중" 배지
+  onHighlight: '#4b3c0b', // 노란 배지 글자
+  onBrandSoft: 'rgba(255, 255, 255, 0.22)', // 파란 카드 위 반투명 버튼 (순찰 멈추기)
+  chipIdle: '#e2ebff', // 선택 안 된 로봇 칩
+  chipIdleText: '#162044',
+  bgSubtle: '#f6f8fc', // 로봇 카드 아래 띠
+  bgPending: '#fff4d6', // "확인 중" 배지
+  errorText: '#cc293d', // 빨간 카드 위 "오류" 배지 글자
+  radioOff: '#c8cfda',
+  toast: '#222e45', // 토스트 바탕 (글자/기본)
+  textStrong: '#334059', // 알림 상세 "마지막 위치" 제목
+  mapLabel: '#68816d', // 미니 지도 위 장소 글자
+  walkway: '#fffef8', // 미니 지도 산책로
+  bgOrange: '#fff0e0', // "공원 변경" 배지 · 아이콘 받침
+  orangeText: '#c4620a',
+  rejectBg: '#fdeced', // 반려 사유 상자
+  rejectText: '#e1484d',
+  rejectBorder: '#f6c8ca', // 반려 알림 카드 테두리
+  orangeBorder: '#ffd9b3', // 공원 변경 확인 중 카드 테두리
+  divider: '#eef1f6', // 공원 목록 구분선
+  heatMid: '#c1caff', // 히트맵 범례 (데이터/종이와 같은 값)
+  heatHigh: '#a3b0ff', // 히트맵 범례 (데이터/캔과 같은 값)
+  heatTop: '#8d9fff', // 히트맵 범례 가장 진한 칸
+
   // 외부 브랜드
   kakao: '#fee500', // 카카오 브랜드 가이드
   kakaoText: '#191919',
@@ -65,6 +94,7 @@ export const tones = {
   warn: { fg: 'textWarn', bg: 'bgWarn' },
   error: { fg: 'error', bg: 'bgError' },
   neutral: { fg: 'textSub', bg: 'bgPhoto' },
+  orange: { fg: 'orangeText', bg: 'bgOrange' }, // 공원 변경 (Page 5)
 } as const satisfies Record<string, { fg: ColorName; bg: ColorName }>;
 
 export type Tone = keyof typeof tones;

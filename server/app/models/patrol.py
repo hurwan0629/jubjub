@@ -60,6 +60,10 @@ class Park(Base):
     reject_reason: Mapped[str | None] = mapped_column(Text)
     route_setup_done: Mapped[bool] = mapped_column(Boolean, server_default=false())
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # A-12 운영 설정: 충전하러 갈 배터리 · 분리수거장에 갈 칸 적재율(%) · 에이전트 일시 정지
+    charge_at: Mapped[int] = mapped_column(SmallInteger, server_default=text("20"))
+    empty_at: Mapped[int] = mapped_column(SmallInteger, server_default=text("80"))
+    agent_paused: Mapped[bool] = mapped_column(Boolean, server_default=false())
     catalog: Mapped[ParkCatalogEntry] = relationship(lazy="joined")
 
 
@@ -68,13 +72,7 @@ class PatrolPoint(Base):
     __table_args__ = (
         CheckConstraint("type IN ('patrol', 'station', 'charger', 'bin')", name="point_type"),
         CheckConstraint("lat BETWEEN -90 AND 90 AND lng BETWEEN -180 AND 180", name="point_coordinates"),
-        Index(
-            "uq_points_live_station",
-            "park_id",
-            unique=True,
-            postgresql_where=text("type = 'station' AND deleted_at IS NULL"),
-            sqlite_where=text("type = 'station' AND deleted_at IS NULL"),
-        ),
+        # 분리수거장은 공원마다 여러 곳일 수 있어요 (20261120_0007에서 한 곳 제한을 없앴어요)
     )
 
     id: Mapped[int] = mapped_column(ID, Identity(always=True), primary_key=True)

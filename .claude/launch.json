@@ -6,6 +6,24 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "app", "run", "web", "--", "--port", "8081"],
       "port": 8081
+    },
+    {
+      "name": "jubjub-web-mock",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "-e",
+        "require('child_process').spawn('npx expo start --web --port 8082', { cwd: 'app', stdio: 'inherit', shell: true, env: { ...process.env, EXPO_PUBLIC_API_URL: '' } })"
+      ],
+      "port": 8082
+    },
+    {
+      "name": "jubjub-server-local",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "-e",
+        "require('child_process').spawn('.venv\\\\Scripts\\\\python.exe -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000', { cwd: 'server', stdio: 'inherit', shell: true, env: { ...process.env, DATABASE_URL: 'sqlite:///./local.db', PYTHONIOENCODING: 'utf-8' } })"
+      ],
+      "port": 8000
     }
   ]
 }

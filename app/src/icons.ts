@@ -6,6 +6,7 @@ export const icons = {
   check: require('../assets/icons/check.svg'),
   unreadDot: require('../assets/icons/unread-dot.svg'),
   timeline: require('../assets/icons/timeline.svg'),
+  timelineDot: require('../assets/icons/timeline-dot.svg'), // 판단 로그 시간 흐름 점 (10px)
 
   // 홈
   bot: require('../assets/icons/bot.svg'),
@@ -32,6 +33,14 @@ export const icons = {
   pin: require('../assets/icons/pin.svg'),
   alertTriangleRed: require('../assets/icons/alert-triangle-red.svg'),
   chartBrand: require('../assets/icons/chart-brand.svg'),
+  alertParkChange: require('../assets/icons/alert-park-change.svg'), // 36px 주황 받침 포함
+  bellEmpty: require('../assets/icons/bell-empty.svg'),
+  checkEmpty: require('../assets/icons/check-empty.svg'),
+  camera: require('../assets/icons/camera.svg'),
+  mapPinSub: require('../assets/icons/map-pin-sub.svg'), // 회색 위치 핀 (알림 상세)
+  arrowRight: require('../assets/icons/arrow-right.svg'),
+  walkwayA: require('../assets/icons/walkway-a.svg'), // 미니 지도 산책로 (95 × 10)
+  walkwayB: require('../assets/icons/walkway-b.svg'), // 미니 지도 산책로 (106 × 10)
 
   // 보고
   datePrev: require('../assets/icons/date-prev.svg'),
@@ -77,6 +86,21 @@ export const icons = {
   chevronRight: require('../assets/icons/chevron-right.svg'),
   lockSmall: require('../assets/icons/lock-small.svg'),
   toggleKnob: require('../assets/icons/toggle-knob.svg'),
+
+  // 홈 순찰 멈추기 · 로봇 목록 (Page 5)
+  botOnYellow: require('../assets/icons/bot-on-yellow.svg'), // 파란 로봇 카드의 노란 받침 위
+  botGray: require('../assets/icons/bot-gray.svg'), // 로봇 배정 전 카드
+  batteryChargingLg: require('../assets/icons/battery-charging-lg.svg'), // 22px (로봇 목록)
+  play: require('../assets/icons/play.svg'),
+  radioOn: require('../assets/icons/radio-on.svg'),
+  radioOff: require('../assets/icons/radio-off.svg'),
+  radioDisabled: require('../assets/icons/radio-disabled.svg'),
+  editButton: require('../assets/icons/edit-button.svg'), // 28px 원 안 연필 (로봇 이름 수정)
+  toastDone: require('../assets/icons/toast-done.svg'), // 토스트 완료 표시 (초록 원)
+
+  // 알림 상세 일러스트 (A-06)
+  artRobotError: require('../assets/images/robot-error.png'),
+  artRobotBattery: require('../assets/images/robot-battery.png'),
 
   // 하단 탭
   tab: {

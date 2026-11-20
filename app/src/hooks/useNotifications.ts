@@ -1,4 +1,4 @@
-import { getNotifications } from '@/api/notifications';
+import { getNotification, getNotifications } from '@/api/notifications';
 import type { NotificationType } from '@/api/types';
 
 import { useApi } from './useApi';
@@ -12,4 +12,9 @@ export function useNotifications(type?: NotificationType) {
 export function useUnreadCount() {
   const { data } = useNotifications();
   return data ? data.filter((n) => n.status === 'new').length : 0;
+}
+
+/** 알림 상세 (A-06) */
+export function useNotificationDetail(id: string) {
+  return useApi(() => getNotification(id), [id]);
 }

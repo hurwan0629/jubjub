@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
-from app.models import User
+from app.models import Robot, User
 from app.models.park_catalog import ParkCatalogEntry
 from app.models.patrol import AgentRun, AgentStep, Park, PatrolPoint, Route, RoutePoint, Schedule
 from app.schemas.parks import LatLng
@@ -84,10 +84,18 @@ def _position(point: PatrolPoint | None) -> LatLng | None:
 
 
 def _station(db: Session, park: Park) -> PatrolPoint | None:
+    """공원의 기본 분리수거장: 지금 경로가 기준으로 삼는 곳, 경로가 없으면 가장 먼저 등록한 곳이에요.
+    분리수거장은 여러 곳일 수 있어요 (C-02 분리수거장 관리). 로봇마다 고른 곳은 robots.station_id에 있어요."""
+    route = _route(db, park)
+    if route:
+        base = db.get(PatrolPoint, route.station_id)
+        if base is not None and base.deleted_at is None:
+            return base
     return db.scalar(
-        select(PatrolPoint).where(
-            PatrolPoint.park_id == park.id, PatrolPoint.type == "station", PatrolPoint.deleted_at.is_(None)
-        )
+        select(PatrolPoint)
+        .where(PatrolPoint.park_id == park.id, PatrolPoint.type == "station", PatrolPoint.deleted_at.is_(None))
+        .order_by(PatrolPoint.id)
+        .limit(1)
     )
 
 
@@ -180,11 +188,23 @@ def _save_station(db: Session, park: Park, position: LatLng) -> PatrolPoint:
     current = _station(db, park)
     if current and current.lat == position.latitude and current.lng == position.longitude:
         return current
-    _hide_points(db, park, "station")
+    # 기본 분리수거장만 새 위치로 바꿔요. 다른 분리수거장은 그대로 둬요.
     point = PatrolPoint(
-        park_id=park.id, name="분리수거장", type="station", lat=position.latitude, lng=position.longitude
+        park_id=park.id,
+        name=current.name if current else "분리수거장",
+        type="station",
+        lat=position.latitude,
+        lng=position.longitude,
     )
     db.add(point)
+    db.flush()
+    if current:
+        current.deleted_at = datetime.now(UTC)
+        for robot in db.scalars(select(Robot).where(Robot.station_id == current.id)):
+            robot.station_id = point.id
+    route = _route(db, park)
+    if route:
+        route.station_id = point.id
     db.flush()
     return point
 

@@ -9,8 +9,26 @@ export const mockMapOverview: MapOverview = {
   markers: [
     { id: 'robot', type: 'robot', label: 'Jubi', position: S.robot },
     { id: 'station', type: 'station', label: '분리수거장', position: S.station },
-    { id: 'n1', type: 'unpickable', label: '깨진 유리', position: S.unpickable },
+    {
+      id: 'n1',
+      type: 'unpickable',
+      label: '깨진 유리',
+      position: S.unpickable,
+      detail: {
+        place: '벤치 쉼터',
+        material: '유리',
+        confidence: 91,
+        lastSeen: '09:50',
+        photoUrl: 'mock:glass',
+        notificationId: 'a2',
+      },
+    },
   ],
   route: [S.lawn, S.stage, S.bench, S.station, S.lawn],
+  heat: [
+    { position: S.stage, weight: 1 },
+    { position: S.lawn, weight: 0.6 },
+    { position: S.bench, weight: 0.35 },
+  ],
   updatedAt: '2026-11-10T14:08:00+09:00',
 };

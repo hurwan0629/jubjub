@@ -18,6 +18,14 @@ export type ParkMapMarker = {
   order?: number;
 };
 
+/** 히트맵 한 칸: 이 자리에 쓰레기가 얼마나 자주 있었는지 (weight 0~1) */
+export type ParkMapHeat = { position: LatLng; weight: number };
+
+/** 히트맵 원 반지름(m): 많을수록 크게 */
+export const heatRadius = (weight: number) => 60 + 100 * weight;
+/** 히트맵 원 진하기: 많을수록 진하게 */
+export const heatOpacity = (weight: number) => 0.18 + 0.4 * weight;
+
 /** 지도 조작 버튼(공원 가운데로 · 확대 · 축소)이 부르는 동작 */
 export type ParkMapHandle = {
   zoomIn: () => void;
@@ -37,6 +45,8 @@ export type ParkMapProps = {
   markers?: ParkMapMarker[];
   /** 점선으로 그릴 순찰 경로 (처음 지점으로 돌아오려면 마지막에 처음 좌표를 한 번 더 넣어요) */
   route?: LatLng[];
+  /** 히트맵 (A-02 히트맵): 쓰레기가 자주 나온 자리를 옅은 파랑 원으로 칠해요 */
+  heat?: ParkMapHeat[];
   /** 공원 안을 꾹 눌렀을 때 그 좌표 */
   onLongPress?: (position: LatLng) => void;
   /** 공원 밖(경계 밖의 도로 · 건물 등)을 꾹 눌렀을 때 (안내 문구를 보여 줄 때 써요) */
