@@ -65,4 +65,4 @@ def test_charging_is_rejected_by_database_and_api_contract(setup_client):
         db.commit()
     db.rollback()
     statuses = app.openapi()["components"]["schemas"]["RobotResponse"]["properties"]["status"]["enum"]
-    assert set(statuses) == {"working", "emptying", "idle", "error", "offline"}
+    assert set(statuses) == {"working", "returning", "emptying", "idle", "error", "offline"}

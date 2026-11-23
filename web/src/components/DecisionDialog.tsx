@@ -33,6 +33,10 @@ export function DecisionDialog({
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (busy) return;
+    if (action === 'approve' && row.canApprove === false) {
+      setError(row.approvalBlockReason ?? '현재 승인할 수 없는 신청이에요');
+      return;
+    }
     setError('');
     try {
       await onSubmit(reason.trim(), selected);
@@ -64,6 +68,11 @@ export function DecisionDialog({
           </div>
           {action === 'approve' ? (
             <>
+              {row.approvalBlockReason && (
+                <p className="error-text" role="alert">
+                  {row.approvalBlockReason}
+                </p>
+              )}
               <h3>담당 로봇 선택 (선택)</h3>
               <p className="muted">미할당 로봇만 선택할 수 있어요. 로봇 없이도 가입을 승인할 수 있어요.</p>
               {eligible.length === 0 ? (
@@ -122,7 +131,9 @@ export function DecisionDialog({
           </button>
           <button
             className={`button ${action === 'approve' ? 'primary' : 'danger'}`}
-            disabled={busy || (action !== 'approve' && !reason.trim())}
+            disabled={
+              busy || (action === 'approve' && row.canApprove === false) || (action !== 'approve' && !reason.trim())
+            }
           >
             {busy ? '처리 중…' : LABEL[action]}
           </button>

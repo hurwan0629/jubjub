@@ -19,13 +19,12 @@ from app.services import photo_storage
 logger = logging.getLogger(__name__)
 
 
-def _detection(db: Session, user: User, detection_id: int) -> Detection:
+def _detection(db: Session, user: User, detection_id: int, *, allow_admin=False) -> Detection:
     try:
-        item = db.scalar(
-            select(Detection)
-            .join(Park, Detection.park_id == Park.id)
-            .where(Detection.id == detection_id, Park.user_id == user.id, Park.status == "approved")
-        )
+        statement = select(Detection).join(Park, Detection.park_id == Park.id).where(Detection.id == detection_id)
+        if not (allow_admin and user.role == "super_admin"):
+            statement = statement.where(Park.user_id == user.id, Park.status == "approved")
+        item = db.scalar(statement)
     except SQLAlchemyError:
         db.rollback()
         raise AppError(503, "사진 정보를 조회하지 못했어요", code="photo_db_unavailable") from None
@@ -35,7 +34,9 @@ def _detection(db: Session, user: User, detection_id: int) -> Detection:
 
 
 def _valid_key(item: Detection) -> bool:
-    return bool(re.fullmatch(rf"parks/{item.park_id}/detections/{item.id}/[0-9a-f]{{32}}\.(png|jpg)", item.image_path))
+    return bool(
+        re.fullmatch(rf"parks/{item.park_id}/detections/{item.id}/[0-9a-f]{{32}}\.(png|jpg)", item.image_path)
+    ) or (item.image_path == f"detections/{item.client_detection_id}.jpg")
 
 
 def validate_image(data: bytes, content_type: str) -> str:
@@ -95,7 +96,7 @@ def upload(db: Session, user: User, detection_id: int, data: bytes, content_type
 
 
 def read(db: Session, user: User, detection_id: int):
-    item = _detection(db, user, detection_id)
+    item = _detection(db, user, detection_id, allow_admin=True)
     if not _valid_key(item):
         raise AppError(404, "등록된 R2 사진이 없어요", code="photo_not_found")
     return {"url": photo_storage.get_photo_storage().read_url(item.image_path), "expiresIn": photo_storage.URL_SECONDS}

@@ -31,10 +31,29 @@ process.env.EXPO_PUBLIC_API_URL = 'http://localhost:8000';
 const auth = require('../src/api/auth.ts');
 const client = require('../src/api/client.ts');
 const parks = require('../src/api/parks.ts');
+const robotProtocol = require('../src/api/robotProtocol.ts');
 const routes = require('../src/api/route.ts');
 const calls = [];
 let response = {};
 let status = 200;
+
+test('새 로봇 API는 선택한 로봇으로 순찰 제어와 기록을 조회한다', async () => {
+  response = {};
+  await robotProtocol.startPatrol('7');
+  assert.equal(calls.at(-1).url, 'http://localhost:8000/robots/7/patrol/start');
+  assert.equal(calls.at(-1).method, 'POST');
+  await robotProtocol.stopPatrol('7');
+  assert.equal(calls.at(-1).url, 'http://localhost:8000/robots/7/patrol/stop');
+  response = [];
+  await robotProtocol.getDetections('7');
+  assert.equal(calls.at(-1).url, 'http://localhost:8000/robots/7/detections');
+});
+
+test('복귀 중인 로봇도 홈 상태로 표시한다', async () => {
+  response = [{ id: '7', name: 'A', status: 'returning' }];
+  const robots = await require('../src/api/robot.ts').getHomeRobots();
+  assert.equal(robots[0].state, 'returning');
+});
 
 test('route writes carry the original catalog and propagate a park change conflict', async () => {
   response = {};
