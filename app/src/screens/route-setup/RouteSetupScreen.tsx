@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { logout } from '@/api/account';
 import { saveRouteConfig } from '@/api/route';
 import type { LatLng, PatrolPoint, PatrolSlot, RouteConfig } from '@/api/types';
 import { Button, Header, Text } from '@/components';
@@ -73,14 +72,12 @@ function SetupWizard({
   const [error, setError] = useState<string>();
   const park = managed ? { ...managed, id: managed.catalogId, distance: '' } : null;
   const goHome = () => navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
-  const exit = async () => {
-    await logout();
-    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-  };
+  // 홈의 "jubi의 경로를 정해주세요" 버튼에서 들어와요. 첫 단계에서 뒤로 가면 홈으로 돌아가요.
+  const exit = () => (navigation.canGoBack() ? navigation.goBack() : goHome());
   const prev = () => {
     if (saving) return;
     setError(undefined);
-    if (step === 1) void exit();
+    if (step === 1) exit();
     else setStep(step - 1);
   };
   const next = async () => {
@@ -124,7 +121,7 @@ function SetupWizard({
         {!loading ? (
           <>
             <Button label="다시 불러오기" onPress={reload} />
-            <Button label="로그인 화면으로" variant="soft" onPress={exit} />
+            <Button label="홈으로" variant="soft" onPress={exit} />
           </>
         ) : null}
       </View>
@@ -136,7 +133,9 @@ function SetupWizard({
         footer = <Footer nextLabel="시작하기" onNext={next} />;
         break;
       case 2:
-        body = <StepRecycle bounds={park.bounds} area={park.area} recycle={recycle} onSet={setRecycle} />;
+        body = (
+          <StepRecycle bounds={park.bounds} area={park.area} recycle={recycle} points={points} onSet={setRecycle} />
+        );
         footer = <Footer onPrev={prev} nextDisabled={!recycle} onNext={next} />;
         break;
       case 3:

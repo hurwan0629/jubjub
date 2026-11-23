@@ -8,7 +8,7 @@ import type { ParkMapMarker } from '@/components';
 import { useParkSearch } from '@/hooks/useParks';
 import { icons } from '@/icons';
 import { colors, layout, radius, space, typography } from '@/theme';
-import { lapMinutes, loopPath, nextPatrolTime, REPEAT_LABEL } from '@/utils/route';
+import { isTooFar, lapMinutes, loopPath, nextPatrolTime, REPEAT_LABEL } from '@/utils/route';
 
 const MAP_HEIGHT = 290;
 const InfoBar = MapHint;
@@ -29,15 +29,30 @@ function routeMarkers(points: PatrolPoint[], recycle: LatLng | null, recycleLabe
   ];
 }
 
-/** 공원 범위 밖을 꾹 눌렀을 때 잠깐 보여 줄 안내 */
+/** 공원 범위 밖 · 기존 지점에서 너무 먼 곳을 꾹 눌렀을 때 보여 줄 안내 */
 function useOutsideNotice() {
   const [outside, setOutside] = useState(false);
+  const [tooFar, setTooFar] = useState(false);
   return {
     outside,
-    onInside: () => setOutside(false),
-    onOutside: () => setOutside(true),
+    tooFar,
+    onInside: () => {
+      setOutside(false);
+      setTooFar(false);
+    },
+    onOutside: () => {
+      setOutside(true);
+      setTooFar(false);
+    },
+    onTooFar: () => {
+      setOutside(false);
+      setTooFar(true);
+    },
   };
 }
+
+/** 1km 제한 안내 문구 */
+const TOO_FAR_TEXT = '기존 지점에서 1km 넘게 떨어져 있어요. 더 가까운 곳을 꾹 눌러 주세요';
 
 /* ---------- 1. 안내 ---------- */
 const GUIDE = [
@@ -224,11 +239,14 @@ export function StepRecycle({
   bounds,
   area,
   recycle,
+  points = [],
   onSet,
 }: {
   bounds: ParkBounds;
   area: ParkArea;
   recycle: LatLng | null;
+  /** 이미 찍은 순찰 지점 (뒤로 와서 분리수거장을 옮길 때 1km 제한에 써요) */
+  points?: PatrolPoint[];
   onSet: (p: LatLng) => void;
 }) {
   const notice = useOutsideNotice();
@@ -239,25 +257,45 @@ export function StepRecycle({
         <Text variant="13-regular" color="textSub" lineHeight="relaxed">
           Jubi가 칸을 비우러 가는 곳이에요. 1곳만 정할 수 있어요
         </Text>
+        {/* 분리수거장은 순찰의 출발 · 종료 지점이에요 */}
+        <View style={s.startEndNote}>
+          <Icon source={icons.legendRecycle} size={18} />
+          <Text variant="13-semibold" color="textDone" style={s.flex1}>
+            로봇이 여기서 출발해 여기로 돌아와요
+          </Text>
+        </View>
       </View>
       <ParkMap
         style={s.mapBox}
         bounds={bounds}
         area={area}
-        markers={routeMarkers([], recycle, true)}
+        markers={routeMarkers(points, recycle, true)}
         onLongPress={(p) => {
+          // 이미 찍은 순찰 지점이 있으면(뒤로 와서 옮길 때) 그 지점들에서 1km 안에만 둘 수 있어요
+          if (
+            isTooFar(
+              p,
+              points.map((pt) => pt.position),
+            )
+          ) {
+            notice.onTooFar();
+            return;
+          }
           notice.onInside();
           onSet(p);
         }}
         onLongPressOutside={notice.onOutside}
       />
       <InfoBar
+        tone={notice.outside || notice.tooFar ? 'error' : 'brand'}
         text={
           notice.outside
             ? '공원 밖이에요. 공원 안을 꾹 눌러 주세요'
-            : recycle
-              ? '다른 곳을 꾹 누르면 위치를 옮길 수 있어요'
-              : '지도를 꾹 눌러 분리수거장 위치를 찍어요'
+            : notice.tooFar
+              ? TOO_FAR_TEXT
+              : recycle
+                ? '다른 곳을 꾹 누르면 위치를 옮길 수 있어요'
+                : '지도를 꾹 눌러 분리수거장 위치를 찍어요'
         }
       />
       <View style={s.padTop}>
@@ -272,7 +310,7 @@ export function StepRecycle({
                 Jubi가 칸을 비우는 곳 · 1곳
               </Text>
               <Text variant="12-regular" color="textSub">
-                이 지점으로 Jubi가 돌아옵니다
+                순찰을 여기서 출발해 여기로 돌아와요
               </Text>
             </View>
             <Text variant="12-semibold" color={recycle ? 'textDone' : 'textSub'}>
@@ -328,15 +366,28 @@ export function StepPoints({
           bounds={bounds}
           area={area}
           markers={routeMarkers(points, recycle)}
-          route={points.map((p) => p.position)}
+          route={recycle ? [recycle, ...points.map((p) => p.position)] : points.map((p) => p.position)}
           onLongPress={(p) => {
+            // 이미 찍은 지점(분리수거장 포함)에서 1km 넘게 떨어진 곳에는 핀을 꽂지 않아요
+            const existing = [...(recycle ? [recycle] : []), ...points.map((pt) => pt.position)];
+            if (isTooFar(p, existing)) {
+              notice.onTooFar();
+              return;
+            }
             notice.onInside();
             setPending(p);
           }}
           onLongPressOutside={notice.onOutside}
         />
         <InfoBar
-          text={notice.outside ? '공원 밖이에요. 공원 안을 꾹 눌러 주세요' : '지도를 꾹 눌러 순찰 지점을 추가해요'}
+          tone={notice.outside || notice.tooFar ? 'error' : 'brand'}
+          text={
+            notice.outside
+              ? '공원 밖이에요. 공원 안을 꾹 눌러 주세요'
+              : notice.tooFar
+                ? TOO_FAR_TEXT
+                : '지도를 꾹 눌러 순찰 지점을 추가해요'
+          }
         />
         <View style={s.listHead}>
           <Text variant="17-bold">순찰 지점</Text>
@@ -397,7 +448,7 @@ export function StepOrder({
         </Text>
       </View>
       <View style={s.padX}>
-        <PointList points={points} reorder onMove={onMove} onRemove={onRemove} />
+        <PointList points={points} reorder onMove={onMove} onRemove={onRemove} stationFixed={!!recycle} />
       </View>
     </ScrollView>
   );
@@ -481,6 +532,17 @@ export function StepDone({
 
 const s = StyleSheet.create({
   flex: { flex: 1 },
+  flex1: { flex: 1 },
+  // 분리수거장 단계: "로봇이 여기서 출발해 여기로 돌아와요"
+  startEndNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space[8],
+    paddingHorizontal: space[12],
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: colors.bgDone,
+  },
   textCol: { flex: 1, gap: 2 },
   textColLoose: { flex: 1, gap: 3 },
   flexMt8: { flex: 1, marginTop: space[8] },

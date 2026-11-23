@@ -9,10 +9,26 @@ const ROBOT_METERS_PER_MIN = 30;
 
 type PointLike = Pick<PatrolPoint, 'position'>;
 
-/** 한 바퀴: 지점들 → 분리수거장 → 처음 지점 */
+/** 새 지점은 이미 찍힌 지점(분리수거장 포함)에서 이 거리 안에만 꽂을 수 있어요 */
+export const MAX_POINT_GAP_METERS = 1000;
+
+/**
+ * 한 바퀴: 분리수거장에서 출발 → 지점들을 순서대로 → 분리수거장으로 돌아와요.
+ * 분리수거장을 아직 안 정했으면 처음 지점으로 돌아와요.
+ */
 export function loopPath(points: PointLike[], station: LatLng | null): LatLng[] {
   if (points.length === 0) return [];
-  return [...points.map((p) => p.position), ...(station ? [station] : []), points[0].position];
+  const path = points.map((p) => p.position);
+  return station ? [station, ...path, station] : [...path, path[0]];
+}
+
+/**
+ * 새로 꽂을 위치가 이미 찍힌 지점(분리수거장 포함) 중 가장 가까운 곳에서 1km를 넘는지.
+ * 찍힌 지점이 하나도 없으면 막지 않아요.
+ */
+export function isTooFar(position: LatLng, existing: LatLng[], maxMeters = MAX_POINT_GAP_METERS) {
+  if (existing.length === 0) return false;
+  return Math.min(...existing.map((p) => distanceMeters(p, position))) > maxMeters;
 }
 
 /** 한 바퀴 예상 시간(분): 이동 거리로만 어림해요 */
@@ -47,3 +63,13 @@ export const REPEAT_LABEL: Record<ScheduleRepeat, string> = {
   weekdays: '평일',
   weekends: '주말',
 };
+
+/** 지도 점선: route(한 개)와 routes(여러 개)를 한 목록으로 합쳐요. 점이 2개 이상인 경로만 그려요. */
+export function routeLines(
+  route: LatLng[] | undefined,
+  routes: { id: string; coords: LatLng[]; color: string }[] | undefined,
+  color: string,
+) {
+  const lines = [...(route ? [{ id: 'route', coords: route, color }] : []), ...(routes ?? [])];
+  return lines.filter((line) => line.coords.length > 1);
+}

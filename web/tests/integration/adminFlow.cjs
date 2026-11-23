@@ -79,7 +79,8 @@ async function run() {
   console.log('PASS 총관리자 실제 목록 조회 / 승인 / 로봇 배정');
 
   const session = await auth.login(manager);
-  assert.equal(auth.onboardingScreen(session), 'RouteSetup');
+  // 승인되면 홈으로 가고, 순찰 경로는 홈의 경로 설정 카드에서 정해요
+  assert.equal(auth.onboardingScreen(session), 'Main');
   const park = await parks.getManagedPark();
   assert.equal(park.catalogId, catalog.id);
   await assert.rejects(webAuth.login(manager), (e) => e.code === 'app_login_required');
