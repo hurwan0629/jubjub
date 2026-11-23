@@ -102,11 +102,14 @@ export async function login(body: LoginRequest, signal?: AbortSignal): Promise<L
   return res;
 }
 
-/** 가입 승인 후에만 로그인하고 최초 순찰 설정으로 이동해요. */
+/**
+ * 가입 승인 후에만 로그인해요. 승인되면 경로 설정 여부와 관계없이 홈으로 가고,
+ * 순찰 경로는 홈의 "jubi의 경로를 정해주세요" 버튼에서 정해요.
+ */
 export function onboardingScreen(profile: Pick<LoginResponse, 'role' | 'registrationStatus' | 'routeSetupDone'>) {
   if (profile.role === 'super_admin') return 'Login' as const;
   if (profile.registrationStatus !== 'approved') return 'Login' as const;
-  return profile.routeSetupDone ? ('Main' as const) : ('RouteSetup' as const);
+  return 'Main' as const;
 }
 
 /** 반려 계정의 비밀번호 확인 후 재신청에만 사용할 인증과 기존 정보를 받아요. */

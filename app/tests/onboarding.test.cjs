@@ -141,7 +141,7 @@ test('승인 상태와 초기 설정 완료 여부에 따라 진입 화면을 �
   }
   assert.equal(
     auth.onboardingScreen({ role: 'manager', registrationStatus: 'approved', routeSetupDone: false }),
-    'RouteSetup',
+    'Main',
   );
   assert.equal(
     auth.onboardingScreen({ role: 'manager', registrationStatus: 'approved', routeSetupDone: true }),

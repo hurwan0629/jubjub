@@ -9,6 +9,9 @@ export const icons = {
 
   // 홈
   bot: require('../assets/icons/bot.svg'),
+  botBrand: require('../assets/icons/bot-brand.svg'), // 경로 설정 카드 (브랜드 옅은 원 위)
+  botOnYellow: require('../assets/icons/bot-on-yellow.svg'), // 로봇 상태 카드 (노란 원 위)
+  play: require('../assets/icons/play.svg'), // 경로 설정 시작하기 버튼
   hand: require('../assets/icons/hand.svg'),
   triangleAlert: require('../assets/icons/triangle-alert.svg'),
   recycle: require('../assets/icons/recycle.svg'),
