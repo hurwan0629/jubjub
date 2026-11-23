@@ -2,13 +2,14 @@
 
 from datetime import UTC, datetime
 from io import BytesIO
+from uuid import uuid4
 
 import pytest
 from PIL import Image
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.models import Detection, Park, Robot
+from app.models import Detection, Park, Robot, RobotTask
 from tests import patrol_fixtures
 from tests.patrol_fixtures import choose
 
@@ -25,8 +26,21 @@ def photo_setup(setup_client, monkeypatch):
     robot = Robot(name="사진 로봇", serial_no="photo-test", park_id=park.id, assigned_at=datetime.now(UTC))
     db.add(robot)
     db.flush()
+    task = RobotTask(park_id=park.id, robot_id=robot.id, task_type="station_move")
+    db.add(task)
+    db.flush()
     detection = Detection(
-        park_id=park.id, robot_id=robot.id, material="plastic", slam_x=0, slam_y=0, lat=37.5, lng=127, image_path=""
+        task_id=task.id,
+        client_detection_id=uuid4(),
+        confidence=0.9,
+        park_id=park.id,
+        robot_id=robot.id,
+        material="plastic",
+        slam_x=0,
+        slam_y=0,
+        lat=37.5,
+        lng=127,
+        image_path="",
     )
     db.add(detection)
     db.commit()

@@ -2,6 +2,7 @@
   "expo": {
     "name": "jubjub",
     "slug": "jubjub",
+    "owner": "baesungwook",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -37,7 +38,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "bd7801e6-b38a-4eda-8d7d-006b8c5922f3"
+        "projectId": "e51576fe-45e5-44be-85e9-a30979c0f799"
       }
     }
   }
