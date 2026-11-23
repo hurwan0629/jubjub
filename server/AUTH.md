@@ -151,5 +151,13 @@ python -m app.scripts.seed_user --login-id admin01 --name "관리자" --phone 01
 자동 테스트는 격리 SQLite에서 실제 ORM 쿼리와 트랜잭션을 실행해요.
 PostgreSQL 전용 identity/RLS는 Alembic 마이그레이션으로 관리해요.
 
+## 가입 승인 시 공원 중복
+
+가입 신청은 접수하되 공원당 승인된 관리자는 한 명만 둘 수 있어요. 다른 관리자가 이미 승인된 공원을 신청하면 총관리자 승인 API는 `409 park_already_approved`를 반환해요. DB 연결 장애가 아니에요.
+
+총관리자 신청 목록에는 `canApprove`, `approvalBlockReason`, `conflictingManagerId`, `conflictingManagerName`, `conflictingManagerLoginId`를 제공해요. 웹은 승인 불가 사유를 미리 표시하며, 최종 승인은 서버에서 다시 검증해요.
+
+다른 공원을 담당할 계정이라면 신청을 반려하고 신청자가 다른 공원으로 재신청해야 해요. 실제 담당자를 교체하는 경우에만 기존 관리자의 승인 취소·로봇 회수를 먼저 검토해요. 오류 조사나 테스트를 위해 기존 계정을 임의로 승인 취소하지 않아요.
+
 참고: [FastAPI JWT·Argon2 안내](https://fastapi.tiangolo.com/tutorial/security/oauth2-jwt/),
 [PyJWT 검증 옵션](https://pyjwt.readthedocs.io/en/latest/usage.html).

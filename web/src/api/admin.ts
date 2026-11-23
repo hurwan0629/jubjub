@@ -11,6 +11,11 @@ export type Registration = ManagedPark & {
   applicantPhone: string;
   registrationStatus: RegistrationStatus;
   createdAt: string;
+  canApprove?: boolean;
+  approvalBlockReason?: string | null;
+  conflictingManagerId?: string | null;
+  conflictingManagerName?: string | null;
+  conflictingManagerLoginId?: string | null;
 };
 export type AdminRobot = {
   id: string;
