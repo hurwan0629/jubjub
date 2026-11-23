@@ -1,8 +1,23 @@
 """탐지·작업 이력과 관리자별 알림·푸시 기기를 저장해요."""
 
 from datetime import datetime
+from uuid import UUID
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, Double, ForeignKey, Identity, Index, Text, false, func, true
+from sqlalchemy import (
+    REAL,
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    Double,
+    ForeignKey,
+    Identity,
+    Index,
+    Text,
+    Uuid,
+    false,
+    func,
+    true,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
@@ -15,12 +30,21 @@ class Detection(Base):
         CheckConstraint("material IN ('plastic', 'can', 'glass', 'general')", name="detection_material"),
         CheckConstraint("pickup_result IS NULL OR pickup_result IN ('collected', 'failed')", name="detection_result"),
         CheckConstraint("lat BETWEEN -90 AND 90 AND lng BETWEEN -180 AND 180", name="detection_coordinates"),
+        CheckConstraint("confidence BETWEEN 0 AND 1", name="detection_confidence"),
+        CheckConstraint(
+            "pickup_fail_reason IS NULL OR (pickup_result IS NOT NULL AND pickup_result = 'failed')",
+            name="detection_fail_reason",
+        ),
         Index("ix_detections_park_time", "park_id", "detected_at"),
         Index("ix_detections_robot_time", "robot_id", "detected_at"),
     )
     id: Mapped[int] = mapped_column(ID, Identity(always=True), primary_key=True)
     park_id: Mapped[int] = mapped_column(ForeignKey("parks.id"))
     robot_id: Mapped[int] = mapped_column(ForeignKey("robots.id"))
+    task_id: Mapped[int] = mapped_column(ForeignKey("robot_tasks.id"), index=True)
+    client_detection_id: Mapped[UUID] = mapped_column(Uuid, unique=True)
+    confidence: Mapped[float] = mapped_column(REAL)
+    pickup_fail_reason: Mapped[str | None] = mapped_column(Text)
     material: Mapped[str] = mapped_column(Text)
     slam_x: Mapped[float] = mapped_column(Double)
     slam_y: Mapped[float] = mapped_column(Double)
@@ -35,7 +59,9 @@ class RobotTask(Base):
     __tablename__ = "robot_tasks"
     __table_args__ = (
         CheckConstraint("task_type IN ('patrol', 'station_move')", name="task_type"),
-        CheckConstraint("result IS NULL OR result IN ('success', 'failed')", name="task_result"),
+        CheckConstraint(
+            "result IS NULL OR result IN ('completed', 'stopped', 'aborted', 'missed')", name="task_result"
+        ),
         CheckConstraint(
             "(task_type = 'patrol' AND route_id IS NOT NULL AND trigger IN ('schedule', 'request') AND trigger IS NOT NULL) OR "
             "(task_type = 'station_move' AND route_id IS NULL AND trigger IS NULL)",
