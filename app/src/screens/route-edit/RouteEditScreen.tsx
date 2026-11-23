@@ -24,7 +24,7 @@ import { useRouteConfig } from '@/hooks/useRoute';
 import { icons } from '@/icons';
 import type { RootParams } from '@/navigation';
 import { colors, layout, radius, softShadow, space } from '@/theme';
-import { lapMinutes, loopPath, moveItem, nextPatrolTime, REPEAT_LABEL } from '@/utils/route';
+import { isTooFar, lapMinutes, loopPath, moveItem, nextPatrolTime, REPEAT_LABEL } from '@/utils/route';
 
 type Props = NativeStackScreenProps<RootParams, 'RouteEdit'>;
 type Tab = 'route' | 'schedule';
@@ -80,7 +80,8 @@ function RouteEditor({
   const [draft, setDraft] = useState<RouteConfig>(initial);
   const [pending, setPending] = useState<LatLng | null>(null);
   const [addingTime, setAddingTime] = useState(false);
-  const [blocked, setBlocked] = useState(false); // 공원 밖을 꾹 눌렀을 때 경고
+  // 공원 밖(outside) · 기존 지점에서 1km 넘게 떨어진 곳(tooFar)을 꾹 눌렀을 때 경고
+  const [blocked, setBlocked] = useState<'outside' | 'tooFar' | null>(null);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string>();
@@ -158,15 +159,24 @@ function RouteEditor({
             markers={markers}
             route={loopPath(draft.points, draft.station)}
             onLongPress={(p) => {
-              setBlocked(false);
+              // 이미 찍은 지점(분리수거장 포함)에서 1km 넘게 떨어진 곳에는 핀을 꽂지 않아요
+              const existing = [...(draft.station ? [draft.station] : []), ...draft.points.map((pt) => pt.position)];
+              if (isTooFar(p, existing)) {
+                setBlocked('tooFar');
+                later(() => setBlocked(null), NOTICE_MS);
+                return;
+              }
+              setBlocked(null);
               setPending(p);
             }}
             onLongPressOutside={() => {
-              setBlocked(true);
-              later(() => setBlocked(false), NOTICE_MS);
+              setBlocked('outside');
+              later(() => setBlocked(null), NOTICE_MS);
             }}
           />
-          {blocked ? (
+          {blocked === 'tooFar' ? (
+            <MapHint tone="error" text="기존 지점에서 1km 넘게 떨어져 있어요. 더 가까운 곳을 꾹 눌러 주세요" />
+          ) : blocked ? (
             <MapHint tone="error" text="로봇이 갈 수 없는 위치예요" />
           ) : (
             <MapHint text="지도를 꾹 눌러 지점을 추가할 수 있어요" />
@@ -183,6 +193,7 @@ function RouteEditor({
               reorder
               onRemove={(i) => setPoints(draft.points.filter((_, j) => j !== i))}
               onMove={(from, to) => setPoints(moveItem(draft.points, from, to))}
+              stationFixed={!!draft.station}
             />
           </View>
         </ScrollView>

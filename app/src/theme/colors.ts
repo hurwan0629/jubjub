@@ -16,6 +16,7 @@ export const colors = {
   robotIcon: '#ffe078', // 로봇 상태 카드 아이콘 받침 (노랑)
   chip: '#e2ebff', // 선택 안 된 로봇 칩 배경
   chipText: '#162044', // 선택 안 된 로봇 칩 글자
+  robotAlt: '#f09628', // 두 번째 로봇의 지도 경로 · 마커 (A-02 지도 Jubi 2)
 
   // 배경·표면
   bg: '#f3f6fb', // 배경/기본

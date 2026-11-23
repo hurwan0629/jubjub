@@ -88,3 +88,6 @@ server/storage/
 server/tests/test_*.py
 !server/tests/test_robot_patrol.py
 !server/tests/test_robot_patrol_migration.py
+
+# 로컬 개발용 SQLite DB (server/app/scripts, jubjub-server-local)
+server/local.db

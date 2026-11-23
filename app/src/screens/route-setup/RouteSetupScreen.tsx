@@ -133,7 +133,9 @@ function SetupWizard({
         footer = <Footer nextLabel="시작하기" onNext={next} />;
         break;
       case 2:
-        body = <StepRecycle bounds={park.bounds} area={park.area} recycle={recycle} onSet={setRecycle} />;
+        body = (
+          <StepRecycle bounds={park.bounds} area={park.area} recycle={recycle} points={points} onSet={setRecycle} />
+        );
         footer = <Footer onPrev={prev} nextDisabled={!recycle} onNext={next} />;
         break;
       case 3:

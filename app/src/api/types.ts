@@ -175,6 +175,25 @@ export type MapMarker = {
   position: LatLng;
 };
 
+/** A-02 지도에 그리는 로봇 한 대의 저장된 순찰 경로 */
+export type SavedRobotRoute = {
+  robotId: string | null; // 로봇 배정 전에 정한 경로는 null
+  robotName: string;
+  station: LatLng | null; // 분리수거장 (경로의 시작과 끝)
+  points: PatrolPoint[]; // 도는 순서대로
+  position: LatLng | null; // 로봇이 보낸 마지막 위치
+};
+
+/** A-02 지도: 관리자가 저장한 순찰 경로 (GET /robots + GET /route?robotId=) */
+export type SavedRouteMap = {
+  parkName: string;
+  bounds: ParkBounds;
+  area: ParkArea;
+  stations: { id: string; name: string; position: LatLng }[];
+  routes: SavedRobotRoute[];
+  updatedAt: string; // ISO 시각 (불러온 시각)
+};
+
 /** GET /map/overview: A-02 지도 한 화면에 필요한 것 */
 export type MapOverview = {
   parkName: string;

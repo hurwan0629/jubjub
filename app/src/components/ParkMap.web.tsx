@@ -14,7 +14,7 @@ import 'leaflet/dist/leaflet.css';
 type MapRuntime = { lib: typeof Leaflet; map: Leaflet.Map; group: Leaflet.LayerGroup };
 
 export function ParkMap(props: ParkMapProps) {
-  const { bounds, area, markers, route, children, faded, style, ref } = props;
+  const { bounds, area, markers, route, routes, children, faded, style, ref } = props;
   const container = useRef<HTMLDivElement>(null);
   const latest = useRef(props);
   useEffect(() => {
@@ -101,9 +101,10 @@ export function ParkMap(props: ParkMapProps) {
       area,
       markers,
       route,
+      routes,
       onMarkerPress: (id) => latest.current.onMarkerPress?.(id),
     });
-  }, [runtime, area, markers, route]);
+  }, [runtime, area, markers, route, routes]);
 
   return (
     <View style={[s.box, style]}>
