@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.models import User
-from app.routers import approval, notifications, operations, patrol, photos, robot_assignment, stations
+from app.routers import approval, notifications, operations, patrol, photos, robot_assignment, robot_protocol, stations
 from app.schemas.auth import ProfileResponse
 from app.services.auth import get_current_user, profile_for_user
 
@@ -25,3 +25,4 @@ router.include_router(robot_assignment.router)
 router.include_router(notifications.router)
 router.include_router(stations.router)
 router.include_router(photos.router)
+router.include_router(robot_protocol.router)

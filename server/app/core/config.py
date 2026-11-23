@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     # 로봇
     robot_bridge_url: str = "ws://localhost:9090"
     use_simulator: bool = True
+    robot_command_timeout_seconds: float = Field(default=5, gt=0, le=60)
+    robot_heartbeat_timeout_seconds: float = Field(default=10, ge=5, le=120)
+    robot_schedule_enabled: bool = False
 
     # 사진 저장 폴더
     photo_dir: Path = Path("./storage/photos")

@@ -7,6 +7,7 @@ import { paginate } from './pageData';
 const STATUS: Record<AdminRobot['status'], string> = {
   idle: '대기',
   working: '작업 중',
+  returning: '복귀 중',
   emptying: '비우는 중',
   offline: '오프라인',
   error: '오류',

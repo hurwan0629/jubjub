@@ -20,6 +20,15 @@ global.fetch = async (url, init) => {
   return new Response(JSON.stringify(response), { status });
 };
 
+test('로봇 토큰 재발급과 순찰 제어는 실제 API를 호출한다', async () => {
+  response = { robotId: '7', authToken: 'new-token' };
+  assert.equal((await admin.rotateRobotToken('7')).authToken, 'new-token');
+  assert.equal(calls.at(-1).url, 'http://localhost:8000/admin/robots/7/token');
+  assert.equal(calls.at(-1).method, 'POST');
+  await admin.startPatrol('7');
+  assert.equal(calls.at(-1).url, 'http://localhost:8000/robots/7/patrol/start');
+});
+
 test('총관리자 웹은 하위관리자 로그인을 거부하고 토큰을 보관하지 않는다', async () => {
   response = { accessToken: 'manager-token', role: 'manager' };
   await assert.rejects(

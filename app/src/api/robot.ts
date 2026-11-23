@@ -6,6 +6,7 @@ import type { AssignedRobot, HomeRobotStatus, RobotState, RobotStatus, Task, Tod
 
 const HOME_STATE: Record<AssignedRobot['status'], RobotState> = {
   working: 'patrolling',
+  returning: 'returning',
   emptying: 'emptying',
   idle: 'idle',
   offline: 'disconnected',

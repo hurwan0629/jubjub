@@ -1,6 +1,6 @@
 # JUBJUB API 명세서
 
-기준일: 2026-11-20 (KST) · 현재 로컬 구현 기준 전체 56개 HTTP API(기존 호환 경로 4개 포함). KAN-23의 기능 → 요청 → 응답 형식으로 전체를 다시 작성했습니다. 이 문서는 변경분 목록이 아닌 전체 명세입니다. 코드 기준이며 원격 서버 배포 완료를 의미하지 않습니다.
+기존 명세 기준일: 2026-11-20 (KST). 2026-11-23 DB 0015에 맞춘 로봇 상태·인증·활동 조회·순찰 제어와 WebSocket 계약은 [ROBOT_PROTOCOL_API.md](ROBOT_PROTOCOL_API.md)에 추가했어요. 최신 전체 HTTP 경로와 요청 스키마는 서버의 `/docs`, `/openapi.json`에서 확인해요. 코드 기준이며 원격 서버 배포 완료를 의미하지 않아요.
 
 기존 명세 형식: [KAN-23](https://kdt-3team-finalterm.atlassian.net/browse/KAN-23)
 

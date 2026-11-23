@@ -24,6 +24,7 @@ from app.services.auth import require_manager, require_super_admin
 from app.services.notifications import enqueue_notification
 from app.services.operations import _lock_managers
 from app.services.patrol import inherit_draft, transaction
+from app.services.robot_availability import has_active_tasks
 
 
 def _response(db: Session, request: RobotAssignmentRequest) -> RobotAssignmentRequestResponse:
@@ -180,7 +181,9 @@ def approve(db: Session, user: User, request_id: int, body: RobotAssignmentAppro
         raise AppError(404, "선택한 로봇을 찾을 수 없어요", code="robot_not_found")
     if any(robot.park_id is not None for robot in robots):
         raise AppError(409, "이미 공원에 배정된 로봇이 있어요", code="robot_already_assigned")
-    if any(robot.status not in ("idle", "offline") for robot in robots):
+    if any(robot.status not in ("idle", "offline") for robot in robots) or has_active_tasks(
+        db, (robot.id for robot in robots)
+    ):
         raise AppError(409, "대기 또는 오프라인 상태의 로봇만 배정할 수 있어요", code="robot_not_available")
     # 모든 로봇을 검증한 뒤 일괄 배정해야 일부만 배정되는 일을 막을 수 있어요.
     now = datetime.now(UTC)

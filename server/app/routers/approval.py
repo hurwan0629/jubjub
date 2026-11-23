@@ -2,7 +2,7 @@
 
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Path, Query
+from fastapi import APIRouter, Path, Query, Response
 
 from app.routers.patrol import DB, Admin
 from app.schemas.approval import (
@@ -11,6 +11,7 @@ from app.schemas.approval import (
     RejectionInput,
     RobotInput,
     RobotNameInput,
+    RobotRegistrationResponse,
     RobotResponse,
 )
 from app.schemas.patrol import ManagedPark
@@ -67,8 +68,9 @@ def reject(park_id: ParkID, body: RejectionInput, db: DB, user: Admin):
     return approval.reject(db, user, park_id, body)
 
 
-@router.post("/admin/robots", response_model=RobotResponse, status_code=201)
-def register_robot(body: RobotInput, db: DB, user: Admin):
+@router.post("/admin/robots", response_model=RobotRegistrationResponse, status_code=201)
+def register_robot(body: RobotInput, db: DB, user: Admin, response: Response):
+    response.headers["Cache-Control"] = "no-store"
     return approval.register_robot(db, user, body)
 
 
