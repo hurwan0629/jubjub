@@ -70,3 +70,8 @@ class ParkRequestResponse(ManagedPark):
     applicant_phone: str
     registration_status: Literal["pending", "approved", "rejected"]
     created_at: datetime
+    can_approve: bool = True
+    approval_block_reason: str | None = None
+    conflicting_manager_id: str | None = None
+    conflicting_manager_name: str | None = None
+    conflicting_manager_login_id: str | None = None

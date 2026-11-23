@@ -220,7 +220,12 @@ export function AdminPage({ onLogout }: { onLogout: () => void }) {
                               <td className="muted">{row.applicantLoginId}</td>
                               <td>{row.applicantPhone || '미등록'}</td>
                               <td>{row.applicantEmail}</td>
-                              <td>{row.name}</td>
+                              <td>
+                                {row.name}
+                                {row.approvalBlockReason && (
+                                  <small className="error-text reason">{row.approvalBlockReason}</small>
+                                )}
+                              </td>
                               <td>
                                 {data.robots
                                   .filter((robot) => robot.parkId === row.id)
@@ -234,7 +239,8 @@ export function AdminPage({ onLogout }: { onLogout: () => void }) {
                                       <button
                                         className="approve-button"
                                         aria-label={`${row.applicantName} 가입 승인`}
-                                        disabled={busy || loading || !!error}
+                                        disabled={busy || loading || !!error || row.canApprove === false}
+                                        title={row.approvalBlockReason ?? undefined}
                                         onClick={() => setTarget({ action: 'approve', registration: row })}
                                       >
                                         승인

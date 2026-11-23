@@ -53,6 +53,14 @@ def list_requests(db: Session, user: User, status: str | None, limit: int, offse
     if status:
         statement = statement.where(Park.status == status)
     rows = db.execute(statement.order_by(Park.created_at, Park.id).limit(limit).offset(offset)).all()
+    owners = {
+        catalog_id: owner
+        for catalog_id, owner in db.execute(
+            select(Park.catalog_id, User)
+            .join(User, Park.user_id == User.id)
+            .where(Park.catalog_id.in_({park.catalog_id for park, _ in rows}), Park.status == "approved")
+        )
+    }
     return [
         ParkRequestResponse(
             **_managed(park).model_dump(),
@@ -63,9 +71,31 @@ def list_requests(db: Session, user: User, status: str | None, limit: int, offse
             applicant_phone=applicant.phone,
             registration_status=park.status,
             created_at=park.created_at,
+            **_approval_availability(park, owners.get(park.catalog_id)),
         )
         for park, applicant in rows
     ]
+
+
+def _approval_availability(park: Park, owner: User | None) -> dict:
+    conflict = owner if owner is not None and owner.id != park.user_id else None
+    reason = None
+    if park.status == "pending":
+        if not park.catalog.is_active:
+            reason = "현재 운영할 수 없는 공원이에요. 다른 공원으로 다시 신청해 주세요"
+        elif conflict is not None:
+            reason = _occupied_park_message(park, conflict)
+    return {
+        "can_approve": park.status == "pending" and reason is None,
+        "approval_block_reason": reason,
+        "conflicting_manager_id": str(conflict.id) if conflict else None,
+        "conflicting_manager_name": conflict.name if conflict else None,
+        "conflicting_manager_login_id": conflict.login_id if conflict else None,
+    }
+
+
+def _occupied_park_message(park: Park, owner: User) -> str:
+    return f"{park.catalog.name}에는 {owner.name}({owner.login_id}) 관리자가 이미 승인되어 있어요. 다른 공원으로 다시 신청하거나 기존 담당자의 승인 상태를 먼저 확인해 주세요"
 
 
 @transaction(write=True)
@@ -77,8 +107,13 @@ def approve(db: Session, user: User, park_id: int, body: ApprovalInput):
     if not park.catalog.is_active:
         raise AppError(409, "현재 운영할 수 없는 공원이에요", code="park_catalog_inactive")
     # catalog_id의 부분 유일 인덱스가 서로 다른 총관리자의 동시 승인도 막아요.
-    if db.scalar(select(Park.id).where(Park.catalog_id == park.catalog_id, Park.status == "approved")):
-        raise AppError(409, "이미 승인된 관리자가 있는 공원이에요", code="park_already_approved")
+    owner = db.scalar(
+        select(User)
+        .join(Park, Park.user_id == User.id)
+        .where(Park.catalog_id == park.catalog_id, Park.status == "approved")
+    )
+    if owner is not None:
+        raise AppError(409, _occupied_park_message(park, owner), code="park_already_approved")
     ids = sorted(int(value) for value in body.robot_ids)
     robots = list(
         db.scalars(
