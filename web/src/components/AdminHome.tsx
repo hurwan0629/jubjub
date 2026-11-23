@@ -1,24 +1,56 @@
-import { useEffect, useState } from 'react';
-import { getParkChanges } from '../api/admin';
-import type { AdminRobot, Registration } from '../api/admin';
-import { Pagination } from './Pagination';
-import { paginate } from './pageData';
+// W-01 홈 (Figma Page 4 · 286:711)
+import type { AdminRobot, Registration, RegistrationStatus } from '../api/admin';
 
-const STATUS: Record<AdminRobot['status'], string> = {
-  idle: '대기',
-  working: '작업 중',
-  returning: '복귀 중',
-  emptying: '비우는 중',
-  offline: '오프라인',
-  error: '오류',
+type RobotStatus = AdminRobot['status'];
+
+/** 로봇 상태 배지: 글자와 색 (Figma 배지/순찰 중 · 복귀 중 · 오류 · 대기) */
+const ROBOT_STATUS: Record<RobotStatus, { label: string; short: string }> = {
+  working: { label: '순찰 중', short: '순찰' },
+  returning: { label: '복귀 중', short: '복귀' },
+  emptying: { label: '비우는 중', short: '비우기' },
+  idle: { label: '대기', short: '대기' },
+  error: { label: '오류', short: '오류' },
+  offline: { label: '오프라인', short: '오프라인' },
 };
+const STATUS_ORDER: RobotStatus[] = ['working', 'returning', 'emptying', 'idle', 'error', 'offline'];
+
+const APPROVAL: Record<RegistrationStatus, string> = {
+  approved: '승인 완료',
+  pending: '승인 대기',
+  rejected: '반려',
+};
+
+const PREVIEW_ROWS = 5;
+
+function todayLabel(now: Date) {
+  const date = new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }).format(now);
+  const weekday = new Intl.DateTimeFormat('ko-KR', { weekday: 'short' }).format(now);
+  return `${date} (${weekday})`;
+}
+
+/** 이번 주 월요일 0시 (브라우저 시간 기준) */
+function startOfWeek(now: Date) {
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+  return start;
+}
+
+function ViewAll({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button className="home-view-all" onClick={onClick} aria-label={label}>
+      전체 보기
+      <img src="/icons/chevron-right.svg" width="17.28" height="17.28" alt="" />
+    </button>
+  );
+}
+
 export function AdminHome({
   registrations,
   robots,
   loading,
   error,
   onManagers,
-  onParkChanges,
   onRobots,
   onReload,
 }: {
@@ -27,148 +59,165 @@ export function AdminHome({
   loading: boolean;
   error?: string;
   onManagers: () => void;
-  onParkChanges: () => void;
   onRobots: () => void;
   onReload: () => void;
 }) {
-  const [page, setPage] = useState(1);
-  const [changeCount, setChangeCount] = useState<number>();
-  const [changeError, setChangeError] = useState('');
-  const [revision, setRevision] = useState(0);
-  useEffect(() => {
-    const controller = new AbortController();
-    setChangeCount(undefined);
-    setChangeError('');
-    void getParkChanges(controller.signal)
-      .then((requests) => {
-        if (!controller.signal.aborted)
-          setChangeCount(new Set(requests.filter((r) => r.status === 'pending').map((r) => r.userId)).size);
-      })
-      .catch((e) => {
-        if (!controller.signal.aborted)
-          setChangeError(e instanceof Error ? e.message : '공원 변경 대기 인원을 불러오지 못했어요.');
-      });
-    return () => controller.abort();
-  }, [revision]);
-  const list = paginate(robots, page);
+  const now = new Date();
+  const weekStart = startOfWeek(now);
   const pending = registrations.filter((r) => r.registrationStatus === 'pending').length;
+  const joinedThisWeek = registrations.filter((r) => new Date(r.createdAt) >= weekStart).length;
+
+  // 공원에 배정된 로봇을 "운영 중"으로 봐요
+  const operating = robots.filter((r) => r.parkId);
+  const parkCount = new Set(operating.map((r) => r.parkId)).size;
+  const breakdown = STATUS_ORDER.map((s) => [s, operating.filter((r) => r.status === s).length] as const)
+    .filter(([, n]) => n > 0)
+    .map(([s, n]) => `${ROBOT_STATUS[s].short} ${n}`)
+    .join(' · ');
+  const troubled = robots.filter((r) => r.status === 'error');
+  const parkName = (robot: AdminRobot) =>
+    robot.parkName || registrations.find((p) => p.id === robot.parkId)?.name || '배정 전';
+
+  const value = (n: number, unit: string) => (loading ? '—' : `${n}${unit}`);
+  const stats = [
+    {
+      label: '전체 관리자',
+      value: value(registrations.length, '명'),
+      tone: 'default',
+      note: `이번 주 새로 가입 ${joinedThisWeek}명`,
+    },
+    { label: '승인 대기', value: value(pending, '명'), tone: 'warn', note: '승인하면 로봇을 배정할 수 있어요' },
+    {
+      label: '운영 중인 Jubi',
+      value: value(operating.length, '대'),
+      tone: 'brand',
+      note: breakdown || '공원에 배정된 로봇이 없어요',
+    },
+    {
+      label: '확인이 필요한 로봇',
+      value: value(troubled.length, '대'),
+      tone: 'error',
+      note: troubled.length
+        ? `${troubled[0].name} · ${parkName(troubled[0])}${troubled.length > 1 ? ` 외 ${troubled.length - 1}대` : ''}`
+        : '모든 로봇이 정상이에요',
+    },
+  ];
+
+  const managers = [...registrations].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, PREVIEW_ROWS);
+  const robotPreview = [...robots]
+    .sort((a, b) => a.name.localeCompare(b.name, 'ko', { numeric: true }))
+    .slice(0, PREVIEW_ROWS);
+
   return (
     <>
-      <div className="home-stats">
-        {[
-          ['전체 로봇', robots.length, '대의 Jubi가 등록되어 있어요'],
-          [
-            '작업 중',
-            robots.filter((r) => ['working', 'emptying'].includes(r.status)).length,
-            '대가 공원을 관리하고 있어요',
-          ],
-          [
-            '승인된 관리자',
-            registrations.filter((r) => r.registrationStatus === 'approved').length,
-            '명이 공원을 관리하고 있어요',
-          ],
-          ['가입 승인 대기', pending, '건의 신청을 확인해 주세요'],
-        ].map(([label, value, description]) => (
-          <section className="home-stat" key={label}>
-            <span>{label}</span>
-            <strong>{loading ? '—' : value}</strong>
-            <small>{description}</small>
-          </section>
-        ))}
-        <button className="home-stat home-stat-link" onClick={onParkChanges} aria-label="공원 변경 승인 대기 보기">
-          <span>공원 변경 승인 대기</span>
-          <strong>{changeCount ?? '—'}</strong>
-          <small>{changeError ? '조회 실패 · 다시 확인해 주세요' : '명의 신청을 확인해 주세요'}</small>
-        </button>
-      </div>
-      {changeError && (
+      <header className="home-title">
+        <h1>안녕하세요, 운영 관리자님</h1>
+        <p>
+          {todayLabel(now)}
+          {!loading && ` · 공원 ${parkCount}곳에서 Jubi ${operating.length}대가 일하고 있어요`}
+        </p>
+      </header>
+
+      {error && (
         <p role="alert" className="error-panel">
-          {changeError}{' '}
-          <button className="button soft compact-button" onClick={() => setRevision((v) => v + 1)}>
+          {error}{' '}
+          <button className="button soft compact-button" onClick={onReload}>
             다시 시도
           </button>
         </p>
       )}
-      {error && (
-        <p role="alert" className="error-panel">
-          {error}
-        </p>
-      )}
-      <div className="home-columns">
-        <section className="board">
-          <div className="toolbar">
-            <h2>로봇 운영 현황</h2>
-            <button
-              className="refresh-button"
-              onClick={() => {
-                onReload();
-                setRevision((v) => v + 1);
-              }}
-              disabled={loading}
-            >
-              새로고침
-            </button>
+
+      <div className="home-stats">
+        {stats.map((s) => (
+          <section className="home-stat" key={s.label}>
+            <span>{s.label}</span>
+            <strong className={`tone-${s.tone}`}>{s.value}</strong>
+            <small>{s.note}</small>
+          </section>
+        ))}
+      </div>
+
+      <div className="home-boards">
+        <section className="home-board" aria-labelledby="home-managers">
+          <div className="home-board-title">
+            <h2 id="home-managers">관리자 보기</h2>
+            <ViewAll label="관리자 전체 보기" onClick={onManagers} />
           </div>
           <div className="table-scroll">
-            <table className="home-table">
+            <table className="home-manager-table">
               <thead>
                 <tr>
-                  {['로봇', '담당 공원', '관리자', '상태'].map((x) => (
-                    <th key={x}>{x}</th>
-                  ))}
+                  <th scope="col">관리자</th>
+                  <th scope="col">담당 공원</th>
+                  <th scope="col">담당 로봇</th>
+                  <th scope="col">승인 여부</th>
                 </tr>
               </thead>
               <tbody>
-                {list.items.map((r) => (
-                  <tr key={r.id}>
-                    <th>
-                      {r.name}
-                      <small>{r.serialNo}</small>
-                    </th>
-                    <td>{r.parkName || registrations.find((p) => p.id === r.parkId)?.name || '미배정'}</td>
-                    <td>{r.managerName || registrations.find((p) => p.id === r.parkId)?.applicantName || '미배정'}</td>
-                    <td>
-                      <span className={`status-pill status-${r.status}`}>{STATUS[r.status]}</span>
-                    </td>
-                  </tr>
-                ))}
+                {managers.map((m) => {
+                  const assigned = robots.filter((r) => r.parkId === m.id).map((r) => r.name);
+                  return (
+                    <tr key={m.id}>
+                      <th scope="row">
+                        {m.applicantName}
+                        <small>{m.applicantLoginId}</small>
+                      </th>
+                      <td>{m.name}</td>
+                      <td className={assigned.length ? undefined : 'muted'}>
+                        {assigned.length ? assigned.join(', ') : '배정 전'}
+                      </td>
+                      <td>
+                        <span className={`badge badge-${m.registrationStatus}`}>{APPROVAL[m.registrationStatus]}</span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
+          {!loading && !registrations.length && <p className="empty">가입한 관리자가 없어요.</p>}
+          {loading && (
+            <p role="status" className="loading">
+              관리자 목록을 불러오는 중…
+            </p>
+          )}
+        </section>
+
+        <section className="home-board home-robots" aria-labelledby="home-robots">
+          <div className="home-board-title">
+            <h2 id="home-robots">로봇 목록</h2>
+            <ViewAll label="로봇 전체 보기" onClick={onRobots} />
+          </div>
+          <ul className="home-robot-list">
+            {robotPreview.map((r) => (
+              <li key={r.id}>
+                <span className={`home-robot-icon ${r.status === 'error' ? 'error' : ''}`}>
+                  <img
+                    src={r.status === 'error' ? '/icons/bot-error.svg' : '/icons/bot-brand.svg'}
+                    width="21.6"
+                    height="21.6"
+                    alt=""
+                  />
+                </span>
+                <span className="home-robot-name">
+                  <strong>{r.name}</strong>
+                  <small>{parkName(r)}</small>
+                </span>
+                <span className={`badge robot-${r.status}`}>{ROBOT_STATUS[r.status].label}</span>
+                <span className="home-robot-battery" title="배터리 전압">
+                  <img src="/icons/battery.svg" width="17.28" height="17.28" alt="" />
+                  {r.batteryVoltage == null ? '—' : `${r.batteryVoltage.toFixed(1)}V`}
+                </span>
+              </li>
+            ))}
+          </ul>
           {!loading && !robots.length && <p className="empty">등록된 로봇이 없어요.</p>}
           {loading && (
             <p role="status" className="loading">
-              운영 현황을 불러오는 중…
+              로봇 목록을 불러오는 중…
             </p>
           )}
-          <Pagination {...list} onChange={setPage} />
         </section>
-        <aside className="home-side">
-          <section className="board">
-            <h2>확인이 필요한 신청</h2>
-            <p className="home-pending">
-              가입 승인 대기 <strong>{loading ? '—' : pending}건</strong>
-            </p>
-            <button className="home-pending home-pending-link" onClick={onParkChanges}>
-              공원 변경 승인 대기 <strong>{changeCount == null ? '—' : `${changeCount}명`}</strong>
-            </button>
-            <button className="button primary" onClick={onManagers}>
-              관리자 보기
-            </button>
-          </section>
-          <section className="board">
-            <h2>로봇 상태</h2>
-            {(['idle', 'working', 'emptying', 'offline', 'error'] as const).map((s) => (
-              <div className="status-summary" key={s}>
-                <span className={`status-pill status-${s}`}>{STATUS[s]}</span>
-                <strong>{loading ? '—' : robots.filter((r) => r.status === s).length}대</strong>
-              </div>
-            ))}
-            <button className="button soft" onClick={onRobots}>
-              로봇 목록 보기
-            </button>
-          </section>
-        </aside>
       </div>
     </>
   );
