@@ -7,8 +7,8 @@ import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import type { TaskType } from '@/api/types';
-import { AlertCard, Button, Card, Icon, ROBOT_STATE, SectionHeader, StatRow, StatusBadge, Text } from '@/components';
+import type { HomeRobotStatus, RobotState } from '@/api/types';
+import { AlertCard, Button, Card, Icon, ROBOT_STATE, SectionHeader, StatRow, Text } from '@/components';
 import { RobotControls } from '@/components/RobotControls';
 import { useProfile } from '@/hooks/useAccount';
 import { useDecisions } from '@/hooks/useDecisions';
@@ -100,108 +100,8 @@ export function HomeScreen({ navigation }: Props) {
               </Text>
               <Button label="경로 설정 시작하기" icon={icons.play} onPress={() => navigation.navigate('RouteSetup')} />
             </View>
-            <View style={s.robotInfo}>
-              <View style={s.gap4}>
-                <Text variant="10-regular" color="textSub">
-                  {robot.battery == null && robot.batteryVoltage != null ? '배터리 전압' : '배터리'}
-                </Text>
-                <View style={s.valueUnit}>
-                  <Text variant="22-bold">
-                    {robot.battery ?? (robot.batteryVoltage != null ? robot.batteryVoltage.toFixed(1) : '—')}
-                  </Text>
-                  <Text variant="11-regular">
-                    {robot.battery != null ? '%' : robot.batteryVoltage != null ? 'V' : ''}
-                  </Text>
-                </View>
-              </View>
-              <View style={s.robotRight}>
-                <StatusBadge state={robot.state} />
-                <Text variant="10-regular" color="textSub">
-                  다음 지점 · {robot.nextPoint}
-                </Text>
-              </View>
-            </View>
-          </Pressable>
-        ) : null}
-
-        {robot ? <RobotControls key={robot.id} robot={robot} onChanged={reloadRobots} /> : null}
-
-        {/* 오늘 요약 */}
-        {today ? (
-          <View style={s.section}>
-            <SectionHeader title="오늘 요약" />
-            <StatRow
-              items={[
-                { label: '수거', value: `${today.pickups}개` },
-                { label: '분리수거장', value: `${today.stationVisits}회` },
-                { label: '순찰', value: `${today.patrolsDone}/${today.patrolsPlanned}회` },
-              ]}
-            />
-          </View>
-        ) : null}
-
-        {/* 칸별 적재율 */}
-        {robot?.slots.length ? (
-          <View style={s.sectionWide}>
-            <SectionHeader title="칸별 적재율" action="실시간" />
-            <Card style={s.loadCard}>
-              {robot.slots.map((slot) => {
-                const warn = slot.percent >= SLOT_WARN_PERCENT;
-                return (
-                  <View key={slot.slot} style={s.loadItem}>
-                    <View style={s.loadRow}>
-                      <Text variant="14-semibold" style={s.flex1}>
-                        {SLOT_LABEL[slot.slot]}
-                      </Text>
-                      {warn ? <Icon source={icons.triangleAlert} size={13} /> : null}
-                      <Text variant="13-bold" color={warn ? 'textWarn' : 'brandText'}>
-                        {slot.percent}%
-                      </Text>
-                      <Text variant="12-regular" color="textSub" style={s.loadCount}>
-                        ({slot.count}개)
-                      </Text>
-                    </View>
-                    <View style={s.track}>
-                      <View
-                        style={[
-                          s.fill,
-                          { width: `${slot.percent}%`, backgroundColor: warn ? colors.warn : colors.brand },
-                        ]}
-                      />
-                    </View>
-                  </View>
-                );
-              })}
-            </Card>
-          </View>
-        ) : null}
-
-        {/* 작업 대기열 */}
-        {tasks ? (
-          <View style={s.section}>
-            <SectionHeader title="작업 대기열" action={`${tasks.length}개 예정`} />
-            <Card style={s.taskCard}>
-              {tasks.slice(0, 3).map((t) => (
-                <View key={t.id} style={s.taskRow}>
-                  <Icon source={TASK_ICON[t.type]} size={20} />
-                  <Text variant="14-regular" style={s.flex1}>
-                    {t.label}
-                  </Text>
-                  <Text variant="13-semibold" color="brandText">
-                    {t.eta}
-                  </Text>
-                </View>
-              ))}
-            </Card>
-          </View>
-        ) : null}
-
-        {/* 에이전트가 방금 한 일 */}
-        {decisions ? (
-          <View style={s.section}>
-            <SectionHeader title="에이전트가 방금 한 일" action="더보기" />
-            <Text variant="12-regular" color="textSub">
-              최근 판단 {decisions.length}개
+            <Text variant="11-regular" color="textSub" style={s.center}>
+              경로를 정하면 오늘 요약·알림이 여기에 보여요
             </Text>
           </>
         ) : (
@@ -364,6 +264,8 @@ function HomeContent({ navigation, robots, robotError, reloadRobots }: HomeConte
           ) : null}
         </Pressable>
       ) : null}
+
+      {robot ? <RobotControls key={robot.id} robot={robot} onChanged={reloadRobots} /> : null}
 
       {/* 오늘 요약 */}
       {today ? (
