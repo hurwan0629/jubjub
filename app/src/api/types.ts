@@ -4,6 +4,7 @@
 
 /** 로봇 상태 (화면설계서 A-01 로봇 상태 카드 + 연결 끊김 예외) */
 export type RobotState =
+  | 'returning'
   | 'patrolling' // 순찰 중
   | 'picking' // 줍는 중
   | 'toStation' // 분리수거장 이동 중
@@ -153,13 +154,15 @@ export type AssignedRobot = {
   name: string;
   serialNo: string;
   parkId: string | null;
-  status: 'idle' | 'working' | 'emptying' | 'offline' | 'error';
+  status: 'idle' | 'working' | 'returning' | 'emptying' | 'offline' | 'error';
   slamX: number | null;
   slamY: number | null;
   lat: number | null;
   lng: number | null;
   batteryVoltage: number | null;
   lastSeenAt: string | null;
+  slamYaw?: number | null;
+  updatedAt?: string | null;
 };
 
 /** 지도 마커 종류 (A-02 지도 범례) */

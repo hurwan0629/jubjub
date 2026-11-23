@@ -1,4 +1,4 @@
-"""로봇 시뮬레이터: 실제 로봇(JetRover) 없이 서버의 /ws/robot 연결을 시험해요.
+"""로봇 시뮬레이터: 실제 로봇(JetRover) 없이 서버의 /ws/robots 연결을 시험해요.
 
 Confluence "로봇 - 서버" 문서의 연결 단계만 흉내 내요.
   1. 헤더에 로봇 id와 토큰을 넣어 접속
@@ -6,14 +6,14 @@ Confluence "로봇 - 서버" 문서의 연결 단계만 흉내 내요.
   3. 3초마다 status 보내기 (위치·배터리는 가짜 값)
   4. 서버 명령(patrol_start 등)이 오면 "아직 지원 안 함"으로 거절 ack
   5. 끊기면 1초 → 2초 → 4초 … 최대 30초 간격으로 재접속
-     - 인증 실패(403)거나 "교체됨"(4000)으로 닫히면 재접속하지 않고 멈춤
+     - 인증 실패(403)거나 "교체됨"(4001)·"토큰 재발급"(4003)·인증 만료(4401)로 닫히면 재접속하지 않고 멈춤
 
 ROS는 쓰지 않아요. 로봇(Ubuntu 22.04, Python 3.10)에서도 돌도록 3.10 문법만 써요. hurwan 브랜치 robot/test_server/client_script/client6 의 WebSocket 구조를 참고했고,
 실제 로봇에서는 이 파일의 가짜 상태 부분만 ROS 토픽(위치·배터리) 값으로 바꾸면 돼요.
 
 실행 (websockets 라이브러리 필요. 서버 가상환경에 이미 있어요):
     python robot/simulator/robot_sim.py --robot-id 1 --token <발급받은 토큰>
-    python robot/simulator/robot_sim.py --server ws://192.168.0.10:8000/ws/robot --robot-id 1 --token ...
+    python robot/simulator/robot_sim.py --server ws://192.168.0.10:8000/ws/robots --robot-id 1 --token ...
 토큰은 환경 변수 ROBOT_ID, ROBOT_TOKEN 으로 넣어도 돼요.
 """
 
@@ -32,9 +32,11 @@ from websockets.exceptions import ConnectionClosed, InvalidStatus
 
 KST = timezone(timedelta(hours=9))
 
-CLOSE_REPLACED = (
-    4000  # 서버: 같은 로봇이 새로 접속해서 이 연결을 닫음 → 재접속하지 않음
-)
+# 서버(server/app/services/robot_connections.py, routers/robot_protocol.py)가 쓰는 종료 코드
+CLOSE_REPLACED = 4001  # 같은 로봇이 새로 접속해서 이 연결을 닫음 → 재접속하지 않음
+CLOSE_TOKEN_ROTATED = 4003  # 총관리자가 토큰을 재발급함 → 예전 토큰으로는 다시 못 붙음
+CLOSE_UNAUTHORIZED = 4401  # 접속 중 인증이 실패함 → 재접속하지 않음
+# 4000(응답 없음 등으로 서버가 정리), 1001(서버 종료) 등은 재접속해요
 STATUS_INTERVAL = 3.0
 HELLO_ACK_TIMEOUT = 10.0
 MAX_BACKOFF = 30.0
@@ -112,9 +114,7 @@ async def send_status_forever(ws: ClientConnection, robot: FakeRobot) -> None:
         robot.step()
         await ws.send(make_message("status", robot.status_data()))
         d = robot.status_data()
-        print(
-            f"→ status {d['state']} x={d['position']['x']} y={d['position']['y']} battery={d['battery_voltage']}V"
-        )
+        print(f"→ status {d['state']} x={d['position']['x']} y={d['position']['y']} battery={d['battery_voltage']}V")
 
 
 async def receive_commands(ws: ClientConnection) -> None:
@@ -132,9 +132,7 @@ async def receive_commands(ws: ClientConnection) -> None:
             print("→ ack rejected (not_supported)")
 
 
-async def run_once(
-    url: str, robot_id: int, token: str, robot: FakeRobot, on_ready
-) -> None:
+async def run_once(url: str, robot_id: int, token: str, robot: FakeRobot, on_ready) -> None:
     """한 번 접속해서 끊길 때까지 돌아요. 끊기면 예외로 이유를 알려줘요."""
     headers = {"X-Robot-Id": str(robot_id), "Authorization": f"Bearer {token}"}
     try:
@@ -148,9 +146,7 @@ async def run_once(
                 asyncio.create_task(send_status_forever(ws, robot)),
                 asyncio.create_task(receive_commands(ws)),
             ]
-            done, pending = await asyncio.wait(
-                tasks, return_when=asyncio.FIRST_COMPLETED
-            )
+            done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
             for task in pending:
                 task.cancel()
             await asyncio.gather(*pending, return_exceptions=True)
@@ -159,17 +155,15 @@ async def run_once(
             code = ws.close_code
     except InvalidStatus as exc:
         if exc.response.status_code in (401, 403):
-            raise StopRobot(
-                f"인증 실패 (HTTP {exc.response.status_code}). 로봇 id와 토큰을 확인해 주세요"
-            ) from exc
-        raise ConnectionError(
-            f"서버가 접속을 거절했어요 (HTTP {exc.response.status_code})"
-        ) from exc
+            raise StopRobot(f"인증 실패 (HTTP {exc.response.status_code}). 로봇 id와 토큰을 확인해 주세요") from exc
+        raise ConnectionError(f"서버가 접속을 거절했어요 (HTTP {exc.response.status_code})") from exc
     except ConnectionClosed as exc:
         code = exc.rcvd.code if exc.rcvd else None
 
     if code == CLOSE_REPLACED:
         raise StopRobot("같은 로봇이 다른 곳에서 접속해서 이 연결은 교체됐어요")
+    if code in (CLOSE_TOKEN_ROTATED, CLOSE_UNAUTHORIZED):
+        raise StopRobot(f"토큰이 바뀌었거나 인증이 실패했어요 (code={code}). 새 토큰으로 다시 켜 주세요")
     raise ConnectionError(f"연결이 끊겼어요 (code={code})")
 
 
@@ -177,20 +171,14 @@ async def main() -> int:
     parser = argparse.ArgumentParser(description="JUBJUB 로봇 시뮬레이터 (연결 단계)")
     parser.add_argument(
         "--server",
-        default=os.environ.get("ROBOT_SERVER_URL", "ws://127.0.0.1:8000/ws/robot"),
+        default=os.environ.get("ROBOT_SERVER_URL", "ws://127.0.0.1:8000/ws/robots"),
     )
-    parser.add_argument(
-        "--robot-id", type=int, default=int(os.environ.get("ROBOT_ID", "0")) or None
-    )
+    parser.add_argument("--robot-id", type=int, default=int(os.environ.get("ROBOT_ID", "0")) or None)
     parser.add_argument("--token", default=os.environ.get("ROBOT_TOKEN"))
-    parser.add_argument(
-        "--battery", type=float, default=11.6, help="시작 배터리 전압 (V)"
-    )
+    parser.add_argument("--battery", type=float, default=11.6, help="시작 배터리 전압 (V)")
     args = parser.parse_args()
     if not args.robot_id or not args.token:
-        parser.error(
-            "--robot-id 와 --token 이 필요해요 (server/scripts/robot_token.py 로 발급)"
-        )
+        parser.error("--robot-id 와 --token 이 필요해요 (server/scripts/robot_token.py 로 발급)")
 
     robot = FakeRobot(args.battery)
     backoff = 1.0

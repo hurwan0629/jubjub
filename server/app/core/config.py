@@ -30,10 +30,9 @@ class Settings(BaseSettings):
     # 로봇
     robot_bridge_url: str = "ws://localhost:9090"
     use_simulator: bool = True
-    # 로봇 WebSocket(/ws/robot) 끊김 확인. status가 3초마다 오므로 10초 동안 소식이 없으면 끊긴 것으로 봐요.
-    robot_watchdog_enabled: bool = True
-    robot_watchdog_interval_seconds: float = Field(default=5, gt=0)
-    robot_offline_after_seconds: float = Field(default=10, gt=0)
+    robot_command_timeout_seconds: float = Field(default=5, gt=0, le=60)
+    robot_heartbeat_timeout_seconds: float = Field(default=10, ge=5, le=120)
+    robot_schedule_enabled: bool = False
 
     # 사진 저장 폴더
     photo_dir: Path = Path("./storage/photos")

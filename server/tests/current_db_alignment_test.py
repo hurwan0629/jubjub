@@ -65,5 +65,4 @@ def test_charging_is_rejected_by_database_and_api_contract(setup_client):
         db.commit()
     db.rollback()
     statuses = app.openapi()["components"]["schemas"]["RobotResponse"]["properties"]["status"]["enum"]
-    # returning은 로봇이 중지·오류로 분리수거장에 돌아갈 때 보내요 (로봇-서버 통신 문서)
     assert set(statuses) == {"working", "returning", "emptying", "idle", "error", "offline"}

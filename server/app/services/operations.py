@@ -21,6 +21,7 @@ from app.services.patrol import (
     inherit_draft,
     transaction,
 )
+from app.services.robot_availability import has_active_tasks
 
 
 def _conflict(db: Session, request: ParkChangeRequest) -> str | None:
@@ -175,7 +176,9 @@ def approve_change(db: Session, user: User, request_id: int):
             .execution_options(populate_existing=True)
         )
     )
-    if any(robot.status not in ("idle", "offline") for robot in robots):
+    if any(robot.status not in ("idle", "offline") for robot in robots) or has_active_tasks(
+        db, (robot.id for robot in robots)
+    ):
         raise AppError(409, "모든 로봇을 대기 또는 오프라인 상태로 전환한 뒤 승인해 주세요", code="robot_not_available")
     _deactivate(db, park)
     _hide_points(db, park)
@@ -269,7 +272,7 @@ def assign_robot(db: Session, user: User, robot_id: int, target_park_id: int | N
     )
     if robot.park_id != source_park_id:
         raise AppError(409, "로봇 배정이 변경됐어요. 다시 불러와 주세요", code="robot_assignment_changed")
-    if robot.status not in ("idle", "offline"):
+    if robot.status not in ("idle", "offline") or has_active_tasks(db, [robot.id]):
         raise AppError(409, "대기 또는 오프라인 상태의 로봇만 배정할 수 있어요", code="robot_not_available")
     target = parks.get(target_park_id) if target_park_id is not None else None
     if target_park_id is not None and (target is None or target.status != "approved"):

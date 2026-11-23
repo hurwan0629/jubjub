@@ -10,6 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { TaskType } from '@/api/types';
 import { AlertCard, Button, Card, Icon, ROBOT_STATE, SectionHeader, StatRow, StatusBadge, Text } from '@/components';
+import { RobotControls } from '@/components/RobotControls';
 import { useProfile } from '@/hooks/useAccount';
 import { useDecisions } from '@/hooks/useDecisions';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -205,6 +206,8 @@ export function HomeScreen({ navigation }: Props) {
             </View>
           </Pressable>
         ) : null}
+
+        {robot ? <RobotControls key={robot.id} robot={robot} onChanged={reloadRobots} /> : null}
 
         {/* 오늘 요약 */}
         {today ? (

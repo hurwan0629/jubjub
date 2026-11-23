@@ -4,8 +4,6 @@ import os
 
 # app을 import 하기 전에 넣어야 .env 가 없어도 설정이 만들어져요
 os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost:5432/test")
-# 테스트에서는 실제 DB를 주기적으로 확인하는 로봇 끊김 감시를 켜지 않아요
-os.environ.setdefault("ROBOT_WATCHDOG_ENABLED", "false")
 
 from collections.abc import Iterator  # noqa: E402
 

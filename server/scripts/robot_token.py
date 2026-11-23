@@ -1,4 +1,7 @@
-"""로봇 접속 토큰을 발급해요 (총관리자 웹의 토큰 발급 화면이 생기기 전 임시 도구).
+"""로봇 접속 토큰을 발급해요 (개발용 도구).
+
+총관리자 API `POST /admin/robots/{robot_id}/token` 과 같은 방식(app/services/robot_tokens.py)으로 발급해요.
+웹 화면 없이 시뮬레이터를 시험할 때 써요.
 
 실행 (server 폴더에서):
     python scripts/robot_token.py --list                         로봇 목록과 토큰 발급 여부
@@ -19,7 +22,7 @@ from sqlalchemy import select  # noqa: E402
 
 from app.core.db import SessionLocal  # noqa: E402
 from app.models import Robot  # noqa: E402
-from app.services import robot_auth  # noqa: E402
+from app.services.robot_tokens import issue_token  # noqa: E402
 
 
 def main() -> int:
@@ -50,11 +53,12 @@ def main() -> int:
                 print(f"{args.robot_id}번 로봇이 없어요. --list 로 확인해 주세요", file=sys.stderr)
                 return 1
 
-        token = robot_auth.issue_token(db, robot)
+        token = issue_token(robot)
+        db.commit()
         print(f"로봇 {robot.id} ({robot.name}) 토큰을 발급했어요. 지금 한 번만 보여줘요:\n")
         print(f"  ROBOT_ID={robot.id}")
         print(f"  ROBOT_TOKEN={token}\n")
-        print("로봇(시뮬레이터) 설정에 넣어 주세요. 이전 토큰은 더 이상 쓸 수 없어요.")
+        print("로봇(시뮬레이터) 설정에 넣어 주세요. 이전 토큰으로 연결된 로봇은 다음 메시지에서 끊겨요.")
     return 0
 
 
