@@ -5,6 +5,7 @@ import { DailyReportView } from './DailyReportView';
 import { Pagination } from './Pagination';
 import { paginate } from './pageData';
 import { ParkChangeRejectDialog } from './ParkChangeRejectDialog';
+import { RobotTokenButton } from './RobotTokenButton';
 
 function useRemote<T>(load: (signal: AbortSignal) => Promise<T>, deps: unknown[] = []) {
   const [data, setData] = useState<T>();
@@ -505,11 +506,11 @@ export function RobotList() {
                     배정 변경
                   </button>
                   {!['idle', 'offline'].includes(r.status) && <small>대기·오프라인일 때 변경 가능</small>}
-                  <button
-                    className="button soft compact-button"
+                  <RobotTokenButton
+                    tokenIssuedAt={r.tokenIssuedAt}
                     disabled={busy}
-                    onClick={async () => {
-                      if (!window.confirm('기존 토큰과 연결이 만료돼요. 재발급할까요?')) return;
+                    onIssue={async () => {
+                      if (!window.confirm('로봇 인증 토큰을 발급할까요? 원문은 이번에만 보여드려요.')) return;
                       setBusy(true);
                       setError('');
                       try {
@@ -522,9 +523,7 @@ export function RobotList() {
                         setBusy(false);
                       }
                     }}
-                  >
-                    토큰 재발급
-                  </button>
+                  />
                 </td>
               </tr>
             ))}
