@@ -10,6 +10,8 @@ from app.models import Park, Robot, Route, User
 from app.schemas.approval import ApprovalInput, ParkRequestResponse, RejectionInput, RobotInput, RobotResponse
 from app.services.auth import require_super_admin
 from app.services.patrol import _managed, _park, inherit_draft, transaction
+from app.services.robot_availability import has_active_tasks
+from app.services.robot_tokens import issue_token
 
 
 def _robot_response(robot: Robot) -> RobotResponse:
@@ -27,6 +29,9 @@ def _robot_response(robot: Robot) -> RobotResponse:
         lng=robot.lng,
         battery_voltage=robot.battery_voltage,
         last_seen_at=robot.last_seen_at,
+        slam_yaw=robot.state.slam_yaw,
+        updated_at=robot.state.updated_at,
+        token_issued_at=robot.token_issued_at,
     )
 
 
@@ -88,7 +93,9 @@ def approve(db: Session, user: User, park_id: int, body: ApprovalInput):
         raise AppError(404, "선택한 로봇을 찾을 수 없어요", code="robot_not_found")
     if any(robot.park_id is not None for robot in robots):
         raise AppError(409, "이미 공원에 할당된 로봇이 있어요", code="robot_already_assigned")
-    if any(robot.status not in ("idle", "offline") for robot in robots):
+    if any(robot.status not in ("idle", "offline") for robot in robots) or has_active_tasks(
+        db, (robot.id for robot in robots)
+    ):
         raise AppError(409, "대기 중이거나 오프라인인 미할당 로봇만 지정할 수 있어요", code="robot_not_available")
     now = datetime.now(UTC)
     park.status = "approved"
@@ -121,9 +128,10 @@ def register_robot(db: Session, user: User, body: RobotInput):
     if db.scalar(select(Robot.id).where(Robot.serial_no == body.serial_no)):
         raise AppError(409, "이미 등록된 기기 식별 번호예요", code="robot_serial_exists")
     robot = Robot(name=body.name, serial_no=body.serial_no)
+    token = issue_token(robot)
     db.add(robot)
     db.flush()
-    return _robot_response(robot)
+    return {**_robot_response(robot).model_dump(), "auth_token": token}
 
 
 @transaction(write=True)
@@ -145,7 +153,9 @@ def revoke(db: Session, user: User, park_id: int, body: RejectionInput):
             .execution_options(populate_existing=True)
         )
     )
-    if any(robot.status not in ("idle", "offline") for robot in robots):
+    if any(robot.status not in ("idle", "offline") for robot in robots) or has_active_tasks(
+        db, (robot.id for robot in robots)
+    ):
         raise AppError(
             409, "로봇을 대기 또는 오프라인 상태로 전환한 뒤 승인을 취소해 주세요", code="robot_not_available"
         )

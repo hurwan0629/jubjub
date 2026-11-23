@@ -21,13 +21,16 @@ export type AdminRobot = {
   managerId?: string | null;
   managerName?: string | null;
   managerLoginId?: string | null;
-  status: 'idle' | 'working' | 'emptying' | 'offline' | 'error';
+  status: 'idle' | 'working' | 'returning' | 'emptying' | 'offline' | 'error';
   slamX: number | null;
   slamY: number | null;
   lat: number | null;
   lng: number | null;
   batteryVoltage: number | null;
   lastSeenAt: string | null;
+  slamYaw?: number | null;
+  updatedAt?: string | null;
+  tokenIssuedAt?: string | null;
 };
 
 async function allPages<T>(path: string, signal?: AbortSignal): Promise<T[]> {
@@ -108,7 +111,21 @@ export const getParkReports = (id: string, date: string, signal?: AbortSignal, c
     { signal },
   );
 export const createAdminRobot = (name: string, serialNo: string) =>
-  request<AdminRobot>('/admin/robots', { method: 'POST', body: JSON.stringify({ name, serialNo }) });
+  request<AdminRobot & { authToken: string }>('/admin/robots', {
+    method: 'POST',
+    body: JSON.stringify({ name, serialNo }),
+  });
+export const rotateRobotToken = (id: string) =>
+  request<{ robotId: string; authToken: string; tokenIssuedAt: string }>(
+    `/admin/robots/${encodeURIComponent(id)}/token`,
+    { method: 'POST' },
+  );
+export const startPatrol = (id: string) =>
+  request<{ id: string; result: string | null; accepted?: boolean }>(`/robots/${encodeURIComponent(id)}/patrol/start`, {
+    method: 'POST',
+  });
+export const stopPatrol = (id: string) =>
+  request<{ taskId: string; accepted: boolean }>(`/robots/${encodeURIComponent(id)}/patrol/stop`, { method: 'POST' });
 export const assignRobot = (id: string, parkId: string | null) =>
   request<AdminRobot>(`/admin/robots/${encodeURIComponent(id)}/assignment`, {
     method: 'PATCH',

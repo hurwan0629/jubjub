@@ -349,6 +349,7 @@ export function RobotList() {
   const [listSearch, setListSearch] = useState('');
   const [page, setPage] = useState(1);
   const [registerOpen, setRegisterOpen] = useState(false);
+  const [issuedToken, setIssuedToken] = useState<{ robotId: string; token: string }>();
   const list = paginate(
     (robots.data ?? []).filter((r) =>
       `${r.name} ${r.serialNo} ${r.parkName ?? ''} ${r.managerName ?? ''}`
@@ -377,7 +378,8 @@ export function RobotList() {
     setNotice('');
     try {
       if (register) {
-        await api.createAdminRobot(name.trim(), serial.trim());
+        const registered = await api.createAdminRobot(name.trim(), serial.trim());
+        setIssuedToken({ robotId: registered.id, token: registered.authToken });
         setName('');
         setSerial('');
       } else if (target) await api.assignRobot(target.id, parkId || null);
@@ -444,6 +446,16 @@ export function RobotList() {
       )}
       <Feedback error={robots.error || (!target ? error : '')} loading={robots.loading} />
       {notice && <p role="status">{notice}</p>}
+      {issuedToken && (
+        <section className="error-panel" aria-label="발급된 로봇 토큰">
+          <h3>로봇 {issuedToken.robotId} 인증 토큰</h3>
+          <p>이번에만 보여드려요. 로봇 설정에 안전하게 복사해 주세요. 닫으면 다시 볼 수 없어요.</p>
+          <textarea readOnly aria-label="로봇 인증 토큰" value={issuedToken.token} />
+          <button className="button soft" onClick={() => setIssuedToken(undefined)}>
+            확인하고 닫기
+          </button>
+        </section>
+      )}
       <div className="table-scroll">
         <table>
           <thead>
@@ -470,6 +482,7 @@ export function RobotList() {
                     {
                       idle: '대기',
                       working: '작업 중',
+                      returning: '복귀 중',
                       emptying: '비우는 중',
                       offline: '오프라인',
                       error: '오류',
@@ -492,6 +505,26 @@ export function RobotList() {
                     배정 변경
                   </button>
                   {!['idle', 'offline'].includes(r.status) && <small>대기·오프라인일 때 변경 가능</small>}
+                  <button
+                    className="button soft compact-button"
+                    disabled={busy}
+                    onClick={async () => {
+                      if (!window.confirm('기존 토큰과 연결이 만료돼요. 재발급할까요?')) return;
+                      setBusy(true);
+                      setError('');
+                      try {
+                        const result = await api.rotateRobotToken(r.id);
+                        setIssuedToken({ robotId: r.id, token: result.authToken });
+                        robots.reload();
+                      } catch (e) {
+                        setError(e instanceof Error ? e.message : '토큰을 발급하지 못했어요');
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  >
+                    토큰 재발급
+                  </button>
                 </td>
               </tr>
             ))}

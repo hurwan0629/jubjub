@@ -40,7 +40,7 @@ class RobotResponse(ParkSchema):
     name: str
     serial_no: str
     park_id: str | None
-    status: Literal["idle", "working", "emptying", "offline", "error"]
+    status: Literal["idle", "working", "returning", "emptying", "offline", "error"]
     assigned_at: datetime | None
     created_at: datetime
     slam_x: float | None = None
@@ -49,10 +49,17 @@ class RobotResponse(ParkSchema):
     lng: float | None = None
     battery_voltage: float | None = None
     last_seen_at: datetime | None = None
+    slam_yaw: float | None = None
+    updated_at: datetime | None = None
+    token_issued_at: datetime | None = None
     park_name: str | None = None
     manager_id: str | None = None
     manager_name: str | None = None
     manager_login_id: str | None = None
+
+
+class RobotRegistrationResponse(RobotResponse):
+    auth_token: str = Field(repr=False)
 
 
 class ParkRequestResponse(ManagedPark):

@@ -14,6 +14,7 @@ import { colors, layout, space } from '@/theme';
 const STATUS = {
   idle: '대기',
   working: '순찰 중',
+  returning: '복귀 중',
   emptying: '비우는 중',
   offline: '연결 끊김',
   error: '오류',

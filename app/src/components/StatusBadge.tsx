@@ -11,6 +11,7 @@ import { Text } from './Text';
  *   title: 상태 이름   sentence: "Jubi가 ~" 뒤에 붙는 문장   badge: 배지 글자   tone: 배지 색
  */
 export const ROBOT_STATE: Record<RobotState, { title: string; sentence: string; badge: string; tone: Tone }> = {
+  returning: { title: '복귀 중', sentence: '분리수거장으로 복귀하고 있어요', badge: '복귀', tone: 'brand' },
   patrolling: { title: '순찰 중', sentence: '순찰 중이에요', badge: '정상', tone: 'brand' },
   picking: { title: '줍는 중', sentence: '쓰레기를 줍고 있어요', badge: '정상', tone: 'brand' },
   toStation: { title: '분리수거장 이동 중', sentence: '분리수거장으로 가고 있어요', badge: '이동', tone: 'brand' },

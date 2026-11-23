@@ -154,3 +154,7 @@ VS Code에 Ruff 확장을 설치하면 저장할 때 자동으로 포맷돼요.
 # R2 사진 저장 연동
 
 비공개 사진 업로드·임시 조회 API와 연결 확인 방법은 [R2.md](R2.md)를 참고해 주세요.
+
+## 로봇 통신과 순찰 제어
+
+DB 0015의 상태·기록을 사용하는 API, 로봇 토큰 발급, WebSocket 메시지와 실행 설정은 [ROBOT_PROTOCOL_API.md](ROBOT_PROTOCOL_API.md)를 참고해요. 연결을 메모리에서 관리하므로 서버 worker는 한 개로 실행해요.
