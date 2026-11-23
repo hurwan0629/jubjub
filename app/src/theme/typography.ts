@@ -42,7 +42,6 @@ const style = (fontSize: number, weight: FontWeight, extra?: { letterSpacing?: n
  * 없는 조합이 필요하면 디자이너와 확인한 뒤 여기에 추가해요.
  */
 export const typography = {
-  '9-regular': style(9, 'regular'), // 미니 지도 장소 이름 (A-06)
   '10-regular': style(10, 'regular'),
   '10-semibold': style(10, 'semibold'),
   '10-bold': style(10, 'bold'),
@@ -61,12 +60,10 @@ export const typography = {
   '14-semibold': style(14, 'semibold'),
   '14-bold': style(14, 'bold'),
   '15-regular': style(15, 'regular'), // 시작화면 소개 문장 (C-00)
-  '15-semibold': style(15, 'semibold'), // 로봇 요청 시트 공원 이름 (A-01)
   '15-bold': style(15, 'bold'),
   '16-bold': style(16, 'bold'),
   '17-bold': style(17, 'bold'),
   '18-bold': style(18, 'bold'),
-  '19-bold': style(19, 'bold'), // 로봇 요청 시트 제목 (A-01 · A-13)
   '20-bold': style(20, 'bold'), // 지점 이름 입력 (C-03 · A-04)
   '22-bold': style(22, 'bold'),
   '24-bold': style(24, 'bold'),

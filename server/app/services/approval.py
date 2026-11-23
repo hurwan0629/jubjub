@@ -2,14 +2,14 @@
 
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
-from app.models import Park, Robot, User
+from app.models import Park, Robot, Route, User
 from app.schemas.approval import ApprovalInput, ParkRequestResponse, RejectionInput, RobotInput, RobotResponse
 from app.services.auth import require_super_admin
-from app.services.patrol import _managed, transaction
+from app.services.patrol import _managed, _park, inherit_draft, transaction
 
 
 def _robot_response(robot: Robot) -> RobotResponse:
@@ -21,6 +21,12 @@ def _robot_response(robot: Robot) -> RobotResponse:
         status=robot.status,
         assigned_at=robot.assigned_at,
         created_at=robot.created_at,
+        slam_x=robot.slam_x,
+        slam_y=robot.slam_y,
+        lat=robot.lat,
+        lng=robot.lng,
+        battery_voltage=robot.battery_voltage,
+        last_seen_at=robot.last_seen_at,
     )
 
 
@@ -86,13 +92,14 @@ def approve(db: Session, user: User, park_id: int, body: ApprovalInput):
         raise AppError(409, "대기 중이거나 오프라인인 미할당 로봇만 지정할 수 있어요", code="robot_not_available")
     now = datetime.now(UTC)
     park.status = "approved"
-    park.approved_by = user.id
-    park.approved_at = now
+    park.reviewed_by = user.id
+    park.reviewed_at = now
     park.reject_reason = None
     for robot in robots:
         robot.park_id = park.id
         robot.assigned_at = now
     db.flush()
+    inherit_draft(db, db.get(User, park.user_id), park, robots)
     return _managed(park)
 
 
@@ -101,8 +108,8 @@ def reject(db: Session, user: User, park_id: int, body: RejectionInput):
     require_super_admin(user)
     park = _pending(db, park_id)
     park.status = "rejected"
-    park.approved_by = None
-    park.approved_at = None
+    park.reviewed_by = user.id
+    park.reviewed_at = datetime.now(UTC)
     park.reject_reason = body.reason
     db.flush()
     return _managed(park)
@@ -119,13 +126,93 @@ def register_robot(db: Session, user: User, body: RobotInput):
     return _robot_response(robot)
 
 
+@transaction(write=True)
+def revoke(db: Session, user: User, park_id: int, body: RejectionInput):
+    require_super_admin(user)
+    park = db.scalar(
+        select(Park).where(Park.id == park_id).with_for_update(of=Park).execution_options(populate_existing=True)
+    )
+    if park is None:
+        raise AppError(404, "공원 신청을 찾을 수 없어요", code="park_request_not_found")
+    if park.status != "approved":
+        raise AppError(409, "승인된 관리자만 승인을 취소할 수 있어요", code="registration_not_approved")
+    robots = list(
+        db.scalars(
+            select(Robot)
+            .where(Robot.park_id == park.id)
+            .order_by(Robot.id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+    )
+    if any(robot.status not in ("idle", "offline") for robot in robots):
+        raise AppError(
+            409, "로봇을 대기 또는 오프라인 상태로 전환한 뒤 승인을 취소해 주세요", code="robot_not_available"
+        )
+    for robot in robots:
+        robot.park_id = None
+        robot.assigned_at = None
+    if robots:
+        released_ids = [robot.id for robot in robots]
+        db.execute(
+            update(Route)
+            .where(Route.park_id == park.id, Route.robot_id.in_(released_ids), Route.is_active.is_(True))
+            .values(is_active=False)
+        )
+        park.route_setup_done = False
+    # 별도 DB 상태를 추가하지 않고 반려 상태와 사유로 업무 접근을 즉시 차단해요.
+    park.status = "rejected"
+    park.reviewed_by = user.id
+    park.reviewed_at = datetime.now(UTC)
+    park.reject_reason = body.reason
+    db.flush()
+    return _managed(park)
+
+
 @transaction()
 def list_robots(db: Session, user: User, unassigned: bool, limit: int, offset: int):
+    from app.services.operations import admin_robot_response
+
     require_super_admin(user)
     statement = select(Robot)
     if unassigned:
         statement = statement.where(Robot.park_id.is_(None))
-    return [_robot_response(robot) for robot in db.scalars(statement.order_by(Robot.id).limit(limit).offset(offset))]
+    return [
+        admin_robot_response(db, robot)
+        for robot in db.scalars(statement.order_by(Robot.id).limit(limit).offset(offset))
+    ]
+
+
+@transaction()
+def my_robots(db: Session, user: User):
+    park = _park(db, user)
+    return [
+        _robot_response(robot) for robot in db.scalars(select(Robot).where(Robot.park_id == park.id).order_by(Robot.id))
+    ]
+
+
+def _my_robot(db: Session, user: User, robot_id: int, *, lock: bool = False) -> Robot:
+    park = _park(db, user)
+    statement = select(Robot).where(Robot.id == robot_id, Robot.park_id == park.id)
+    if lock:
+        statement = statement.with_for_update().execution_options(populate_existing=True)
+    robot = db.scalar(statement)
+    if robot is None:
+        raise AppError(404, "이 공원에 배정된 로봇을 찾을 수 없어요", code="robot_not_found")
+    return robot
+
+
+@transaction()
+def my_robot(db: Session, user: User, robot_id: int):
+    return _robot_response(_my_robot(db, user, robot_id))
+
+
+@transaction(write=True)
+def rename_robot(db: Session, user: User, robot_id: int, name: str):
+    robot = _my_robot(db, user, robot_id, lock=True)
+    robot.name = name
+    db.flush()
+    return _robot_response(robot)
 
 
 def registration_park_id(db: Session, user: User, applicant_id: int) -> int:

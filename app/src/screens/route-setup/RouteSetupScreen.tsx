@@ -5,9 +5,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { logout } from '@/api/account';
 import { saveRouteConfig } from '@/api/route';
-import type { LatLng, PatrolPoint, PatrolSlot } from '@/api/types';
+import type { LatLng, PatrolPoint, PatrolSlot, RouteConfig } from '@/api/types';
 import { Button, Header, Text } from '@/components';
+import { PatrolRobotScope } from '@/components/PatrolRobotScope';
 import { useManagedPark } from '@/hooks/useOnboarding';
+import { useRouteConfig } from '@/hooks/useRoute';
 import type { RootParams } from '@/navigation';
 import { colors, layout, space } from '@/theme';
 import { moveItem } from '@/utils/route';
@@ -24,12 +26,49 @@ const DEFAULT_SLOTS: PatrolSlot[] = [
 ];
 
 /** C-03 승인된 공원의 순찰 경로 처음 설정 (5단계). */
-export function RouteSetupScreen({ navigation }: NativeStackScreenProps<RootParams, 'RouteSetup'>) {
+type Props = NativeStackScreenProps<RootParams, 'RouteSetup'>;
+
+export function RouteSetupScreen(props: Props) {
+  return (
+    <PatrolRobotScope>
+      {(robotId, setBusy) => <RobotRouteSetup {...props} robotId={robotId} setBusy={setBusy} />}
+    </PatrolRobotScope>
+  );
+}
+
+function RobotRouteSetup({
+  navigation,
+  robotId,
+  setBusy,
+}: Props & { robotId?: string; setBusy: (busy: boolean) => void }) {
+  const { data: initial, error, reload } = useRouteConfig(robotId);
+  if (!initial || error)
+    return (
+      <View style={s.message}>
+        <Text variant="13-regular" color={error ? 'error' : 'textSub'}>
+          {error?.message ?? '순찰 설정을 불러오고 있어요…'}
+        </Text>
+        {error ? <Button label="다시 불러오기" onPress={reload} /> : null}
+      </View>
+    );
+  return <SetupWizard navigation={navigation} initial={initial} robotId={robotId} setBusy={setBusy} />;
+}
+
+function SetupWizard({
+  navigation,
+  robotId,
+  setBusy,
+  initial,
+}: Pick<Props, 'navigation'> & {
+  robotId?: string;
+  setBusy: (busy: boolean) => void;
+  initial: RouteConfig;
+}) {
   const { data: managed, error: loadError, loading, reload } = useManagedPark();
   const [step, setStep] = useState(1);
-  const [recycle, setRecycle] = useState<LatLng | null>(null);
-  const [points, setPoints] = useState<PatrolPoint[]>([]);
-  const [slots, setSlots] = useState<PatrolSlot[]>(DEFAULT_SLOTS);
+  const [recycle, setRecycle] = useState<LatLng | null>(initial.station);
+  const [points, setPoints] = useState<PatrolPoint[]>(initial.points);
+  const [slots, setSlots] = useState<PatrolSlot[]>(initial.schedule.length ? initial.schedule : DEFAULT_SLOTS);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>();
   const park = managed ? { ...managed, id: managed.catalogId, distance: '' } : null;
@@ -53,8 +92,11 @@ export function RouteSetupScreen({ navigation }: NativeStackScreenProps<RootPara
     }
     if (!recycle) return;
     setSaving(true);
+    setBusy(true);
     try {
       await saveRouteConfig({
+        catalogId: initial.catalogId,
+        robotId,
         parkName: park.name,
         bounds: park.bounds,
         area: park.area,
@@ -67,6 +109,7 @@ export function RouteSetupScreen({ navigation }: NativeStackScreenProps<RootPara
       setError(e instanceof Error ? e.message : '경로를 저장하지 못했어요. 다시 시도해 주세요');
     } finally {
       setSaving(false);
+      setBusy(false);
     }
   };
 
@@ -76,12 +119,11 @@ export function RouteSetupScreen({ navigation }: NativeStackScreenProps<RootPara
     body = (
       <View style={s.message}>
         <Text variant="15-bold">
-          {loading ? '공원 정보를 불러오고 있어요…' : (loadError?.message ?? '공원 승인 후 순찰 경로를 정할 수 있어요')}
+          {loadError?.message ?? (loading ? '공원 정보를 불러오고 있어요…' : '공원 승인 후 순찰 경로를 정할 수 있어요')}
         </Text>
         {!loading ? (
           <>
             <Button label="다시 불러오기" onPress={reload} />
-            <Button label="승인 상태 확인" variant="soft" onPress={() => navigation.replace('ParkApproval')} />
             <Button label="로그인 화면으로" variant="soft" onPress={exit} />
           </>
         ) : null}

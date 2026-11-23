@@ -19,8 +19,6 @@ type ButtonProps = {
   variant?: Variant;
   icon?: ImageSource;
   disabled?: boolean;
-  /** 높이 48 (알림 상세처럼 버튼 두 개를 세로로 쌓을 때) */
-  compact?: boolean;
   onPress?: () => void;
 };
 
@@ -31,7 +29,7 @@ const VARIANT: Record<Variant, { bg: ColorName; fg: ColorName }> = {
 };
 
 /** 버튼 (Figma 구성표/06: 높이 52 · 모서리 14 · 아이콘 간격 8) */
-export function Button({ label, variant = 'primary', icon, disabled, compact, onPress }: ButtonProps) {
+export function Button({ label, variant = 'primary', icon, disabled, onPress }: ButtonProps) {
   const v = disabled ? ({ bg: 'bgDisabled', fg: 'textDisabled' } as const) : VARIANT[variant];
   return (
     <Pressable
@@ -39,11 +37,7 @@ export function Button({ label, variant = 'primary', icon, disabled, compact, on
       disabled={disabled}
       accessibilityRole="button"
       accessibilityState={{ disabled: !!disabled }}
-      style={({ pressed }) => [
-        s.button,
-        compact ? s.compact : null,
-        { backgroundColor: colors[v.bg], opacity: pressed ? 0.85 : 1 },
-      ]}
+      style={({ pressed }) => [s.button, { backgroundColor: colors[v.bg], opacity: pressed ? 0.85 : 1 }]}
     >
       {icon ? <Icon source={icon} size={19} /> : null}
       <Text variant="15-bold" color={v.fg}>
@@ -62,5 +56,4 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     gap: space[8],
   },
-  compact: { height: 48 },
 });

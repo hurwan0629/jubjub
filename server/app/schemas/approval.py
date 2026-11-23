@@ -31,14 +31,28 @@ class RobotInput(ParkSchema):
     serial_no: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
 
 
+class RobotNameInput(ParkSchema):
+    name: Name
+
+
 class RobotResponse(ParkSchema):
     id: str
     name: str
     serial_no: str
     park_id: str | None
-    status: Literal["idle", "working", "charging", "offline", "error"]
+    status: Literal["idle", "working", "emptying", "offline", "error"]
     assigned_at: datetime | None
     created_at: datetime
+    slam_x: float | None = None
+    slam_y: float | None = None
+    lat: float | None = None
+    lng: float | None = None
+    battery_voltage: float | None = None
+    last_seen_at: datetime | None = None
+    park_name: str | None = None
+    manager_id: str | None = None
+    manager_name: str | None = None
+    manager_login_id: str | None = None
 
 
 class ParkRequestResponse(ManagedPark):

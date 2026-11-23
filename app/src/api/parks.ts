@@ -2,7 +2,56 @@
 import { ApiError, mockFor, mockResponse, request } from './client';
 import { getMockSession, saveMockSession } from './mock/onboarding';
 import { mockParks } from './mock/parks';
-import type { ManagedPark, Park } from './types';
+import type { ManagedPark, Park, ParkChange } from './types';
+
+export function getParkChangeRequests(): Promise<ParkChange[]> {
+  if (!mockFor('park')) return request('/park-change-requests');
+  return mockResponse(getMockSession().parkChanges ?? []);
+}
+
+export async function requestParkChange(catalogId: string, reason: string): Promise<ParkChange> {
+  if (!mockFor('park'))
+    return request('/park-change-requests', { method: 'POST', body: JSON.stringify({ catalogId, reason }) });
+  const session = getMockSession();
+  const current = session.park;
+  const selected = mockParks.find((p) => p.id === catalogId);
+  if (!current || current.status !== 'approved') throw new ApiError(409, '승인된 관리 공원이 필요해요');
+  if (session.parkChanges?.some((r) => r.status === 'pending'))
+    throw new ApiError(409, '이미 승인 대기 중인 신청이 있어요');
+  if (!selected || current.catalogId === catalogId || !reason.trim() || reason.trim().length > 200)
+    throw new ApiError(422, '새 공원과 변경 사유를 확인해 주세요');
+  const change: ParkChange = {
+    id: String(Date.now()),
+    parkId: current.id,
+    userId: '',
+    applicantName: session.profile.name,
+    applicantLoginId: '',
+    currentCatalogId: current.catalogId,
+    currentParkName: current.name,
+    requestedCatalogId: catalogId,
+    requestedParkName: selected.name,
+    requestedParkAddress: selected.address,
+    reason: reason.trim(),
+    status: 'pending',
+    rejectReason: null,
+    createdAt: new Date().toISOString(),
+    reviewedAt: null,
+    conflictingManagerName: null,
+  };
+  session.parkChanges = [change, ...(session.parkChanges ?? [])];
+  await saveMockSession();
+  return mockResponse(change);
+}
+
+export async function cancelParkChange(id: string): Promise<ParkChange> {
+  if (!mockFor('park')) return request(`/park-change-requests/${encodeURIComponent(id)}/cancel`, { method: 'POST' });
+  const change = getMockSession().parkChanges?.find((r) => r.id === id);
+  if (!change || change.status !== 'pending') throw new ApiError(409, '대기 중인 신청만 취소할 수 있어요');
+  change.status = 'cancelled';
+  change.reviewedAt = new Date().toISOString();
+  await saveMockSession();
+  return mockResponse(change);
+}
 
 export function getManagedPark(): Promise<ManagedPark> {
   if (!mockFor('park')) return request('/park');
@@ -18,7 +67,15 @@ export async function selectPark(catalogId: string): Promise<ManagedPark> {
   const selected = mockParks.find((p) => p.id === catalogId);
   if (!selected) throw new ApiError(404, '선택한 공원을 찾을 수 없어요');
   const { distance: _distance, ...park } = selected;
-  session.park = { ...park, catalogId, status: 'pending', routeSetupDone: false, rejectReason: null };
+  session.park = {
+    ...park,
+    catalogId,
+    status: 'pending',
+    routeSetupDone: false,
+    rejectReason: null,
+    reviewedBy: null,
+    reviewedAt: null,
+  };
   session.profile.parkStatus = 'pending';
   session.profile.registrationStatus = 'pending';
   session.profile.routeSetupDone = false;

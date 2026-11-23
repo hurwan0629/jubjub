@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { icons } from '@/icons';
 import { colors, radius, tones } from '@/theme';
-import type { ColorName, Tone } from '@/theme';
+import type { Tone } from '@/theme';
 
 import { Icon } from './Icon';
 import { Text } from './Text';
@@ -17,40 +17,20 @@ type AlertCardProps = {
   unread?: boolean;
   /** 홈 배너처럼 본문을 크게 보여 줄 때 */
   large?: boolean;
-  /** 아이콘 그림에 받침(36px)이 이미 들어 있으면 받침 원을 그리지 않아요 (공원 변경) */
-  framed?: boolean;
-  /** 테두리 색을 따로 정할 때 (공원 변경 반려: 옅은 빨강) */
-  borderColor?: ColorName;
   onPress?: () => void;
 };
 
 /** 알림 카드 (A-01 미확인 알림 배너, A-05 알림 카드) */
-export function AlertCard({
-  icon,
-  tone,
-  title,
-  body,
-  meta,
-  unread,
-  large,
-  framed,
-  borderColor,
-  onPress,
-}: AlertCardProps) {
+export function AlertCard({ icon, tone, title, body, meta, unread, large, onPress }: AlertCardProps) {
   return (
     <Pressable
       onPress={onPress}
       disabled={!onPress}
-      accessibilityRole={onPress ? 'button' : undefined}
-      style={[s.card, { borderColor: colors[borderColor ?? (unread ? 'bgSelected' : 'border')] }]}
+      style={[s.card, { borderColor: unread ? colors.bgSelected : colors.border }]}
     >
-      {framed ? (
-        <Icon source={icon} size={36} />
-      ) : (
-        <View style={[s.iconCircle, { backgroundColor: colors[tones[tone].bg] }]}>
-          <Icon source={icon} size={22} />
-        </View>
-      )}
+      <View style={[s.iconCircle, { backgroundColor: colors[tones[tone].bg] }]}>
+        <Icon source={icon} size={22} />
+      </View>
       <View style={s.body}>
         <View style={s.titleRow}>
           <Text variant={unread ? '13-bold' : '13-medium'} style={s.flex1}>

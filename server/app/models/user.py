@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import BigInteger, Boolean, CheckConstraint, DateTime, Identity, Integer, Text, func, true
+from sqlalchemy import BigInteger, CheckConstraint, DateTime, Identity, Integer, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
@@ -24,6 +24,3 @@ class User(Base):
     email: Mapped[str] = mapped_column(Text, unique=True)
     role: Mapped[str] = mapped_column(Text, server_default="manager")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    # C-02 알림 설정 (로봇 오류는 안전을 위해 항상 받아요)
-    notify_unpickable: Mapped[bool] = mapped_column(Boolean, server_default=true())
-    notify_daily_report: Mapped[bool] = mapped_column(Boolean, server_default=true())

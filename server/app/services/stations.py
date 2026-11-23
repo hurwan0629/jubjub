@@ -1,135 +1,104 @@
-"""분리수거장 여러 곳을 관리하고 로봇마다 비우러 갈 곳을 정해요 (C-02 분리수거장 관리).
-
-기본 분리수거장(경로가 기준으로 삼는 곳)은 순찰 설정(PUT /station · /route)이 그대로 다뤄요.
-station_id가 비어 있는 로봇은 기본 분리수거장을 써요.
-"""
+"""분리수거장 목록과 활성 경로의 참조를 관리해요."""
 
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
-from app.models import PatrolPoint, Robot, User
-from app.schemas.stations import RobotStationInput, Station, StationInput, StationPatch
-from app.services.patrol import _inside, _park, _position, _route, _station, transaction
-
-
-def _live(db: Session, park_id: int) -> list[PatrolPoint]:
-    return list(
-        db.scalars(
-            select(PatrolPoint)
-            .where(PatrolPoint.park_id == park_id, PatrolPoint.type == "station", PatrolPoint.deleted_at.is_(None))
-            .order_by(PatrolPoint.id)
-        )
-    )
-
-
-def _users(robots: list[Robot], station: PatrolPoint, primary_id: int | None) -> list[Robot]:
-    return [r for r in robots if r.station_id == station.id or (r.station_id is None and station.id == primary_id)]
-
-
-def _list(db: Session, park) -> list[Station]:
-    primary = _station(db, park)
-    primary_id = primary.id if primary else None
-    robots = list(db.scalars(select(Robot).where(Robot.park_id == park.id).order_by(Robot.id)))
-    return [
-        Station(
-            id=str(s.id),
-            name=s.name,
-            position=_position(s),
-            primary=s.id == primary_id,
-            robots=[{"id": str(r.id), "name": r.name} for r in _users(robots, s, primary_id)],
-        )
-        for s in _live(db, park.id)
-    ]
-
-
-def _one(db: Session, park, station_id: int) -> PatrolPoint:
-    point = db.scalar(
-        select(PatrolPoint)
-        .where(
-            PatrolPoint.id == station_id,
-            PatrolPoint.park_id == park.id,
-            PatrolPoint.type == "station",
-            PatrolPoint.deleted_at.is_(None),
-        )
-        .with_for_update()
-    )
-    if point is None:
-        raise AppError(404, "분리수거장을 찾을 수 없어요", code="station_not_found")
-    return point
-
-
-def _by_id(stations: list[Station], station_id: int) -> Station:
-    return next(s for s in stations if s.id == str(station_id))
+from app.models import RecyclingStation, Route, User
+from app.schemas.patrol import StationInput
+from app.services.patrol import (
+    _ensure_catalog,
+    _inside,
+    _park,
+    _position,
+    _route_input,
+    _save_route,
+    _station_by_id,
+    _station_list,
+    _station_response,
+    _validate_points,
+    transaction,
+)
 
 
 @transaction()
-def list_stations(db: Session, user: User) -> list[Station]:
-    return _list(db, _park(db, user))
+def list_stations(db: Session, user: User):
+    return _station_list(db, _park(db, user))
 
 
-@transaction(write=True)
-def add_station(db: Session, user: User, body: StationInput) -> Station:
-    park = _park(db, user)
-    _inside(park, body.position)
-    point = PatrolPoint(
-        park_id=park.id, name=body.name, type="station", lat=body.position.latitude, lng=body.position.longitude
+def _unique_position(db: Session, park_id: int, body: StationInput, exclude_id: int | None = None):
+    query = select(RecyclingStation.id).where(
+        RecyclingStation.park_id == park_id,
+        RecyclingStation.deleted_at.is_(None),
+        RecyclingStation.lat == body.position.latitude,
+        RecyclingStation.lng == body.position.longitude,
     )
-    db.add(point)
-    db.flush()
-    return _by_id(_list(db, park), point.id)
+    if exclude_id is not None:
+        query = query.where(RecyclingStation.id != exclude_id)
+    if db.scalar(query):
+        raise AppError(409, "같은 위치의 분리수거장이 이미 있어요", code="station_position_exists")
 
 
 @transaction(write=True)
-def edit_station(db: Session, user: User, station_id: int, body: StationPatch) -> Station:
+def create_station(db: Session, user: User, body: StationInput):
     park = _park(db, user)
-    point = _one(db, park, station_id)
-    if body.name is not None:
-        point.name = body.name
-    if body.position is not None:
-        _inside(park, body.position)
-        point.lat = body.position.latitude
-        point.lng = body.position.longitude
-    db.flush()
-    return _by_id(_list(db, park), point.id)
-
-
-@transaction(write=True)
-def delete_station(db: Session, user: User, station_id: int) -> list[Station]:
-    """쓰는 로봇이 있으면 지울 수 없어요. 기본 분리수거장을 지우면 남은 곳 중 하나가 기본이 돼요."""
-    park = _park(db, user)
-    point = _one(db, park, station_id)
-    live = _live(db, park.id)
-    if len(live) <= 1:
-        raise AppError(409, "분리수거장은 한 곳 이상 있어야 해요", code="last_station")
-    primary = _station(db, park)
-    robots = list(db.scalars(select(Robot).where(Robot.park_id == park.id).order_by(Robot.id)))
-    users = _users(robots, point, primary.id if primary else None)
-    if users:
-        names = ", ".join(r.name for r in users)
-        raise AppError(
-            409,
-            f"{names}이(가) 쓰는 분리수거장이라 지울 수 없어요",
-            code="station_in_use",
-            details=[{"id": str(r.id), "name": r.name} for r in users],
+    _ensure_catalog(db, park, body.catalog_id)
+    _inside(park, body.position)
+    _unique_position(db, park.id, body)
+    if (
+        db.scalar(
+            select(func.count())
+            .select_from(RecyclingStation)
+            .where(RecyclingStation.park_id == park.id, RecyclingStation.deleted_at.is_(None))
         )
-    point.deleted_at = datetime.now(UTC)
-    route = _route(db, park)
-    if route and route.station_id == point.id:
-        route.station_id = next(s.id for s in live if s.id != point.id)
+        >= 100
+    ):
+        raise AppError(422, "분리수거장은 공원당 100곳까지 등록할 수 있어요", code="station_limit_exceeded")
+    item = RecyclingStation(park_id=park.id, name=body.name, lat=body.position.latitude, lng=body.position.longitude)
+    db.add(item)
     db.flush()
-    return _list(db, park)
+    return _station_response(item)
 
 
 @transaction(write=True)
-def set_robot_station(db: Session, user: User, robot_id: int, body: RobotStationInput) -> list[Station]:
+def update_station(db: Session, user: User, station_id: int, body: StationInput):
     park = _park(db, user)
-    robot = db.scalar(select(Robot).where(Robot.id == robot_id, Robot.park_id == park.id).with_for_update())
-    if robot is None:
-        raise AppError(404, "우리 공원에 배정된 로봇이 아니에요", code="robot_not_found")
-    point = _one(db, park, int(body.station_id))
-    robot.station_id = point.id
+    _ensure_catalog(db, park, body.catalog_id)
+    item = _station_by_id(db, park, station_id)
+    _inside(park, body.position)
+    _unique_position(db, park.id, body, item.id)
+    moved = _position(item) != body.position
+    routes = (
+        list(
+            db.scalars(
+                select(Route).where(
+                    Route.park_id == park.id, Route.default_station_id == item.id, Route.is_active.is_(True)
+                )
+            )
+        )
+        if moved
+        else []
+    )
+    changes = [(route.robot_id, _route_input(db, route)) for route in routes]
+    for _, route_body in changes:
+        _validate_points(park, body.position, route_body)
+    item.name, item.lat, item.lng = body.name, body.position.latitude, body.position.longitude
     db.flush()
-    return _list(db, park)
+    for robot_id, route_body in changes:
+        _save_route(db, user, park, route_body, robot_id, item)
+    return _station_response(item)
+
+
+@transaction(write=True)
+def delete_station(db: Session, user: User, station_id: int, catalog_id: int | None):
+    park = _park(db, user)
+    _ensure_catalog(db, park, catalog_id)
+    item = _station_by_id(db, park, station_id)
+    if db.scalar(
+        select(Route.id).where(Route.park_id == park.id, Route.default_station_id == item.id, Route.is_active.is_(True))
+    ):
+        raise AppError(409, "기본 분리수거장으로 사용 중이에요. 다른 장소를 먼저 선택해 주세요", code="station_in_use")
+    item.deleted_at = datetime.now(UTC)
+    db.flush()

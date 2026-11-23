@@ -1,6 +1,15 @@
 """실제 SQLite ORM과 HTTP로 가입 신청부터 총관리자 승인·로그인을 검증해요."""
 
+import os
+import shutil
+import socket
+import subprocess
+import threading
+import time
+from pathlib import Path
+
 import pytest
+import uvicorn
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
@@ -10,7 +19,7 @@ from app.core.config import get_settings
 from app.core.db import Base, get_db
 from app.core.security import create_access_token, hash_password
 from app.main import app
-from app.models import Park, User
+from app.models import Park, Robot, User
 from app.models.park_catalog import ParkCatalogEntry
 
 
@@ -79,6 +88,91 @@ BODY = {
     "email": "manager@example.com",
     "catalogId": "1",
 }
+
+
+def test_app_and_web_api_modules_over_real_http_signup_to_saved_route(registration_client):
+    """독립 앱·웹 API 모듈과 세션을 실제 HTTP 서버에 연결해 끝까지 실행해요."""
+    node = shutil.which("node")
+    web_dir = Path(__file__).resolve().parents[2] / "web"
+    if node is None or not (web_dir / "node_modules/typescript").exists():
+        pytest.skip("Node.js와 web/npm install이 필요한 HTTP 통합 검증")
+    listener = socket.socket()
+    listener.bind(("127.0.0.1", 0))
+    listener.listen()
+    port = listener.getsockname()[1]
+    server = uvicorn.Server(uvicorn.Config(app, log_level="error", access_log=False))
+    thread = threading.Thread(target=server.run, kwargs={"sockets": [listener]}, daemon=True)
+    thread.start()
+    try:
+        deadline = time.monotonic() + 10
+        while not server.started and thread.is_alive() and time.monotonic() < deadline:
+            time.sleep(0.02)
+        assert server.started, "격리 HTTP 서버가 시작되지 않았어요"
+        result = subprocess.run(
+            [node, "tests/integration/adminFlow.cjs"],
+            cwd=web_dir,
+            env=os.environ | {"JUBJUB_INTEGRATION_URL": f"http://127.0.0.1:{port}"},
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            timeout=60,
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+        print(result.stdout)
+    finally:
+        server.should_exit = True
+        thread.join(timeout=10)
+        listener.close()
+
+
+def test_admin_all_filter_and_revoke_releases_robots_and_blocks_old_token(registration_client):
+    client, engine = registration_client
+    user_id = client.post("/auth/register", json=BODY).json()["id"]
+    admin_token = client.post("/auth/login", json={"loginId": "superadmin", "password": "password123"}).json()[
+        "accessToken"
+    ]
+    headers = {"Authorization": f"Bearer {admin_token}"}
+    # 전체 목록을 끝까지 읽는 앱이 10,000번째 행 이후에도 정상적으로 페이지를 넘길 수 있어야 해요.
+    assert client.get("/admin/registrations?status=all&offset=10100", headers=headers).status_code == 200
+    assert client.get("/admin/robots?offset=10100", headers=headers).status_code == 200
+    robot = client.post("/admin/robots", headers=headers, json={"name": "검증 로봇", "serialNo": "test-robot"}).json()
+    assert (
+        client.post(
+            f"/admin/registrations/{user_id}/approve", headers=headers, json={"robotIds": [robot["id"]]}
+        ).status_code
+        == 200
+    )
+    result = client.get("/admin/registrations?status=all", headers=headers)
+    assert result.status_code == 200, result.text
+    assert result.json()[0]["registrationStatus"] == "approved"
+    token = client.post("/auth/login", json={"loginId": BODY["loginId"], "password": BODY["password"]}).json()[
+        "accessToken"
+    ]
+    manager = {"Authorization": f"Bearer {token}"}
+    assert (
+        client.post(f"/admin/registrations/{user_id}/revoke", headers=manager, json={"reason": "취소"}).status_code
+        == 403
+    )
+    with Session(engine) as db:
+        db.get(Robot, int(robot["id"])).status = "working"
+        db.commit()
+    blocked = client.post(f"/admin/registrations/{user_id}/revoke", headers=headers, json={"reason": "담당자 변경"})
+    assert blocked.status_code == 409, blocked.text
+    with Session(engine) as db:
+        assert db.get(Robot, int(robot["id"])).park_id is not None
+        db.get(Robot, int(robot["id"])).status = "offline"
+        db.commit()
+    revoked = client.post(f"/admin/registrations/{user_id}/revoke", headers=headers, json={"reason": "담당자 변경"})
+    assert revoked.status_code == 200, revoked.text
+    assert revoked.json()["status"] == "rejected"
+    assert revoked.json()["rejectReason"] == "담당자 변경"
+    with Session(engine) as db:
+        assert db.get(Robot, int(robot["id"])).park_id is None
+        assert db.get(Robot, int(robot["id"])).assigned_at is None
+    assert client.get("/me", headers=manager).status_code == 403
+    assert (
+        client.post("/auth/login", json={"loginId": BODY["loginId"], "password": BODY["password"]}).status_code == 403
+    )
 
 
 def test_registration_search_and_atomic_submission(registration_client):

@@ -4,7 +4,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 import { colors, layout, space } from '@/theme';
-import type { ColorName, TextVariant } from '@/theme';
 
 import { Text } from './Text';
 
@@ -14,10 +13,6 @@ type BottomSheetProps = {
   description?: string;
   onClose: () => void;
   children: ReactNode;
-  /** 제목 글자 (기본 18 · 굵게). Page 5 시트는 19~20이에요 */
-  titleVariant?: TextVariant;
-  /** 설명 글자 색 (기본 글자/보조) */
-  descriptionColor?: ColorName;
 };
 
 // 시트 위로 남겨 둘 어두운 막 높이 (뒤를 눌러 닫을 수 있게)
@@ -31,15 +26,7 @@ const KEYBOARD_BOTTOM_ROOM = 72;
  * 키보드가 올라오면 시트도 키보드 위로 올라가고, 키보드 위 공간이 모자라면 시트 안을 스크롤해서
  * 아래쪽 버튼(지점 추가 · 추가)까지 볼 수 있어요.
  */
-export function BottomSheet({
-  visible,
-  title,
-  description,
-  onClose,
-  children,
-  titleVariant = '18-bold',
-  descriptionColor = 'textSub',
-}: BottomSheetProps) {
+export function BottomSheet({ visible, title, description, onClose, children }: BottomSheetProps) {
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const keyboardHeight = useKeyboardHeight();
@@ -61,9 +48,9 @@ export function BottomSheet({
               { paddingBottom: keyboardOpen ? KEYBOARD_BOTTOM_ROOM : Math.max(insets.bottom, space[24]) },
             ]}
           >
-            <Text variant={titleVariant}>{title}</Text>
+            <Text variant="18-bold">{title}</Text>
             {description ? (
-              <Text variant="13-regular" color={descriptionColor}>
+              <Text variant="13-regular" color="textSub">
                 {description}
               </Text>
             ) : null}

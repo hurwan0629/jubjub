@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.models import User
-from app.routers import approval, insights, logs, manager, patrol, robots, stations
+from app.routers import approval, notifications, operations, patrol, photos, robot_assignment, stations
 from app.schemas.auth import ProfileResponse
 from app.services.auth import get_current_user, profile_for_user
 
@@ -20,8 +20,8 @@ def me(user: User = Depends(get_current_user), db: Session = Depends(get_db)) ->
 # 이후 업무 라우터는 router.include_router(...)로 추가하면 Bearer 인증이 적용돼요.
 router.include_router(patrol.router)
 router.include_router(approval.router)
-router.include_router(robots.router)
-router.include_router(manager.router)
-router.include_router(logs.router)
-router.include_router(insights.router)
+router.include_router(operations.router)
+router.include_router(robot_assignment.router)
+router.include_router(notifications.router)
 router.include_router(stations.router)
+router.include_router(photos.router)

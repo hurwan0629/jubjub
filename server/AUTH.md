@@ -26,6 +26,17 @@ python -c "import secrets; print(secrets.token_hex(32))"
 
 ## 회원가입
 
+### 반려 후 재신청
+
+반려 계정의 로그인은 `403 registration_rejected`를 반환해요. 앱은 아래 순서로 다시 신청해요.
+
+1. `POST /auth/reapplication-session`: `{loginId, password}`로 본인 확인 후 기존 아이디·이름·이메일·전화번호·catalogId·반려 사유와 `reapplicationToken`, `expiresIn`을 받아요. 비밀번호는 반환하지 않아요.
+2. 반려 사유 안내에서 **정보 고쳐 다시 신청하기**를 누르면 기존 정보를 채운 양식을 열어요. 아이디는 고정이고 비밀번호와 확인은 새로 입력해요. 공원을 확인한 뒤 제출해요.
+3. `POST /auth/reapply`: `{reapplicationToken, password, name, email, phone, catalogId}`를 보내요. 같은 사용자와 공원 신청 행을 수정하고 상태를 `pending`으로 바꿔요. 반려·승인 정보는 초기화해요. 공원이 바뀌면 이전 경로·지점·시간표·좌표 기준점을 초기화하고 미처리 공원 변경 요청을 취소해요.
+4. 성공 응답은 가입 응답과 같으며 HTTP 200이에요. 총관리자가 다시 승인해야 로그인할 수 있어요.
+
+재신청 토큰은 30분간 유효하며 업무 API 인증에는 사용할 수 없어요. 일반 로그인 토큰으로 재신청할 수도 없어요. 제출 후에는 이전 재신청 토큰을 재사용할 수 없고, 만료 시 다시 로그인해요. 재신청 토큰과 비밀번호를 기기에 영구 저장하지 않아요. DB 스키마 변경은 필요하지 않아요.
+
 `POST /auth/register` (토큰 없이 호출, 성공 201)
 
 프로젝트에서 사용하는 하위관리자 회원가입이에요. 역할은 항상 manager이고 role 입력은 거부해요.
@@ -60,6 +71,9 @@ python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
 ## 로그인
+
+클라이언트는 역할별로 분리돼요. `app/`는 로그인 응답의 role이 super_admin이면 토큰을 저장하지 않고 웹 로그인 안내를 표시해요.
+`web/`는 super_admin만 웹 세션에 저장하며 manager 계정에는 모바일 앱 이용을 안내해요. 서버는 두 클라이언트에서 같은 /auth/login과 권한 검사 API를 사용해요.
 
 `POST /auth/login` (토큰 없이 호출)
 

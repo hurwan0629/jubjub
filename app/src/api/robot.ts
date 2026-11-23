@@ -1,7 +1,34 @@
 // 로봇 상태·작업 대기열 API (A-01 홈, A-02 지도)
 import { mockResponse, request, mockFor } from './client';
 import { mockRobot, mockTasks, mockToday } from './mock/robot';
-import type { RobotStatus, Task, TodaySummary } from './types';
+import { getPatrolRobots } from './route';
+import type { AssignedRobot, HomeRobotStatus, RobotState, RobotStatus, Task, TodaySummary } from './types';
+
+const HOME_STATE: Record<AssignedRobot['status'], RobotState> = {
+  working: 'patrolling',
+  emptying: 'emptying',
+  idle: 'idle',
+  offline: 'disconnected',
+  error: 'error',
+};
+
+/** 홈 선택 버튼과 상태 카드는 같은 배정 로봇 목록을 사용해요. */
+export async function getHomeRobots(): Promise<HomeRobotStatus[]> {
+  const robots = await getPatrolRobots();
+  const demo = mockFor('route');
+  return robots.map((robot, index) => ({
+    id: robot.id,
+    name: robot.name,
+    state: HOME_STATE[robot.status],
+    activity: demo ? (index === 0 ? mockRobot.activity : '다음 순찰을 준비하고 있어요') : '상세 상태 수신 대기',
+    nearPoint: demo && index === 0 ? mockRobot.nearPoint : '수신 대기',
+    nextPoint: demo && index === 0 ? mockRobot.nextPoint : '수신 대기',
+    battery: demo ? (index === 0 ? mockRobot.battery : 35) : null,
+    batteryVoltage: robot.batteryVoltage ?? null,
+    slots: demo ? mockRobot.slots : [],
+    updatedAt: robot.lastSeenAt ?? '',
+  }));
+}
 
 /** GET /robot/status */
 export function getRobotStatus(): Promise<RobotStatus> {

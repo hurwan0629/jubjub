@@ -5,10 +5,14 @@
 """
 
 from app.core.db import Base
-from app.models.manager import Notification, ParkChangeRequest
+from app.models.notification_push import NotificationPushDelivery
+from app.models.operations import ParkChangeRequest
 from app.models.park_catalog import ParkCatalogEntry
-from app.models.patrol import AgentRun, AgentStep, Park, PatrolPoint, Route, RoutePoint, Schedule
-from app.models.robot import Robot, RobotRequest
+from app.models.patrol import Park, PatrolPoint, Route, RoutePoint, Schedule
+from app.models.robot import Robot
+from app.models.robot_assignment import RobotAssignmentRequest, RobotAssignmentRequestRobot
+from app.models.station import RecyclingStation
+from app.models.telemetry import Detection, Notification, PushToken, RobotTask
 from app.models.user import User
 
 __all__ = [
@@ -20,10 +24,14 @@ __all__ = [
     "Route",
     "RoutePoint",
     "Schedule",
-    "AgentRun",
-    "AgentStep",
     "Robot",
-    "RobotRequest",
-    "Notification",
+    "RobotAssignmentRequest",
+    "RobotAssignmentRequestRobot",
+    "RecyclingStation",
     "ParkChangeRequest",
+    "Detection",
+    "RobotTask",
+    "Notification",
+    "NotificationPushDelivery",
+    "PushToken",
 ]

@@ -6,6 +6,8 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, SecretStr, field_validator
 from pydantic.alias_generators import to_camel
 
+from app.schemas.parks import ParkResponse
+
 
 class AuthSchema(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
@@ -16,9 +18,8 @@ class LoginRequest(AuthSchema):
     password: SecretStr = Field(min_length=1, max_length=128)
 
 
-class RegisterRequest(AuthSchema):
+class RegistrationFields(AuthSchema):
     model_config = ConfigDict(extra="forbid")
-    login_id: str = Field(pattern=r"^[A-Za-z0-9]{4,16}$")
     password: SecretStr = Field(min_length=8, max_length=128)
     name: str = Field(min_length=1, max_length=100)
     phone: str = Field(min_length=9, max_length=30)
@@ -76,3 +77,23 @@ class ProfileResponse(AuthSchema):
 
 class RegisterResponse(ProfileResponse):
     id: str
+
+
+class RegisterRequest(RegistrationFields):
+    login_id: str = Field(pattern=r"^[A-Za-z0-9]{4,16}$")
+
+
+class ReapplyRequest(RegistrationFields):
+    reapplication_token: SecretStr = Field(min_length=1, max_length=4096)
+
+
+class ReapplicationSession(AuthSchema):
+    reapplication_token: str
+    expires_in: int
+    login_id: str
+    name: str
+    email: str
+    phone: str
+    catalog_id: str
+    reject_reason: str
+    park: ParkResponse | None

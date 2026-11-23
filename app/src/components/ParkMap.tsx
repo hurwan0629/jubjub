@@ -7,14 +7,7 @@ import { colors } from '@/theme';
 import { focusBounds, isInPark } from '@/utils/geo';
 
 import { ParkMapSchematic } from './ParkMapSchematic';
-import { heatOpacity, heatRadius } from './parkMapTypes';
 import type { ParkMapMarkerKind, ParkMapProps } from './parkMapTypes';
-
-/** '#748bff' + 0.3 → 'rgba(116, 139, 255, 0.3)' (네이버 지도 원은 투명도를 색에 담아요) */
-function withAlpha(hex: string, alpha: number) {
-  const n = parseInt(hex.slice(1), 16);
-  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha.toFixed(2)})`;
-}
 
 type NaverMapLib = typeof import('@mj-studio/react-native-naver-map');
 type NaverRegion = import('@mj-studio/react-native-naver-map').Region;
@@ -73,7 +66,6 @@ function NaverParkMap({
   area,
   markers = [],
   route,
-  heat = [],
   onLongPress,
   onLongPressOutside,
   onMarkerPress,
@@ -83,13 +75,7 @@ function NaverParkMap({
   ref,
   lib,
 }: ParkMapProps & { lib: NaverMapLib }) {
-  const {
-    NaverMapView,
-    NaverMapMarkerOverlay,
-    NaverMapPolylineOverlay,
-    NaverMapPolygonOverlay,
-    NaverMapCircleOverlay,
-  } = lib;
+  const { NaverMapView, NaverMapMarkerOverlay, NaverMapPolylineOverlay, NaverMapPolygonOverlay } = lib;
   const mapRef = useRef<import('@mj-studio/react-native-naver-map').NaverMapViewRef>(null);
   const region = toRegion(bounds);
   // 처음 화면: 마커가 있으면 마커들이 보이게, 없으면 공원 전체 (처음 한 번만 정해요)
@@ -148,15 +134,6 @@ function NaverParkMap({
             outlineWidth={2}
           />
         ) : null}
-        {heat.map((h, i) => (
-          <NaverMapCircleOverlay
-            key={`heat-${i}`}
-            {...h.position}
-            radius={heatRadius(h.weight)}
-            color={withAlpha(colors.brand, heatOpacity(h.weight))}
-            outlineWidth={0}
-          />
-        ))}
         {route && route.length > 1 ? (
           <NaverMapPolylineOverlay coords={route} color={colors.brand} width={3} pattern={[5, 6]} />
         ) : null}

@@ -15,34 +15,15 @@ export type ApiResource =
   | 'parks'
   | 'park'
   | 'reports'
-  | 'robot' // 로봇 1대 실시간 상태 · 작업 대기열 · 오늘 요약 (서버 미구현)
-  | 'robots' // 내 공원 로봇 목록 · 이름 변경 · 순찰 멈춤/다시 시작 (server/app/routers/robots.py)
-  | 'robotRequests' // 로봇 배정 · 추가 요청
-  | 'parkChange' // 공원 변경 요청 (C-02)
-  | 'stations' // 분리수거장 여러 곳 관리 (C-02)
+  | 'robot'
   | 'route'
   | 'decisions';
 
 /**
  * 서버에 이미 만들어진 API. EXPO_PUBLIC_API_URL 이 있어도 여기 없는 자원은 목업을 써요.
- * 백엔드가 API를 만들면 여기에 추가해요. (server/AUTH.md: 로그인 · 회원가입 · /me, server/PARKS.md: 공원 검색, server/API_SPEC.md: 로봇)
+ * 백엔드가 API를 만들면 여기에 추가해요. (server/AUTH.md: 로그인 · 회원가입 · /me, server/PARKS.md: 공원 검색)
  */
-const SERVER_READY: readonly ApiResource[] = [
-  'auth',
-  'me',
-  'parks',
-  'park',
-  'route',
-  'robots',
-  'robotRequests',
-  'notifications',
-  'settings',
-  'parkChange',
-  'decisions',
-  'reports',
-  'map',
-  'stations',
-];
+const SERVER_READY: readonly ApiResource[] = ['auth', 'me', 'parks', 'park', 'route'];
 
 /** 이 자원을 목업으로 처리할지 */
 export const mockFor = (resource: ApiResource) => USE_MOCK || !SERVER_READY.includes(resource);

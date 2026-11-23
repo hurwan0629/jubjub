@@ -5,7 +5,7 @@ import { useImperativeHandle, useRef, useState } from 'react';
 import type { ComponentRef } from 'react';
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import type { GestureResponderEvent, LayoutChangeEvent } from 'react-native';
-import Svg, { Circle, Polyline } from 'react-native-svg';
+import Svg, { Polyline } from 'react-native-svg';
 
 import { icons } from '@/icons';
 import { colors, radius, softShadow, space } from '@/theme';
@@ -13,7 +13,6 @@ import type { ColorName } from '@/theme';
 import { focusBounds, fromBoundsRatio, isInPark, toBoundsRatio } from '@/utils/geo';
 
 import { Icon } from './Icon';
-import { heatOpacity, heatRadius } from './parkMapTypes';
 import type { ParkMapMarkerKind, ParkMapProps } from './parkMapTypes';
 import { Text } from './Text';
 
@@ -37,7 +36,6 @@ export function ParkMapSchematic({
   area,
   markers = [],
   route,
-  heat = [],
   onLongPress,
   onLongPressOutside,
   onMarkerPress,
@@ -114,25 +112,6 @@ export function ParkMapSchematic({
         <View style={{ opacity: faded ? 0.35 : 1 }} pointerEvents="none">
           <Icon source={icons.parkMapBase} width={contentW} height={contentH} />
         </View>
-
-        {heat.length > 0 ? (
-          <Svg width={contentW} height={contentH} style={StyleSheet.absoluteFill} pointerEvents="none">
-            {heat.map((h, i) => {
-              const { x, y } = toXY(h.position);
-              // 도식 지도는 미터 대신 그림 크기에 맞춰 대략 그려요
-              return (
-                <Circle
-                  key={i}
-                  cx={x}
-                  cy={y}
-                  r={(heatRadius(h.weight) / 2) * scale}
-                  fill={colors.brand}
-                  opacity={heatOpacity(h.weight)}
-                />
-              );
-            })}
-          </Svg>
-        ) : null}
 
         {routePoints.length > 1 ? (
           // 크기를 꼭 지정해요. 안 주면 웹에서 기본 300×150 크기로 잘려요.
