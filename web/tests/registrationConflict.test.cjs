@@ -34,7 +34,7 @@ test('중복 공원의 가입 승인에는 기존 담당자와 승인 불가 사
     }),
   );
   assert.ok(html.includes('owner01'));
-  assert.match(html, /disabled="">가입 승인/);
+  assert.match(html, /disabled="">승인하기/);
 });
 
 test('공원 충돌이 없는 가입은 로봇을 선택하지 않아도 승인할 수 있다', () => {
@@ -50,5 +50,5 @@ test('공원 충돌이 없는 가입은 로봇을 선택하지 않아도 승인�
       onSubmit: async () => true,
     }),
   );
-  assert.ok(!/disabled="">가입 승인/.test(html));
+  assert.ok(!/disabled="">승인하기/.test(html));
 });
