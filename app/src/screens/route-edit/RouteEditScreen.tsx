@@ -9,6 +9,7 @@ import type { LatLng, PatrolPoint, RouteConfig } from '@/api/types';
 import {
   AddTimeSheet,
   Button,
+  FilterChip,
   Header,
   Icon,
   MapHint,
@@ -21,10 +22,11 @@ import {
 import type { ParkMapMarker } from '@/components';
 import { PatrolRobotScope } from '@/components/PatrolRobotScope';
 import { useRouteConfig } from '@/hooks/useRoute';
+import { useStations } from '@/hooks/useStations';
 import { icons } from '@/icons';
 import type { RootParams } from '@/navigation';
 import { colors, layout, radius, softShadow, space } from '@/theme';
-import { lapMinutes, loopPath, moveItem, nextPatrolTime, REPEAT_LABEL } from '@/utils/route';
+import { isTooFar, lapMinutes, loopPath, moveItem, nextPatrolTime, REPEAT_LABEL } from '@/utils/route';
 
 type Props = NativeStackScreenProps<RootParams, 'RouteEdit'>;
 type Tab = 'route' | 'schedule';
@@ -80,7 +82,8 @@ function RouteEditor({
   const [draft, setDraft] = useState<RouteConfig>(initial);
   const [pending, setPending] = useState<LatLng | null>(null);
   const [addingTime, setAddingTime] = useState(false);
-  const [blocked, setBlocked] = useState(false); // 공원 밖을 꾹 눌렀을 때 경고
+  // 공원 밖(outside) · 기존 지점에서 1km 넘게 떨어진 곳(tooFar)을 꾹 눌렀을 때 경고
+  const [blocked, setBlocked] = useState<'outside' | 'tooFar' | null>(null);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string>();
@@ -90,6 +93,7 @@ function RouteEditor({
   const later = (fn: () => void, ms: number) => timers.current.push(setTimeout(fn, ms));
 
   const setPoints = (points: PatrolPoint[]) => setDraft((d) => ({ ...d, points }));
+  const { data: stations } = useStations();
 
   const markers: ParkMapMarker[] = [
     ...(draft.station
@@ -158,19 +162,51 @@ function RouteEditor({
             markers={markers}
             route={loopPath(draft.points, draft.station)}
             onLongPress={(p) => {
-              setBlocked(false);
+              // 이미 찍은 지점(분리수거장 포함)에서 1km 넘게 떨어진 곳에는 핀을 꽂지 않아요
+              const existing = [...(draft.station ? [draft.station] : []), ...draft.points.map((pt) => pt.position)];
+              if (isTooFar(p, existing)) {
+                setBlocked('tooFar');
+                later(() => setBlocked(null), NOTICE_MS);
+                return;
+              }
+              setBlocked(null);
               setPending(p);
             }}
             onLongPressOutside={() => {
-              setBlocked(true);
-              later(() => setBlocked(false), NOTICE_MS);
+              setBlocked('outside');
+              later(() => setBlocked(null), NOTICE_MS);
             }}
           />
-          {blocked ? (
+          {blocked === 'tooFar' ? (
+            <MapHint tone="error" text="기존 지점에서 1km 넘게 떨어져 있어요. 더 가까운 곳을 꾹 눌러 주세요" />
+          ) : blocked ? (
             <MapHint tone="error" text="로봇이 갈 수 없는 위치예요" />
           ) : (
             <MapHint text="지도를 꾹 눌러 지점을 추가할 수 있어요" />
           )}
+          {/* 비우러 갈 분리수거장 (C-02에서 삭제가 막혔을 때 여기서 바꿔요) */}
+          {stations && stations.length > 1 ? (
+            <View style={s.stationRow}>
+              <Text variant="13-bold">비우러 갈 분리수거장</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.stationChips}>
+                {stations.map((st) => {
+                  const on =
+                    draft.defaultStationId === st.id ||
+                    (!draft.defaultStationId &&
+                      st.position.latitude === draft.station?.latitude &&
+                      st.position.longitude === draft.station?.longitude);
+                  return (
+                    <FilterChip
+                      key={st.id}
+                      label={st.name}
+                      selected={on}
+                      onPress={() => setDraft((d) => ({ ...d, defaultStationId: st.id, station: st.position }))}
+                    />
+                  );
+                })}
+              </ScrollView>
+            </View>
+          ) : null}
           <View style={s.listHead}>
             <Text variant="17-bold">순찰 지점</Text>
             <Text variant="12-regular" color="textSub">
@@ -183,6 +219,7 @@ function RouteEditor({
               reorder
               onRemove={(i) => setPoints(draft.points.filter((_, j) => j !== i))}
               onMove={(from, to) => setPoints(moveItem(draft.points, from, to))}
+              stationFixed={!!draft.station}
             />
           </View>
         </ScrollView>
@@ -267,6 +304,8 @@ const s = StyleSheet.create({
   padded: { paddingHorizontal: layout.screenPadding },
   scheduleTop: { paddingTop: space[8] },
   map: { height: MAP_HEIGHT },
+  stationRow: { paddingHorizontal: layout.screenPadding, paddingTop: space[12], gap: space[8] },
+  stationChips: { gap: space[8] },
   listHead: {
     flexDirection: 'row',
     justifyContent: 'space-between',

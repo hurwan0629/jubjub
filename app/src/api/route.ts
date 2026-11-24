@@ -57,6 +57,19 @@ export async function getRouteConfig(robotId?: string): Promise<RouteConfig> {
   return mockResponse({ ...config, catalogId: config.catalogId ?? session.park?.catalogId });
 }
 
+/**
+ * POST /route/complete : 처음 설정을 마쳤는지 서버가 확인해요 (분리수거장 · 순찰 지점 · 시간표가 모두 저장됐는지).
+ * 빠진 게 있으면 409 setup_incomplete 예요.
+ */
+export async function completeRouteSetup(robotId?: string | null, catalogId?: string): Promise<void> {
+  if (mockFor('route')) return;
+  const query = new URLSearchParams();
+  if (robotId) query.set('robotId', robotId);
+  if (catalogId) query.set('catalogId', catalogId);
+  const qs = query.toString();
+  await request(`/route/complete${qs ? `?${qs}` : ''}`, { method: 'POST' });
+}
+
 /** PUT /route : 경로 · 시간표 저장 */
 export async function saveRouteConfig(config: RouteConfig): Promise<RouteConfig> {
   if (mockFor('route')) {

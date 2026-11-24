@@ -18,6 +18,9 @@ export type ParkMapMarker = {
   order?: number;
 };
 
+/** 지도에 그리는 점선 경로 하나 */
+export type ParkMapRoute = { id: string; coords: LatLng[]; color: string };
+
 /** 지도 조작 버튼(공원 가운데로 · 확대 · 축소)이 부르는 동작 */
 export type ParkMapHandle = {
   zoomIn: () => void;
@@ -37,6 +40,8 @@ export type ParkMapProps = {
   markers?: ParkMapMarker[];
   /** 점선으로 그릴 순찰 경로 (처음 지점으로 돌아오려면 마지막에 처음 좌표를 한 번 더 넣어요) */
   route?: LatLng[];
+  /** 로봇마다 색을 달리해 여러 경로를 함께 그릴 때 (A-02 지도: Jubi 1 파랑 · Jubi 2 주황) */
+  routes?: ParkMapRoute[];
   /** 공원 안을 꾹 눌렀을 때 그 좌표 */
   onLongPress?: (position: LatLng) => void;
   /** 공원 밖(경계 밖의 도로 · 건물 등)을 꾹 눌렀을 때 (안내 문구를 보여 줄 때 써요) */

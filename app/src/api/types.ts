@@ -175,6 +175,57 @@ export type MapMarker = {
   position: LatLng;
 };
 
+/** 로봇 배정 · 추가 요청 (GET/POST /robot-assignment-requests). 총관리자 웹 W-04에서 보고 배정해요. */
+export type RobotRequest = {
+  id: string;
+  parkName: string;
+  robotCount: number; // 요청한 로봇 수
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  rejectReason: string | null;
+  createdAt: string; // ISO 시각
+};
+
+/** POST /robot-assignment-requests 요청 */
+export type RobotRequestInput = { robotCount: number; reason: string };
+
+/** A-02 지도에 그리는 로봇 한 대의 저장된 순찰 경로 */
+export type SavedRobotRoute = {
+  robotId: string | null; // 로봇 배정 전에 정한 경로는 null
+  robotName: string;
+  station: LatLng | null; // 분리수거장 (경로의 시작과 끝)
+  points: PatrolPoint[]; // 도는 순서대로
+  position: LatLng | null; // 로봇이 보낸 마지막 위치
+  status?: AssignedRobot['status']; // 로봇 상태 (오류면 지도 위 안내가 바뀌어요)
+  errorSince?: string | null; // 오류가 난 시각 (ISO)
+  errorCode?: string | null;
+  batteryVoltage?: number | null;
+};
+
+/** A-02 지도: 로봇이 찾은 쓰레기 한 건 (GET /robots/{id}/detections) */
+export type MapDetection = {
+  id: string;
+  robotName: string;
+  material: 'plastic' | 'can' | 'glass' | 'general';
+  confidence: number; // 0~1
+  position: LatLng;
+  detectedAt: string; // ISO
+  pickupResult: 'collected' | 'failed' | null; // failed = 집기 불가
+  failReason: string | null;
+};
+
+/** A-02 지도: 관리자가 저장한 순찰 경로 (GET /robots + GET /route?robotId=) */
+export type SavedRouteMap = {
+  parkName: string;
+  bounds: ParkBounds;
+  area: ParkArea;
+  stations: { id: string; name: string; position: LatLng }[];
+  routes: SavedRobotRoute[];
+  /** 최근 7일 탐지 (히트맵 · 집기 불가 마커) */
+  detections: MapDetection[];
+  updatedAt: string; // ISO 시각 (불러온 시각)
+};
+
 /** GET /map/overview: A-02 지도 한 화면에 필요한 것 */
 export type MapOverview = {
   parkName: string;
@@ -204,7 +255,14 @@ export type TodaySummary = {
 };
 
 /** 알림 유형 (핵심 범위. 수거함 가득 참은 확장 구현 때 추가) */
-export type NotificationType = 'robotError' | 'unpickable' | 'lowBattery' | 'dailyReport';
+export type NotificationType =
+  | 'robotError'
+  | 'unpickable'
+  | 'lowBattery'
+  | 'patrol' // 순찰을 시작하지 못함 (서버 patrol_missed)
+  | 'robotAssignment' // 로봇 배정 요청 승인 · 반려
+  | 'dailyReport'
+  | 'other'; // 앱이 아직 모르는 서버 알림 종류
 
 /** GET /me: 로그인한 관리자 (C-02 설정 계정 카드) */
 export type Profile = {
@@ -238,6 +296,10 @@ export type AppNotification = {
   time: string; // 표시용 시각 ('11:02', '어제 22:00')
   note?: string; // 다음 행동 안내 (예: 현장 확인이 필요해요)
   pinned?: boolean; // 로봇 오류처럼 맨 위에 고정
+  body?: string; // 서버 알림 본문 (상세에서 보여요)
+  robotId?: string | null;
+  position?: LatLng | null; // 알림이 난 위치 (지도 표시용)
+  occurredAt?: string; // ISO 시각
 };
 
 /** 판단 로그 유형 (A-08 필터) */

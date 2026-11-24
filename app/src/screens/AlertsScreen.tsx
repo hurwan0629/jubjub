@@ -1,6 +1,9 @@
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { useFocusEffect } from '@react-navigation/native';
+import type { CompositeScreenProps } from '@react-navigation/native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ImageSource } from 'expo-image';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -8,7 +11,7 @@ import type { AppNotification, NotificationType } from '@/api/types';
 import { AlertCard, FilterChip, Header, Icon, Text } from '@/components';
 import { useNotifications } from '@/hooks/useNotifications';
 import { icons } from '@/icons';
-import type { TabParams } from '@/navigation';
+import type { RootParams, TabParams } from '@/navigation';
 import { colors, space } from '@/theme';
 import type { Tone } from '@/theme';
 import { NOTIFICATION_TYPE_LABEL } from '@/utils/labels';
@@ -25,20 +28,41 @@ const TYPE_ICON: Record<NotificationType, { icon: ImageSource; tone: Tone }> = {
   robotError: { icon: icons.alertTriangleRed, tone: 'error' },
   unpickable: { icon: icons.hand, tone: 'error' },
   lowBattery: { icon: icons.alertTriangleRed, tone: 'error' },
+  patrol: { icon: icons.route, tone: 'warn' },
+  robotAssignment: { icon: icons.bot, tone: 'brand' },
   dailyReport: { icon: icons.chartBrand, tone: 'brand' },
+  other: { icon: icons.bot, tone: 'neutral' },
 };
 
-function Item({ a }: { a: AppNotification }) {
+/** 알림 한 줄. 누르면 알림 상세(A-06)로 가요. */
+function Item({ a, onRead }: { a: AppNotification; onRead: (a: AppNotification) => void }) {
   const k = TYPE_ICON[a.type];
   const meta = a.note ? `${a.time} · ${a.note}` : a.time;
   return (
-    <AlertCard icon={k.icon} tone={k.tone} title={a.title} body={a.place} meta={meta} unread={a.status === 'new'} />
+    <AlertCard
+      icon={k.icon}
+      tone={k.tone}
+      title={a.title}
+      body={a.place}
+      meta={meta}
+      unread={a.status === 'new'}
+      onPress={() => onRead(a)}
+    />
   );
 }
 
-export function AlertsScreen({ navigation }: BottomTabScreenProps<TabParams, 'Alerts'>) {
+type Props = CompositeScreenProps<BottomTabScreenProps<TabParams, 'Alerts'>, NativeStackScreenProps<RootParams>>;
+
+export function AlertsScreen({ navigation }: Props) {
   const [filter, setFilter] = useState<(typeof FILTERS)[number]['key']>('all');
-  const { data: list = [], loading } = useNotifications(filter === 'all' ? undefined : filter);
+  const { data: list = [], loading, reload } = useNotifications(filter === 'all' ? undefined : filter);
+  const [readError, setReadError] = useState<string>();
+  // 알림 상세에서 확인 · 조치 완료를 누르면 읽음으로 바뀌어요. 돌아오면 목록을 다시 불러와요.
+  useFocusEffect(useCallback(() => reload(), [reload]));
+  const markRead = (a: AppNotification) => {
+    setReadError(undefined);
+    navigation.navigate('AlertDetail', { id: a.id });
+  };
   const pinned = list.filter((a) => a.pinned);
   const recent = list.filter((a) => !a.pinned);
   const unreadCount = list.filter((a) => a.status === 'new').length;
@@ -66,7 +90,7 @@ export function AlertsScreen({ navigation }: BottomTabScreenProps<TabParams, 'Al
               </Text>
             </View>
             {pinned.map((a) => (
-              <Item key={a.id} a={a} />
+              <Item key={a.id} a={a} onRead={markRead} />
             ))}
           </>
         ) : null}
@@ -79,8 +103,13 @@ export function AlertsScreen({ navigation }: BottomTabScreenProps<TabParams, 'Al
             </Text>
           ) : null}
         </View>
+        {readError ? (
+          <Text variant="13-regular" color="error" accessibilityLiveRegion="polite">
+            {readError}
+          </Text>
+        ) : null}
         {recent.map((a) => (
-          <Item key={a.id} a={a} />
+          <Item key={a.id} a={a} onRead={markRead} />
         ))}
         {/* 빈 안내는 불러오기가 끝난 뒤에만 보여 줘요 (불러오는 중에 깜빡이지 않게) */}
         {!loading && recent.length === 0 ? (

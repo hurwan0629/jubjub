@@ -23,11 +23,17 @@ class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
 
 
+_url = get_settings().database_url
+# 로컬 개발용 SQLite (python -m app.scripts.seed_local)는 PostgreSQL 연결 옵션을 쓰지 않아요
+_sqlite = _url.startswith("sqlite")
+
 engine = create_engine(
-    get_settings().database_url,
+    _url,
     # 끊긴 연결을 쓰기 전에 확인해요 (Supabase는 오래 쉬면 연결을 끊어요)
     pool_pre_ping=True,
-    connect_args={
+    connect_args={"check_same_thread": False}
+    if _sqlite
+    else {
         # Supabase transaction pooler(6543)는 prepared statement를 지원하지 않아서 꺼 둬요
         "prepare_threshold": None,
         # 네트워크가 막혀 있어도 /health가 오래 멈추지 않게 5초 안에 포기해요

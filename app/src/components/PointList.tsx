@@ -16,10 +16,38 @@ type PointListProps = {
   reorder?: boolean;
   onRemove: (index: number) => void;
   onMove?: (from: number, to: number) => void;
+  /**
+   * 분리수거장을 출발 · 종료 지점으로 맨 앞과 맨 뒤에 고정해서 보여 줘요 (순서 단계 · 경로 편집).
+   * 고정 줄은 끌거나 지울 수 없어요.
+   */
+  stationFixed?: boolean;
 };
 
+/** 맨 앞 · 맨 뒤에 고정한 분리수거장 줄 (끌기 · 지우기 없음) */
+function StationRow({ kind }: { kind: 'start' | 'end' }) {
+  const label = kind === 'start' ? '출발' : '도착';
+  return (
+    <View style={[s.row, s.fixedRow]} accessible accessibilityLabel={`${label} · 분리수거장. 순서가 고정돼 있어요`}>
+      <View style={s.grip}>
+        <Icon source={icons.lockSmall} size={11} />
+      </View>
+      <View style={[s.num, s.stationNum]}>
+        <Icon source={icons.legendRecycle} size={16} />
+      </View>
+      <View style={s.pointText}>
+        <Text variant="14-bold" numberOfLines={1}>
+          분리수거장
+        </Text>
+      </View>
+      <Text variant="12-semibold" color="textDone">
+        {label}
+      </Text>
+    </View>
+  );
+}
+
 /** 순찰 지점 목록 (C-03 처음 설정 · A-04 경로 편집) */
-export function PointList({ points, reorder, onRemove, onMove }: PointListProps) {
+export function PointList({ points, reorder, onRemove, onMove, stationFixed }: PointListProps) {
   const [drag, setDrag] = useState<number | null>(null);
   const dy = useRef(new Animated.Value(0)).current;
   const onMoveRef = useRef(onMove);
@@ -53,7 +81,7 @@ export function PointList({ points, reorder, onRemove, onMove }: PointListProps)
     [points, reorder, dy],
   );
 
-  if (points.length === 0) {
+  if (points.length === 0 && !stationFixed) {
     return (
       <View style={[s.card, s.empty]}>
         <Text variant="13-regular" color="textSub">
@@ -65,6 +93,7 @@ export function PointList({ points, reorder, onRemove, onMove }: PointListProps)
 
   return (
     <View style={s.card}>
+      {stationFixed ? <StationRow kind="start" /> : null}
       {points.map((p, i) => (
         <Animated.View key={p.id} style={[s.row, drag === i ? [s.lifted, { transform: [{ translateY: dy }] }] : null]}>
           <View
@@ -95,6 +124,7 @@ export function PointList({ points, reorder, onRemove, onMove }: PointListProps)
           </Pressable>
         </Animated.View>
       ))}
+      {stationFixed ? <StationRow kind="end" /> : null}
     </View>
   );
 }
@@ -119,6 +149,8 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   numText: { textAlign: 'center' },
+  fixedRow: { backgroundColor: colors.bgDone, paddingHorizontal: space[8], marginHorizontal: -space[8] },
+  stationNum: { backgroundColor: colors.card },
   // 이름을 줄 가운데에 맞춰요
   pointText: { flex: 1, justifyContent: 'center' },
 });

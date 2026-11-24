@@ -28,5 +28,6 @@ class ParkResponse(ParkSchema):
     name: str
     address: str
     distance: str
+    has_manager: bool = False  # 이미 승인된 담당 관리자가 있는 공원 (공원 변경 요청에서 고를 수 없어요)
     bounds: ParkBounds
     area: ParkArea

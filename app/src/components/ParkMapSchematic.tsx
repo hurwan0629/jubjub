@@ -11,6 +11,7 @@ import { icons } from '@/icons';
 import { colors, radius, softShadow, space } from '@/theme';
 import type { ColorName } from '@/theme';
 import { focusBounds, fromBoundsRatio, isInPark, toBoundsRatio } from '@/utils/geo';
+import { routeLines } from '@/utils/route';
 
 import { Icon } from './Icon';
 import type { ParkMapMarkerKind, ParkMapProps } from './parkMapTypes';
@@ -36,6 +37,7 @@ export function ParkMapSchematic({
   area,
   markers = [],
   route,
+  routes,
   onLongPress,
   onLongPressOutside,
   onMarkerPress,
@@ -95,7 +97,13 @@ export function ParkMapSchematic({
     });
   };
 
-  const routePoints = (route ?? []).map(toXY);
+  const lines = routeLines(route, routes, colors.brand).map((line) => ({
+    ...line,
+    points: line.coords
+      .map(toXY)
+      .map((p) => `${p.x},${p.y}`)
+      .join(' '),
+  }));
 
   return (
     <Pressable
@@ -113,17 +121,20 @@ export function ParkMapSchematic({
           <Icon source={icons.parkMapBase} width={contentW} height={contentH} />
         </View>
 
-        {routePoints.length > 1 ? (
+        {lines.length ? (
           // 크기를 꼭 지정해요. 안 주면 웹에서 기본 300×150 크기로 잘려요.
           <Svg width={contentW} height={contentH} style={StyleSheet.absoluteFill} pointerEvents="none">
-            <Polyline
-              points={routePoints.map((p) => `${p.x},${p.y}`).join(' ')}
-              fill="none"
-              stroke={colors.brand}
-              strokeWidth={3}
-              strokeDasharray="5 6"
-              strokeLinecap="round"
-            />
+            {lines.map((line) => (
+              <Polyline
+                key={line.id}
+                points={line.points}
+                fill="none"
+                stroke={line.color}
+                strokeWidth={3}
+                strokeDasharray="5 6"
+                strokeLinecap="round"
+              />
+            ))}
           </Svg>
         ) : null}
 

@@ -7,7 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
-from app.models import ParkCatalogEntry
+from app.models import Park, ParkCatalogEntry
 from app.schemas.parks import ParkResponse
 
 
@@ -43,14 +43,28 @@ def search_parks(
         raise AppError(
             503, "공원 목록을 불러오지 못했어요. 잠시 후 다시 시도해 주세요", code="park_catalog_unavailable"
         ) from exc
+    taken = _managed_ids(db, [entry.id for entry in entries])
     return [
         ParkResponse(
             id=str(entry.id),
             name=entry.name,
             address=entry.address,
             distance="",
+            has_manager=entry.id in taken,
             bounds=entry.bounds,
             area=entry.area,
         )
         for entry in entries
     ]
+
+
+def _managed_ids(db: Session, catalog_ids: list[int]) -> set[int]:
+    """이미 승인된 담당 관리자가 있는 공원 카탈로그 ID"""
+    if not catalog_ids:
+        return set()
+    try:
+        return set(
+            db.scalars(select(Park.catalog_id).where(Park.catalog_id.in_(catalog_ids), Park.status == "approved"))
+        )
+    except SQLAlchemyError:
+        return set()

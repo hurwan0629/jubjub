@@ -5,6 +5,7 @@ import { StyleSheet, TurboModuleRegistry, View } from 'react-native';
 
 import { colors } from '@/theme';
 import { focusBounds, isInPark } from '@/utils/geo';
+import { routeLines } from '@/utils/route';
 
 import { ParkMapSchematic } from './ParkMapSchematic';
 import type { ParkMapMarkerKind, ParkMapProps } from './parkMapTypes';
@@ -66,6 +67,7 @@ function NaverParkMap({
   area,
   markers = [],
   route,
+  routes,
   onLongPress,
   onLongPressOutside,
   onMarkerPress,
@@ -134,9 +136,9 @@ function NaverParkMap({
             outlineWidth={2}
           />
         ) : null}
-        {route && route.length > 1 ? (
-          <NaverMapPolylineOverlay coords={route} color={colors.brand} width={3} pattern={[5, 6]} />
-        ) : null}
+        {routeLines(route, routes, colors.brand).map((line) => (
+          <NaverMapPolylineOverlay key={line.id} coords={line.coords} color={line.color} width={3} pattern={[5, 6]} />
+        ))}
         {markers.map((m) => (
           <NaverMapMarkerOverlay
             key={m.id}

@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { ReapplicationSession } from '@/api/types';
 import { TabBar } from '@/components';
 import { useUnreadCount } from '@/hooks/useNotifications';
+import { AlertDetailScreen } from '@/screens/alerts/AlertDetailScreen';
 import { AlertsScreen } from '@/screens/AlertsScreen';
 import { LoginScreen } from '@/screens/auth/LoginScreen';
 import { SignUpEmailScreen } from '@/screens/auth/SignUpEmailScreen';
@@ -16,6 +17,7 @@ import { RobotEditScreen } from '@/screens/robots/RobotEditScreen';
 import { RobotListScreen } from '@/screens/robots/RobotListScreen';
 import { RouteEditScreen } from '@/screens/route-edit/RouteEditScreen';
 import { RouteSetupScreen } from '@/screens/route-setup/RouteSetupScreen';
+import { StationsScreen } from '@/screens/settings/StationsScreen';
 import { SettingsScreen } from '@/screens/SettingsScreen';
 import { SplashScreen } from '@/screens/SplashScreen';
 
@@ -37,11 +39,13 @@ export type RootParams = {
   Splash: undefined; // C-00 시작화면 (3초)
   Login: undefined; // C-01 로그인
   SignUpEmail: { reapplication: ReapplicationSession } | undefined; // C-04 회원가입·재신청
-  RouteSetup: undefined; // C-03 공원 승인 후 순찰 경로 처음 설정
+  RouteSetup: { robotId?: string } | undefined; // C-03 순찰 경로 처음 설정. robotId: 홈에서 고른 로봇 (남은 로봇 경로 설정)
   RouteEdit: { robotId?: string } | undefined; // 선택한 로봇의 경로 편집
   RobotList: undefined;
   RobotEdit: { robotId: string };
-  Main: undefined; // 하단 탭
+  Stations: undefined; // C-02 분리수거장 관리
+  AlertDetail: { id: string }; // A-06 알림 상세
+  Main: NavigatorScreenParams<TabParams> | undefined; // 하단 탭 (screen으로 탭을 골라 열 수 있어요)
 };
 
 const Tab = createBottomTabNavigator<TabParams>();
@@ -83,6 +87,8 @@ export function RootNavigator() {
       <Stack.Screen name="RouteEdit" component={RouteEditScreen} />
       <Stack.Screen name="RobotList" component={RobotListScreen} />
       <Stack.Screen name="RobotEdit" component={RobotEditScreen} />
+      <Stack.Screen name="Stations" component={StationsScreen} />
+      <Stack.Screen name="AlertDetail" component={AlertDetailScreen} />
       <Stack.Screen name="Main" component={MainTabs} />
     </Stack.Navigator>
   );
