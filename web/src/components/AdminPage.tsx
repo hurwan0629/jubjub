@@ -105,15 +105,10 @@ export function AdminPage({ onLogout }: { onLogout: () => void }) {
           ))}{' '}
         </aside>
         <main className="admin-main">
-          <h1>
-            {tab === 'home'
-              ? '홈'
-              : tab === 'managers'
-                ? '관리자 보기'
-                : tab === 'reports'
-                  ? '공원별 보고'
-                  : '로봇 목록'}
-          </h1>
+          {/* 홈은 인사말 제목을 AdminHome이 직접 보여줘요 */}
+          {tab !== 'home' && (
+            <h1>{tab === 'managers' ? '관리자 보기' : tab === 'reports' ? '공원별 보고' : '로봇 목록'}</h1>
+          )}
           {tab === 'home' ? (
             <AdminHome
               registrations={rows}
@@ -124,13 +119,9 @@ export function AdminPage({ onLogout }: { onLogout: () => void }) {
               onManagers={() => {
                 setTab('managers');
                 setManagerTab('registrations');
-                setFilter('pending');
+                setFilter('all');
               }}
               onRobots={() => setTab('robots')}
-              onParkChanges={() => {
-                setTab('managers');
-                setManagerTab('changes');
-              }}
             />
           ) : tab === 'reports' ? (
             <ParkReports />
