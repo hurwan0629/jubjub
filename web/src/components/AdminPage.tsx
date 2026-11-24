@@ -2,11 +2,14 @@ import { AdminHome } from './AdminHome';
 import { Pagination } from './Pagination';
 import { paginate } from './pageData';
 import { useEffect, useState } from 'react';
-import { ParkChanges, ParkReports, RobotList } from './AdminOperations';
+import { ParkChanges, RobotList } from './AdminOperations';
+import { ParkReports } from './ParkReports';
 import { Logo } from './Logo';
+import { getRobotAssignmentRequests } from '../api/admin';
 import type { RegistrationStatus } from '../api/admin';
 import { useAdminRegistrations } from '../hooks/useAdminRegistrations';
 import { DecisionDialog } from './DecisionDialog';
+import { SelectMenu } from './SelectMenu';
 import type { Decision } from './DecisionDialog';
 
 const FILTERS = [
@@ -24,6 +27,22 @@ export function AdminPage({ onLogout }: { onLogout: () => void }) {
   const [filter, setFilter] = useState<'all' | RegistrationStatus>('all');
   const [target, setTarget] = useState<Decision>();
   const [notice, setNotice] = useState('');
+  // 로봇 목록 메뉴 옆 숫자: 확인을 기다리는 로봇 배정 요청 수 (1분마다 다시 확인)
+  const [requestCount, setRequestCount] = useState(0);
+  const [requestRevision, setRequestRevision] = useState(0);
+  useEffect(() => {
+    const controller = new AbortController();
+    const load = () =>
+      getRobotAssignmentRequests(controller.signal)
+        .then((list) => setRequestCount(list.length))
+        .catch(() => undefined);
+    void load();
+    const timer = setInterval(load, 60000);
+    return () => {
+      controller.abort();
+      clearInterval(timer);
+    };
+  }, [requestRevision]);
   const rows = data?.registrations ?? [];
   const visible = rows.filter(
     (row) =>
@@ -45,13 +64,18 @@ export function AdminPage({ onLogout }: { onLogout: () => void }) {
     if (!target) return false;
     const result = await decide(target.action, target.registration.userId, reason, ids);
     if (result) {
-      const verb =
+      const name = target.registration.applicantName;
+      const robotNames = (data?.robots ?? [])
+        .filter((robot) => ids.includes(robot.id))
+        .map((robot) => robot.name)
+        .join(', ');
+      setNotice(
         target.action === 'approve'
-          ? '가입을 승인했어요'
+          ? `${name} 관리자를 승인했어요.${robotNames ? ` ${robotNames}을 운영할 수 있어요` : ' 로봇은 로봇 목록에서 배정할 수 있어요'}`
           : target.action === 'reject'
-            ? '가입을 반려했어요'
-            : '승인을 취소하고 로봇을 회수했어요';
-      setNotice(`${target.registration.applicantName} 관리자의 ${verb}.`);
+            ? `${name} 관리자의 가입을 반려했어요. 사유는 신청자 앱에 보여요`
+            : `${name} 관리자의 승인을 취소하고 로봇을 회수했어요.`,
+      );
       setTarget(undefined);
     }
     return result;
@@ -101,14 +125,18 @@ export function AdminPage({ onLogout }: { onLogout: () => void }) {
             >
               <img src={`/icons/${item.icon}.svg`} width="21.6" height="21.6" alt="" />
               {item.label}
+              {item.id === 'robots' && requestCount > 0 ? (
+                <span className="menu-count" aria-label={`배정 요청 ${requestCount}건`}>
+                  {requestCount}
+                </span>
+              ) : null}
             </button>
           ))}{' '}
         </aside>
         <main className="admin-main">
           {/* 홈은 인사말 제목을 AdminHome이 직접 보여줘요 */}
-          {tab !== 'home' && (
-            <h1>{tab === 'managers' ? '관리자 보기' : tab === 'reports' ? '공원별 보고' : '로봇 목록'}</h1>
-          )}
+          {/* 공원별 보고는 목록 · 일일 보고 제목을 ParkReports가 직접 보여줘요 (W-03 일일 보고는 뒤로 가기 줄이 있어요) */}
+          {tab !== 'home' && tab !== 'reports' && <h1>{tab === 'managers' ? '관리자 보기' : '로봇 목록'}</h1>}
           {tab === 'home' ? (
             <AdminHome
               registrations={rows}
@@ -126,12 +154,12 @@ export function AdminPage({ onLogout }: { onLogout: () => void }) {
           ) : tab === 'reports' ? (
             <ParkReports />
           ) : tab === 'robots' ? (
-            <RobotList />
+            <RobotList onRequestsChanged={() => setRequestRevision((v) => v + 1)} />
           ) : (
             <>
-              <div className="banner">
+              <div className="banner banner-yellow">
                 <span>
-                  <img src="/icons/banner-bot.svg" width="28.08" height="28.08" alt="" />
+                  <img src="/icons/banner-bot-yellow.svg" width="28.08" height="28.08" alt="" />
                 </span>
                 <strong>작업 중인 Jubi와 담당 관리자를 확인할 수 있습니다.</strong>
               </div>
@@ -152,18 +180,13 @@ export function AdminPage({ onLogout }: { onLogout: () => void }) {
               ) : (
                 <section className="board" aria-label="가입 신청 관리">
                   <div className="toolbar">
-                    <label htmlFor="status-filter">승인 상태</label>
-                    <select
-                      id="status-filter"
+                    <span className="toolbar-label">승인 상태</span>
+                    <SelectMenu
+                      label="승인 상태"
                       value={filter}
-                      onChange={(e) => setFilter(e.target.value as typeof filter)}
-                    >
-                      {FILTERS.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.label} {count(item.id)}
-                        </option>
-                      ))}
-                    </select>
+                      options={FILTERS.map((item) => ({ value: item.id, label: `${item.label} ${count(item.id)}` }))}
+                      onChange={setFilter}
+                    />
                     <input
                       className="table-search"
                       type="search"
@@ -207,7 +230,14 @@ export function AdminPage({ onLogout }: { onLogout: () => void }) {
                         <tbody>
                           {list.items.map((row) => (
                             <tr key={row.userId}>
-                              <th scope="row">{row.applicantName}</th>
+                              <th scope="row">
+                                <span className="manager-cell">
+                                  {row.applicantName}
+                                  {row.registrationStatus === 'pending' ? (
+                                    <span className="new-badge">신규 가입</span>
+                                  ) : null}
+                                </span>
+                              </th>
                               <td className="muted">{row.applicantLoginId}</td>
                               <td>{row.applicantPhone || '미등록'}</td>
                               <td>{row.applicantEmail}</td>
@@ -255,12 +285,16 @@ export function AdminPage({ onLogout }: { onLogout: () => void }) {
                                       승인 취소
                                     </button>
                                   ) : (
-                                    <span className="error-text">반려</span>
+                                    <>
+                                      <span className="rejected-badge">반려</span>
+                                      {row.rejectReason ? (
+                                        <span className="rejected-reason" title={row.rejectReason}>
+                                          {row.rejectReason}
+                                        </span>
+                                      ) : null}
+                                    </>
                                   )}
                                 </div>
-                                {row.rejectReason ? (
-                                  <small className="error-text reason">사유: {row.rejectReason}</small>
-                                ) : null}
                               </td>
                             </tr>
                           ))}

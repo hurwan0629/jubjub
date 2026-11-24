@@ -1,10 +1,12 @@
 import { ParkChangeDetailDialog } from './ParkChangeDetailDialog';
 import { useEffect, useRef, useState } from 'react';
 import * as api from '../api/admin';
-import { DailyReportView } from './DailyReportView';
 import { Pagination } from './Pagination';
 import { paginate } from './pageData';
 import { ParkChangeRejectDialog } from './ParkChangeRejectDialog';
+import { IssueConfirmDialog, RegisterDialog, TokenDialog } from './RobotDialogs';
+import { RobotRequests } from './RobotRequests';
+import { SelectMenu } from './SelectMenu';
 import { RobotTokenButton } from './RobotTokenButton';
 
 function useRemote<T>(load: (signal: AbortSignal) => Promise<T>, deps: unknown[] = []) {
@@ -12,6 +14,7 @@ function useRemote<T>(load: (signal: AbortSignal) => Promise<T>, deps: unknown[]
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [revision, setRevision] = useState(0);
+  const [loadedAt, setLoadedAt] = useState<Date>();
   const loader = useRef(load);
   loader.current = load;
   useEffect(() => {
@@ -27,6 +30,7 @@ function useRemote<T>(load: (signal: AbortSignal) => Promise<T>, deps: unknown[]
         if (active && !signal.aborted) {
           setData(result);
           setError('');
+          setLoadedAt(new Date());
         }
       } catch (e) {
         if (active && !signal.aborted) setError(e instanceof Error ? e.message : '불러오지 못했어요');
@@ -45,7 +49,7 @@ function useRemote<T>(load: (signal: AbortSignal) => Promise<T>, deps: unknown[]
     // Each caller supplies the identities used by its request.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [revision, ...deps]);
-  return { data, error, loading, reload: () => setRevision((v) => v + 1) };
+  return { data, error, loading, loadedAt, reload: () => setRevision((v) => v + 1) };
 }
 function Feedback({ error, loading }: { error: string; loading: boolean }) {
   return (
@@ -103,14 +107,19 @@ export function ParkChanges({ onChanged }: { onChanged: () => void }) {
   return (
     <section className="board operations-board" aria-label="공원 변경 신청">
       <div className="toolbar">
-        <h2>공원 변경 신청</h2>
-        <select aria-label="변경 신청 상태" value={filter} onChange={(e) => setFilter(e.target.value)}>
-          <option value="pending">승인 대기</option>
-          <option value="all">전체 이력</option>
-          <option value="approved">승인 완료</option>
-          <option value="rejected">반려</option>
-          <option value="cancelled">취소</option>
-        </select>
+        <h2 className="board-title">공원 변경 신청</h2>
+        <SelectMenu
+          label="변경 신청 상태"
+          value={filter}
+          options={[
+            { value: 'pending', label: '승인 대기' },
+            { value: 'all', label: '전체 이력' },
+            { value: 'approved', label: '승인 완료' },
+            { value: 'rejected', label: '반려' },
+            { value: 'cancelled', label: '취소' },
+          ]}
+          onChange={setFilter}
+        />
         <input
           className="table-search"
           type="search"
@@ -145,7 +154,7 @@ export function ParkChanges({ onChanged }: { onChanged: () => void }) {
                   <small>{r.requestedParkAddress}</small>
                 </td>
                 <td>{r.reason}</td>
-                <td>{r.conflictingManagerName || '없음'}</td>
+                <td className={r.conflictingManagerName ? undefined : 'muted'}>{r.conflictingManagerName || '없음'}</td>
                 <td>
                   {new Date(r.createdAt).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' })}
                   <small>
@@ -155,8 +164,8 @@ export function ParkChanges({ onChanged }: { onChanged: () => void }) {
                   </small>
                 </td>
                 <td>
-                  {changeStatus[r.status]}
-                  {r.rejectReason && <small>{r.rejectReason}</small>}
+                  <span className={`change-status change-${r.status}`}>{changeStatus[r.status]}</span>
+                  {r.rejectReason && <small className="change-reject-reason">{r.rejectReason}</small>}
                   {r.status === 'pending' && (
                     <div className="row-actions">
                       <button
@@ -222,135 +231,45 @@ export function ParkChanges({ onChanged }: { onChanged: () => void }) {
     </section>
   );
 }
-export function ParkReports() {
-  const parks = useRemote(api.getAdminParks);
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState('');
-  const list = paginate(
-    (parks.data ?? []).filter((p) =>
-      `${p.name} ${p.address} ${p.managerName}`.toLowerCase().includes(search.toLowerCase()),
-    ),
-    page,
-  );
-  useEffect(() => setPage(1), [search]);
-  const [selected, setSelected] = useState<api.AdminPark>();
-  const [date, setDate] = useState(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  });
-  const reports = useRemote(
-    (signal) => (selected ? api.getParkReports(selected.id, date, signal, selected.catalogId) : Promise.resolve([])),
-    [selected?.id, selected?.catalogId, date],
-  );
-  return (
-    <section className="board operations-board reports-board">
-      {!selected && (
-        <div className="banner">
-          <span>
-            <img src="/icons/report.svg" width="28" height="28" alt="" />
-          </span>
-          <strong>공원별 일일 보고를 확인할 수 있습니다.</strong>
-        </div>
-      )}
-      <div className="toolbar report-toolbar">
-        <h2>{selected ? `${selected.name} 일일 보고` : '공원 목록'}</h2>
-        {selected ? (
-          <>
-            <button className="button soft" onClick={() => setSelected(undefined)}>
-              공원 목록
-            </button>
-            <label>
-              날짜{' '}
-              <input
-                type="date"
-                required
-                value={date}
-                onChange={(e) => {
-                  if (e.target.value) setDate(e.target.value);
-                }}
-              />
-            </label>
-          </>
-        ) : (
-          <button className="refresh-button" onClick={parks.reload}>
-            새로고침
-          </button>
-        )}
-      </div>
-      <Feedback error={selected ? reports.error : parks.error} loading={selected ? reports.loading : parks.loading} />
-      {!selected ? (
-        <div className="table-scroll park-report-list">
-          <div className="toolbar">
-            <input
-              className="table-search"
-              type="search"
-              aria-label="보고 공원 검색"
-              placeholder="공원명 · 관리자 검색"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th>공원명</th>
-                <th>주소</th>
-                <th>담당 관리자</th>
-                <th>보고</th>
-              </tr>
-            </thead>
-            <tbody>
-              {list.items.map((p) => (
-                <tr key={p.id}>
-                  <th>
-                    <span className="park-report-name">
-                      <img src="/icons/report.svg" width="22" height="22" alt="" />
-                      {p.name}
-                    </span>
-                  </th>
-                  <td>{p.address}</td>
-                  <td>
-                    {p.managerName}
-                    <small>{p.managerLoginId}</small>
-                  </td>
-                  <td>
-                    <button className="approve-button report-view-button" onClick={() => setSelected(p)}>
-                      보기
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {parks.data && list.total === 0 && <p className="empty">해당 공원이 없어요.</p>}
-          <Pagination {...list} onChange={setPage} />
-        </div>
-      ) : (
-        <>
-          {!reports.loading && !reports.error && reports.data?.length === 0 && (
-            <div className="empty">
-              <h3>선택한 날짜의 보고가 없어요.</h3>
-              <p>서버에 저장된 보고가 있으면 여기에 표시돼요.</p>
-            </div>
-          )}
-          {(!reports.error ? reports.data : undefined)?.map((r) => (
-            <DailyReportView report={r} key={r.id} />
-          ))}
-        </>
-      )}
-    </section>
-  );
+/** W-04 로봇 목록 (Figma Page 4 · 381:813, 배정 모달 381:1346) */
+const STATUS_LABEL: Record<api.AdminRobot['status'], string> = {
+  idle: '대기',
+  working: '순찰 중',
+  returning: '복귀 중',
+  emptying: '비우는 중',
+  offline: '오프라인',
+  error: '오류',
+};
+/** 배터리 전압이 이 값보다 낮으면 노란색으로 보여줘요 (서버에 기준값이 생기면 맞춰 바꿔요) */
+const LOW_VOLTAGE = 11;
+
+function clock(d: Date) {
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-export function RobotList() {
+/** 마지막 연결: 방금 · N분 전 · 오늘이면 HH:MM · 그 전이면 M월 D일 */
+function lastSeen(iso: string | null) {
+  if (!iso) return '연결 기록 없음';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '연결 기록 없음';
+  const minutes = Math.floor((Date.now() - d.getTime()) / 60000);
+  if (minutes < 1) return '방금';
+  if (minutes < 10) return `${minutes}분 전`;
+  if (d.toDateString() === new Date().toDateString()) return clock(d);
+  return `${d.getMonth() + 1}월 ${d.getDate()}일`;
+}
+
+export function RobotList({ onRequestsChanged }: { onRequestsChanged?: () => void } = {}) {
   const robots = useRemote(api.getAdminRobots),
-    parks = useRemote(api.getAdminParks);
+    parks = useRemote(api.getAdminParks),
+    requests = useRemote(api.getRobotAssignmentRequests);
   const [target, setTarget] = useState<api.AdminRobot>();
   const [search, setSearch] = useState('');
   const [listSearch, setListSearch] = useState('');
   const [page, setPage] = useState(1);
   const [registerOpen, setRegisterOpen] = useState(false);
-  const [issuedToken, setIssuedToken] = useState<{ robotId: string; token: string }>();
+  const [issuedToken, setIssuedToken] = useState<{ title: string; subtitle: string; token: string }>();
+  const [issueTarget, setIssueTarget] = useState<api.AdminRobot>();
   const list = paginate(
     (robots.data ?? []).filter((r) =>
       `${r.name} ${r.serialNo} ${r.parkName ?? ''} ${r.managerName ?? ''}`
@@ -361,9 +280,8 @@ export function RobotList() {
   );
   useEffect(() => setPage(1), [listSearch]);
   const [parkId, setParkId] = useState('');
-  const [name, setName] = useState('');
-  const [serial, setSerial] = useState('');
   const [busy, setBusy] = useState(false);
+  const [registerError, setRegisterError] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const dialog = useRef<HTMLDialogElement>(null);
@@ -372,170 +290,235 @@ export function RobotList() {
     if (target) el?.showModal();
     return () => el?.close();
   }, [target]);
-  async function save(register: boolean) {
+  /** 로봇 등록 팝업 → 등록 완료(토큰 복사) */
+  async function register(name: string, serial: string) {
+    if (busy) return;
+    setBusy(true);
+    setRegisterError('');
+    try {
+      const registered = await api.createAdminRobot(name, serial);
+      setRegisterOpen(false);
+      setIssuedToken({
+        title: `${registered.name}을 등록했어요`,
+        subtitle: `S/N ${registered.serialNo} · 배정 전`,
+        token: registered.authToken,
+      });
+      robots.reload();
+    } catch (e) {
+      setRegisterError(e instanceof Error ? e.message : '등록하지 못했어요');
+    } finally {
+      setBusy(false);
+    }
+  }
+  /** 토큰 발급 확인 → 발급 완료(토큰 복사) */
+  async function issueToken(r: api.AdminRobot) {
+    setBusy(true);
+    setError('');
+    try {
+      const result = await api.rotateRobotToken(r.id);
+      setIssueTarget(undefined);
+      setIssuedToken({ title: `${r.name} 토큰을 발급했어요`, subtitle: `S/N ${r.serialNo}`, token: result.authToken });
+      robots.reload();
+    } catch (e) {
+      setIssueTarget(undefined);
+      setError(e instanceof Error ? e.message : '토큰을 발급하지 못했어요');
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function save() {
     if (busy) return;
     setBusy(true);
     setError('');
     setNotice('');
     try {
-      if (register) {
-        const registered = await api.createAdminRobot(name.trim(), serial.trim());
-        setIssuedToken({ robotId: registered.id, token: registered.authToken });
-        setName('');
-        setSerial('');
-      } else if (target) await api.assignRobot(target.id, parkId || null);
+      if (!target) return;
+      await api.assignRobot(target.id, parkId || null);
+      const park = parks.data?.find((p) => p.id === parkId);
       setTarget(undefined);
       robots.reload();
       parks.reload();
-      setNotice('저장했어요.');
+      setNotice(
+        park
+          ? `${target.name}을 ${park.managerName} 관리자에게 맡겼어요.`
+          : `${target.name}을 회수했어요. 이제 배정 전이에요.`,
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : '처리하지 못했어요');
     } finally {
       setBusy(false);
     }
   }
+  const all = robots.data ?? [];
+  const unassigned = all.filter((r) => !r.parkId).length;
+  const runningCount = (id: string) => all.filter((r) => r.parkId === id).length;
+  const chosen = parks.data?.find((p) => p.id === parkId);
+  const stamp = robots.loadedAt ? clock(robots.loadedAt) : '';
   return (
-    <section className="board operations-board">
-      <div className="toolbar">
-        <h2>로봇 목록</h2>
-        <input
-          className="table-search"
-          type="search"
-          aria-label="로봇 검색"
-          placeholder="로봇 · 공원 · 관리자 검색"
-          value={listSearch}
-          onChange={(e) => setListSearch(e.target.value)}
-        />
-        <button className="refresh-button" onClick={robots.reload} disabled={busy || robots.loading}>
-          새로고침
-        </button>
-        <button
-          className="button soft compact-button"
-          aria-expanded={registerOpen}
-          onClick={() => setRegisterOpen(!registerOpen)}
-        >
-          로봇 등록
-        </button>
+    <>
+      <div className="banner banner-yellow">
+        <span>
+          <img src="/icons/banner-bot-yellow.svg" width="28.08" height="28.08" alt="" />
+        </span>
+        <strong>공원에서 일하는 Jubi의 상태를 확인할 수 있습니다.</strong>
       </div>
-      {registerOpen && (
-        <form
-          className="robot-registration"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void save(true);
-          }}
-        >
-          <h3>로봇 등록</h3>
-          <label>
-            이름
-            <input required maxLength={100} value={name} disabled={busy} onChange={(e) => setName(e.target.value)} />
-          </label>
-          <label>
-            시리얼 번호
+      {/* W-04 로봇 목록 - 배정 요청 알림: 관리자 앱에서 들어온 로봇 배정 · 추가 요청 */}
+      <RobotRequests
+        requests={requests.data ?? []}
+        robots={all}
+        onChanged={(message) => {
+          requests.reload();
+          robots.reload();
+          parks.reload();
+          onRequestsChanged?.();
+          setNotice(message);
+        }}
+      />
+      {requests.error ? <p className="warning-text">배정 요청을 불러오지 못했어요: {requests.error}</p> : null}
+      <section className="board operations-board rl-board">
+        <div className="rl-head">
+          <h2 className="board-title">
+            Jubi {all.length}대{unassigned ? ` · 배정 전 ${unassigned}대` : ''}
+          </h2>
+          {stamp ? <span className="rl-stamp">{stamp} 기준 · 30초마다 새로 고침</span> : null}
+        </div>
+        <div className="toolbar rl-toolbar">
+          <label className="rl-search">
+            <img src="/icons/search.svg" width="18" height="18" alt="" />
             <input
-              required
-              maxLength={100}
-              value={serial}
-              disabled={busy}
-              onChange={(e) => setSerial(e.target.value)}
+              type="search"
+              aria-label="로봇 검색"
+              placeholder="로봇, 공원, 관리자로 찾기"
+              value={listSearch}
+              onChange={(e) => setListSearch(e.target.value)}
             />
           </label>
-          <button className="button primary" disabled={busy || !name.trim() || !serial.trim()}>
-            등록
+          <button className="refresh-button" onClick={robots.reload} disabled={busy || robots.loading}>
+            새로고침
           </button>
-        </form>
-      )}
-      <Feedback error={robots.error || (!target ? error : '')} loading={robots.loading} />
-      {notice && <p role="status">{notice}</p>}
-      {issuedToken && (
-        <section className="error-panel" aria-label="발급된 로봇 토큰">
-          <h3>로봇 {issuedToken.robotId} 인증 토큰</h3>
-          <p>이번에만 보여드려요. 로봇 설정에 안전하게 복사해 주세요. 닫으면 다시 볼 수 없어요.</p>
-          <textarea readOnly aria-label="로봇 인증 토큰" value={issuedToken.token} />
-          <button className="button soft" onClick={() => setIssuedToken(undefined)}>
-            확인하고 닫기
+          <button
+            className="button primary compact-button"
+            onClick={() => {
+              setRegisterError('');
+              setRegisterOpen(true);
+            }}
+          >
+            + 로봇 등록
           </button>
-        </section>
-      )}
-      <div className="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              {['로봇 / 시리얼', '공원', '관리자', '상태', '배터리 전압', '마지막 연결', '배정'].map((x) => (
-                <th key={x}>{x}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {list.items.map((r) => (
-              <tr key={r.id}>
-                <th>
-                  {r.name}
-                  <small>{r.serialNo}</small>
-                </th>
-                <td>{r.parkName || (r.parkId ? '공원 정보 없음' : '미배정')}</td>
-                <td>
-                  {r.managerName || '미배정'}
-                  <small>{r.managerLoginId}</small>
-                </td>
-                <td>
-                  {
-                    {
-                      idle: '대기',
-                      working: '작업 중',
-                      returning: '복귀 중',
-                      emptying: '비우는 중',
-                      offline: '오프라인',
-                      error: '오류',
-                    }[r.status]
-                  }
-                </td>
-                <td>{r.batteryVoltage == null ? '측정값 없음' : `${r.batteryVoltage} V`}</td>
-                <td>{r.lastSeenAt ? new Date(r.lastSeenAt).toLocaleString('ko-KR') : '연결 기록 없음'}</td>
-                <td>
-                  <button
-                    className="approve-button"
-                    disabled={busy || !!robots.error || !['idle', 'offline'].includes(r.status)}
-                    onClick={() => {
-                      setTarget(r);
-                      setParkId(r.parkId ?? '');
-                      setSearch('');
-                      setError('');
-                    }}
-                  >
-                    배정 변경
-                  </button>
-                  {!['idle', 'offline'].includes(r.status) && <small>대기·오프라인일 때 변경 가능</small>}
-                  <RobotTokenButton
-                    tokenIssuedAt={r.tokenIssuedAt}
-                    disabled={busy}
-                    onIssue={async () => {
-                      if (!window.confirm('로봇 인증 토큰을 발급할까요? 원문은 이번에만 보여드려요.')) return;
-                      setBusy(true);
-                      setError('');
-                      try {
-                        const result = await api.rotateRobotToken(r.id);
-                        setIssuedToken({ robotId: r.id, token: result.authToken });
-                        robots.reload();
-                      } catch (e) {
-                        setError(e instanceof Error ? e.message : '토큰을 발급하지 못했어요');
-                      } finally {
-                        setBusy(false);
-                      }
-                    }}
-                  />
-                </td>
+        </div>
+        <Feedback error={robots.error || (!target ? error : '')} loading={robots.loading && !robots.data} />
+        {notice && (
+          <p className="rl-notice" role="status">
+            {notice}
+          </p>
+        )}
+        <div className="table-scroll">
+          <table className="rl-table">
+            <thead>
+              <tr>
+                {['로봇', '담당 공원', '담당 관리자', '상태', '배터리', '마지막 연결', '관리'].map((x) => (
+                  <th key={x}>{x}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-        {robots.data && list.total === 0 && <p className="empty">해당 로봇이 없어요.</p>}
-      </div>
-      <Pagination {...list} onChange={setPage} />
+            </thead>
+            <tbody>
+              {list.items.map((r) => {
+                const changeable = ['idle', 'offline'].includes(r.status);
+                const low = r.batteryVoltage != null && r.batteryVoltage < LOW_VOLTAGE;
+                return (
+                  <tr key={r.id}>
+                    <th scope="row">
+                      <span className="rl-robot">
+                        <span className={`rl-robot-icon ${r.status === 'error' ? 'error' : ''}`}>
+                          <img
+                            src={r.status === 'error' ? '/icons/bot-error-red.svg' : '/icons/bot-brand.svg'}
+                            width="20"
+                            height="20"
+                            alt=""
+                          />
+                        </span>
+                        <span className="rl-robot-text">
+                          <strong>{r.name}</strong>
+                          <small>S/N {r.serialNo}</small>
+                        </span>
+                      </span>
+                    </th>
+                    <td className={r.parkId ? undefined : 'muted'}>
+                      {r.parkName || (r.parkId ? '공원 정보 없음' : '배정 전')}
+                    </td>
+                    <td className={r.managerName ? undefined : 'muted'}>{r.managerName || '배정 전'}</td>
+                    <td>
+                      <span className={`rl-status rl-${r.status}`}>{STATUS_LABEL[r.status]}</span>
+                    </td>
+                    <td>
+                      {r.batteryVoltage == null ? (
+                        <span className="muted">측정값 없음</span>
+                      ) : (
+                        <span className={`rl-battery ${low ? 'low' : ''}`}>
+                          <img
+                            src={low ? '/icons/battery-warn.svg' : '/icons/battery-ok.svg'}
+                            width="19"
+                            height="19"
+                            alt=""
+                          />
+                          {r.batteryVoltage} V
+                        </span>
+                      )}
+                    </td>
+                    <td className="muted">{lastSeen(r.lastSeenAt)}</td>
+                    <td className="rl-manage">
+                      <button
+                        className={`rl-assign ${r.parkId ? '' : 'primary'}`}
+                        disabled={busy || !!robots.error || !changeable}
+                        title={changeable ? undefined : '대기 · 오프라인일 때 바꿀 수 있어요'}
+                        onClick={() => {
+                          setTarget(r);
+                          setParkId(r.parkId ?? '');
+                          setSearch('');
+                          setError('');
+                        }}
+                      >
+                        {r.parkId ? '배정 변경' : '배정하기'}
+                      </button>
+                      <RobotTokenButton
+                        tokenIssuedAt={r.tokenIssuedAt}
+                        disabled={busy}
+                        onIssue={() => setIssueTarget(r)}
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {robots.data && list.total === 0 && <p className="empty">해당 로봇이 없어요.</p>}
+        </div>
+        <Pagination {...list} onChange={setPage} />
+      </section>
+      {registerOpen ? (
+        <RegisterDialog busy={busy} error={registerError} onClose={() => setRegisterOpen(false)} onSubmit={register} />
+      ) : null}
+      {issueTarget ? (
+        <IssueConfirmDialog
+          name={issueTarget.name}
+          serial={issueTarget.serialNo}
+          busy={busy}
+          onClose={() => setIssueTarget(undefined)}
+          onConfirm={() => void issueToken(issueTarget)}
+        />
+      ) : null}
+      {issuedToken ? (
+        <TokenDialog
+          title={issuedToken.title}
+          subtitle={issuedToken.subtitle}
+          token={issuedToken.token}
+          onClose={() => setIssuedToken(undefined)}
+        />
+      ) : null}
       {target && (
         <dialog
           ref={dialog}
-          className="decision-dialog"
+          className="rq-dialog rl-assign-dialog"
           aria-labelledby="assignment-title"
           data-dialog="assignment"
           onCancel={(e) => {
@@ -544,68 +527,117 @@ export function RobotList() {
           }}
         >
           <form
+            className="rq-body"
             onSubmit={(e) => {
               e.preventDefault();
-              void save(false);
+              void save();
             }}
           >
-            <h2 id="assignment-title">{target.name} 배정 변경</h2>
-            <div className="dialog-body">
-              <p>승인된 관리자와 공원을 선택하세요. 대기·오프라인 로봇만 변경할 수 있어요.</p>
-              <label className="assignment-search">
-                관리자 / 공원 검색
-                <input type="search" value={search} disabled={busy} onChange={(e) => setSearch(e.target.value)} />
-              </label>
-              <Feedback error={parks.error} loading={parks.loading} />
-              <div className="assignment-options" role="group" aria-label="배정할 관리자와 공원">
-                <label className="robot-option">
-                  <input type="radio" name="park" checked={!parkId} disabled={busy} onChange={() => setParkId('')} />
-                  배정 해제 (회수)
-                </label>
-                {parks.data
-                  ?.filter((p) =>
-                    `${p.managerName} ${p.managerLoginId} ${p.name} ${p.address}`
-                      .toLowerCase()
-                      .includes(search.toLowerCase()),
-                  )
-                  .map((p) => (
-                    <label className="robot-option" key={p.id}>
-                      <input
-                        type="radio"
-                        name="park"
-                        checked={parkId === p.id}
-                        disabled={busy}
-                        onChange={() => setParkId(p.id)}
-                      />
-                      <span>
-                        <strong>
-                          {p.managerName} · {p.managerLoginId}
-                        </strong>
-                        <small>
-                          {p.name} · {p.address}
-                        </small>
-                      </span>
-                    </label>
-                  ))}
-                {parks.data?.length === 0 && <p>승인된 관리자와 공원이 없어요.</p>}
-              </div>
-              {error && (
-                <p className="error-text" role="alert">
-                  {error}
-                </p>
-              )}
+            <header className="rq-title">
+              <h2 id="assignment-title">{target.name}을 누구에게 맡길까요?</h2>
+              <p>로봇은 맡은 관리자의 공원에서 일해요</p>
+            </header>
+            <div className="rl-target">
+              <span className="rq-robot-icon">
+                <img src="/icons/bot-brand.svg" width="20" height="20" alt="" />
+              </span>
+              <span className="rq-robot-text">
+                <strong>{target.name}</strong>
+                <small>
+                  S/N {target.serialNo}
+                  {target.batteryVoltage != null ? ` · 배터리 ${target.batteryVoltage} V` : ''}
+                  {` · ${STATUS_LABEL[target.status]}`}
+                </small>
+              </span>
             </div>
-            <footer className="dialog-actions">
-              <button type="button" className="button soft" disabled={busy} onClick={() => setTarget(undefined)}>
-                닫기
+            <div className="rl-field">
+              <span className="rq-label">하위 관리자</span>
+              <label className="rl-search rl-search-wide">
+                <img src="/icons/search.svg" width="18" height="18" alt="" />
+                <input
+                  type="search"
+                  aria-label="관리자 찾기"
+                  placeholder="이름, 아이디, 공원으로 찾기"
+                  value={search}
+                  disabled={busy}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </label>
+            </div>
+            <Feedback error={parks.error} loading={parks.loading && !parks.data} />
+            <div className="rl-options" role="radiogroup" aria-label="맡길 관리자">
+              {parks.data
+                ?.filter((p) =>
+                  `${p.managerName} ${p.managerLoginId} ${p.name} ${p.address}`
+                    .toLowerCase()
+                    .includes(search.toLowerCase()),
+                )
+                .map((p) => (
+                  <label className={`rl-option ${parkId === p.id ? 'on' : ''}`} key={p.id}>
+                    <input
+                      type="radio"
+                      name="park"
+                      checked={parkId === p.id}
+                      disabled={busy}
+                      onChange={() => setParkId(p.id)}
+                    />
+                    <span className="rl-option-who">
+                      <strong>{p.managerName}</strong>
+                      <small>{p.managerLoginId}</small>
+                    </span>
+                    <span className="rl-option-park">{p.name}</span>
+                    <span className="rl-option-count">로봇 {runningCount(p.id)}대 운영 중</span>
+                  </label>
+                ))}
+              {parks.data?.length === 0 && <p className="rq-hint">승인된 관리자가 없어요.</p>}
+              {target.parkId ? (
+                <label className={`rl-option rl-release ${!parkId ? 'on' : ''}`}>
+                  <input type="radio" name="park" checked={!parkId} disabled={busy} onChange={() => setParkId('')} />
+                  <span className="rl-option-who">
+                    <strong>배정 해제</strong>
+                    <small>로봇을 회수해 배정 전으로 돌려요</small>
+                  </span>
+                </label>
+              ) : null}
+            </div>
+            {chosen ? (
+              <div className="rq-info">
+                <strong>
+                  {chosen.managerName} 관리자는 로봇 {runningCount(chosen.id) + (target.parkId === chosen.id ? 0 : 1)}
+                  대를 운영하게 돼요
+                </strong>
+                <p>배정하면 관리자 앱에 바로 보이고, {chosen.name}에서 순찰을 시작할 수 있어요.</p>
+              </div>
+            ) : target.parkId ? (
+              <div className="rq-info">
+                <strong>{target.managerName} 관리자에게서 로봇을 회수해요</strong>
+                <p>회수한 로봇은 배정 전으로 바뀌고, 다른 관리자에게 다시 맡길 수 있어요.</p>
+              </div>
+            ) : null}
+            {error && (
+              <p className="rq-error" role="alert">
+                {error}
+              </p>
+            )}
+            <footer className="rq-footer">
+              <button
+                type="button"
+                className="rq-button rq-light rq-tall"
+                disabled={busy}
+                onClick={() => setTarget(undefined)}
+              >
+                취소
               </button>
-              <button className="button primary" disabled={busy || parks.loading || !!parks.error}>
-                {busy ? '처리 중…' : '저장'}
+              <button
+                className="rq-button rq-primary rq-tall"
+                disabled={busy || parks.loading || !!parks.error || (parkId || null) === (target.parkId ?? null)}
+              >
+                {busy ? '처리 중…' : !parkId && target.parkId ? '회수하기' : '배정하기'}
               </button>
             </footer>
           </form>
         </dialog>
       )}
-    </section>
+    </>
   );
 }
