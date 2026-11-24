@@ -4,19 +4,36 @@ import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { completeRouteSetup, saveRouteConfig } from '@/api/route';
+import type { Station } from '@/api/stations';
 import type { LatLng, PatrolPoint, PatrolSlot, RouteConfig } from '@/api/types';
 import { Button, Header, Text } from '@/components';
 import { PatrolRobotScope } from '@/components/PatrolRobotScope';
 import { useManagedPark } from '@/hooks/useOnboarding';
-import { useRouteConfig } from '@/hooks/useRoute';
+import { usePatrolRobots, useReferenceRoutes, useRouteConfig } from '@/hooks/useRoute';
+import { useStations } from '@/hooks/useStations';
 import type { RootParams } from '@/navigation';
 import { colors, layout, space } from '@/theme';
 import { moveItem } from '@/utils/route';
 
 import { Footer, Progress } from './parts';
-import { StepDone, StepIntro, StepOrder, StepPoints, StepRecycle, StepSchedule } from './steps';
+import { StepChooseStation, StepStations } from './stationSteps';
+import type { ReferenceRoute } from './steps';
+import { StepDone, StepIntro, StepOrder, StepPoints, StepSchedule } from './steps';
 
-const LABELS = ['시작하기', '분리수거장 위치', '순찰 지점 찍기', '순서', '순찰 시간표', '설정 완료'];
+/**
+ * 단계: 안내 → (공원 분리수거장 등록) → 쓸 분리수거장 고르기 → 순찰 지점 → 순서 → 시간표 → 완료.
+ * 공원에 분리수거장이 이미 있으면(두 번째 로봇부터) 등록 단계는 건너뛰어요 (C-03 Jubi 2 - 분리수거장 공통).
+ */
+type StepKey = 'intro' | 'register' | 'choose' | 'points' | 'order' | 'schedule' | 'done';
+const LABEL: Record<StepKey, string> = {
+  intro: '시작하기',
+  register: '공원 분리수거장 등록',
+  choose: '쓸 분리수거장 고르기',
+  points: '순찰 지점 찍기',
+  order: '순서',
+  schedule: '순찰 시간표',
+  done: '설정 완료',
+};
 const DEFAULT_SLOTS: PatrolSlot[] = [
   { id: '1', time: '10:00', label: '매일 순찰', on: true, repeat: 'daily' },
   { id: '2', time: '13:00', label: '점심 시간 순찰', on: true, repeat: 'daily' },
@@ -41,16 +58,38 @@ function RobotRouteSetup({
   setBusy,
 }: Props & { robotId?: string; setBusy: (busy: boolean) => void }) {
   const { data: initial, error, reload } = useRouteConfig(robotId);
-  if (!initial || error)
+  const { data: stations, error: stationError, reload: reloadStations } = useStations();
+  const { data: references } = useReferenceRoutes(robotId);
+  const { data: robots } = usePatrolRobots();
+  const failed = error ?? stationError;
+  if (!initial || !stations || failed)
     return (
       <View style={s.message}>
-        <Text variant="13-regular" color={error ? 'error' : 'textSub'}>
-          {error?.message ?? '순찰 설정을 불러오고 있어요…'}
+        <Text variant="13-regular" color={failed ? 'error' : 'textSub'}>
+          {failed?.message ?? '순찰 설정을 불러오고 있어요…'}
         </Text>
-        {error ? <Button label="다시 불러오기" onPress={reload} /> : null}
+        {failed ? (
+          <Button
+            label="다시 불러오기"
+            onPress={() => {
+              reload();
+              reloadStations();
+            }}
+          />
+        ) : null}
       </View>
     );
-  return <SetupWizard navigation={navigation} initial={initial} robotId={robotId} setBusy={setBusy} />;
+  return (
+    <SetupWizard
+      navigation={navigation}
+      initial={initial}
+      initialStations={stations}
+      references={references ?? []}
+      robotName={robots?.find((r) => r.id === robotId)?.name ?? 'Jubi'}
+      robotId={robotId}
+      setBusy={setBusy}
+    />
+  );
 }
 
 function SetupWizard({
@@ -58,14 +97,42 @@ function SetupWizard({
   robotId,
   setBusy,
   initial,
+  initialStations,
+  references,
+  robotName,
 }: Pick<Props, 'navigation'> & {
   robotId?: string;
   setBusy: (busy: boolean) => void;
   initial: RouteConfig;
+  initialStations: Station[];
+  references: ReferenceRoute[];
+  robotName: string;
 }) {
   const { data: managed, error: loadError, loading, reload } = useManagedPark();
-  const [step, setStep] = useState(1);
-  const [recycle, setRecycle] = useState<LatLng | null>(initial.station);
+  const [stations, setStations] = useState<Station[]>(initialStations);
+  // 처음 열 때 공원에 분리수거장이 없으면 등록 단계부터 (두 번째 로봇부터는 건너뛰어요)
+  const [registerFirst] = useState(initialStations.length === 0);
+  const steps: StepKey[] = [
+    'intro',
+    ...(registerFirst ? (['register'] as const) : []),
+    'choose',
+    'points',
+    'order',
+    'schedule',
+  ];
+  const [index, setIndex] = useState(0);
+  const step: StepKey = index >= steps.length ? 'done' : steps[index];
+  // 쓸 분리수거장: 저장된 기본 분리수거장 → 같은 위치 → 하나뿐이면 그곳
+  const [stationId, setStationId] = useState<string | undefined>(
+    initial.defaultStationId ??
+      initialStations.find(
+        (st) =>
+          st.position.latitude === initial.station?.latitude && st.position.longitude === initial.station?.longitude,
+      )?.id ??
+      (initialStations.length === 1 ? initialStations[0].id : undefined),
+  );
+  const chosen = stations.find((st) => st.id === stationId);
+  const recycle: LatLng | null = chosen?.position ?? null;
   const [points, setPoints] = useState<PatrolPoint[]>(initial.points);
   const [slots, setSlots] = useState<PatrolSlot[]>(initial.schedule.length ? initial.schedule : DEFAULT_SLOTS);
   const [saving, setSaving] = useState(false);
@@ -77,14 +144,14 @@ function SetupWizard({
   const prev = () => {
     if (saving) return;
     setError(undefined);
-    if (step === 1) exit();
-    else setStep(step - 1);
+    if (index === 0) exit();
+    else setIndex(index - 1);
   };
   const next = async () => {
     if (saving || !park) return;
     setError(undefined);
-    if (step < 5) {
-      setStep(step + 1);
+    if (step !== 'schedule') {
+      setIndex(index + 1);
       return;
     }
     if (!recycle) return;
@@ -97,13 +164,14 @@ function SetupWizard({
         parkName: park.name,
         bounds: park.bounds,
         area: park.area,
+        defaultStationId: chosen?.id ?? null,
         station: recycle,
         points,
         schedule: slots,
       });
       // 서버가 분리수거장 · 지점 · 시간표가 모두 저장됐는지 확인하고 처음 설정을 끝내요
       await completeRouteSetup(robotId, initial.catalogId);
-      setStep(6);
+      setIndex(steps.length);
     } catch (e) {
       setError(e instanceof Error ? e.message : '경로를 저장하지 못했어요. 다시 시도해 주세요');
     } finally {
@@ -130,30 +198,53 @@ function SetupWizard({
     );
   } else {
     switch (step) {
-      case 1:
+      case 'intro':
         body = <StepIntro />;
         footer = <Footer nextLabel="시작하기" onNext={next} />;
         break;
-      case 2:
+      case 'register':
         body = (
-          <StepRecycle bounds={park.bounds} area={park.area} recycle={recycle} points={points} onSet={setRecycle} />
+          <StepStations
+            bounds={park.bounds}
+            area={park.area}
+            catalogId={initial.catalogId}
+            stations={stations}
+            onChange={(list) => {
+              setStations(list);
+              if (!list.some((st) => st.id === stationId)) setStationId(list.length === 1 ? list[0].id : undefined);
+            }}
+          />
         );
-        footer = <Footer onPrev={prev} nextDisabled={!recycle} onNext={next} />;
+        footer = <Footer onPrev={prev} nextDisabled={stations.length === 0} onNext={next} />;
         break;
-      case 3:
+      case 'choose':
+        body = (
+          <StepChooseStation
+            bounds={park.bounds}
+            area={park.area}
+            robotName={robotName}
+            stations={stations}
+            selectedId={stationId}
+            onSelect={(st) => setStationId(st.id)}
+          />
+        );
+        footer = <Footer onPrev={prev} nextDisabled={!chosen} onNext={next} />;
+        break;
+      case 'points':
         body = (
           <StepPoints
             bounds={park.bounds}
             area={park.area}
             points={points}
             recycle={recycle}
+            references={references}
             onAdd={(p) => setPoints((ps) => [...ps, p])}
             onRemove={(i) => setPoints((ps) => ps.filter((_, j) => j !== i))}
           />
         );
         footer = <Footer onPrev={prev} nextDisabled={points.length === 0} onNext={next} />;
         break;
-      case 4:
+      case 'order':
         body = (
           <StepOrder
             bounds={park.bounds}
@@ -166,7 +257,7 @@ function SetupWizard({
         );
         footer = <Footer onPrev={prev} nextDisabled={points.length === 0} onNext={next} />;
         break;
-      case 5:
+      case 'schedule':
         body = <StepSchedule slots={slots} onChange={setSlots} />;
         footer = (
           <Footer
@@ -184,8 +275,8 @@ function SetupWizard({
   }
   return (
     <SafeAreaView style={s.screen} edges={['top']}>
-      <Header title="순찰 경로 정하기" onBack={saving ? undefined : step === 6 ? goHome : prev} />
-      <Progress step={step} label={LABELS[step - 1]} />
+      <Header title={`${robotName} 순찰 경로 정하기`} onBack={saving ? undefined : step === 'done' ? goHome : prev} />
+      <Progress step={index + 1} total={steps.length} label={LABEL[step]} />
       <View style={s.flex} pointerEvents={saving ? 'none' : 'auto'}>
         {body}
       </View>

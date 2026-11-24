@@ -151,16 +151,6 @@ export async function getTodaySummary(): Promise<TodaySummary> {
   );
 }
 
-/** POST /tasks: 지도에서 고른 지점으로 로봇 보내기 */
-export function sendRobot(pointId: string): Promise<Task> {
-  if (mockFor('robot')) {
-    const task: Task = { id: `t${Date.now()}`, type: 'visit', label: '지정 지점 확인', eta: '--:--' };
-    mockTasks.push(task);
-    return mockResponse(task);
-  }
-  return request('/tasks', { method: 'POST', body: JSON.stringify({ pointId }) });
-}
-
 /** POST /robot/recover: 로봇 복구 완료 */
 export function recoverRobot(): Promise<void> {
   if (mockFor('robot')) {

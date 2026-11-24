@@ -9,6 +9,7 @@ import type { LatLng, PatrolPoint, RouteConfig } from '@/api/types';
 import {
   AddTimeSheet,
   Button,
+  FilterChip,
   Header,
   Icon,
   MapHint,
@@ -21,6 +22,7 @@ import {
 import type { ParkMapMarker } from '@/components';
 import { PatrolRobotScope } from '@/components/PatrolRobotScope';
 import { useRouteConfig } from '@/hooks/useRoute';
+import { useStations } from '@/hooks/useStations';
 import { icons } from '@/icons';
 import type { RootParams } from '@/navigation';
 import { colors, layout, radius, softShadow, space } from '@/theme';
@@ -91,6 +93,7 @@ function RouteEditor({
   const later = (fn: () => void, ms: number) => timers.current.push(setTimeout(fn, ms));
 
   const setPoints = (points: PatrolPoint[]) => setDraft((d) => ({ ...d, points }));
+  const { data: stations } = useStations();
 
   const markers: ParkMapMarker[] = [
     ...(draft.station
@@ -181,6 +184,29 @@ function RouteEditor({
           ) : (
             <MapHint text="지도를 꾹 눌러 지점을 추가할 수 있어요" />
           )}
+          {/* 비우러 갈 분리수거장 (C-02에서 삭제가 막혔을 때 여기서 바꿔요) */}
+          {stations && stations.length > 1 ? (
+            <View style={s.stationRow}>
+              <Text variant="13-bold">비우러 갈 분리수거장</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.stationChips}>
+                {stations.map((st) => {
+                  const on =
+                    draft.defaultStationId === st.id ||
+                    (!draft.defaultStationId &&
+                      st.position.latitude === draft.station?.latitude &&
+                      st.position.longitude === draft.station?.longitude);
+                  return (
+                    <FilterChip
+                      key={st.id}
+                      label={st.name}
+                      selected={on}
+                      onPress={() => setDraft((d) => ({ ...d, defaultStationId: st.id, station: st.position }))}
+                    />
+                  );
+                })}
+              </ScrollView>
+            </View>
+          ) : null}
           <View style={s.listHead}>
             <Text variant="17-bold">순찰 지점</Text>
             <Text variant="12-regular" color="textSub">
@@ -278,6 +304,8 @@ const s = StyleSheet.create({
   padded: { paddingHorizontal: layout.screenPadding },
   scheduleTop: { paddingTop: space[8] },
   map: { height: MAP_HEIGHT },
+  stationRow: { paddingHorizontal: layout.screenPadding, paddingTop: space[12], gap: space[8] },
+  stationChips: { gap: space[8] },
   listHead: {
     flexDirection: 'row',
     justifyContent: 'space-between',

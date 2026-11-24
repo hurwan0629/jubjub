@@ -7,7 +7,7 @@ import { AddTimeSheet, Icon, MapHint, ParkMap, PointList, PointNameSheet, Schedu
 import type { ParkMapMarker } from '@/components';
 import { useParkSearch } from '@/hooks/useParks';
 import { icons } from '@/icons';
-import { colors, layout, radius, space, typography } from '@/theme';
+import { colors, layout, radius, softShadow, space, typography } from '@/theme';
 import { isTooFar, lapMinutes, loopPath, nextPatrolTime, REPEAT_LABEL } from '@/utils/route';
 
 const MAP_HEIGHT = 290;
@@ -345,6 +345,7 @@ export function StepPoints({
   area,
   points,
   recycle,
+  references = [],
   onAdd,
   onRemove,
 }: {
@@ -352,11 +353,17 @@ export function StepPoints({
   area: ParkArea;
   points: PatrolPoint[];
   recycle: LatLng | null;
+  /** 다른 로봇의 저장된 경로 (C-03 Jubi 2 - 다른 로봇 경로 참고). 회색 점선으로 겹쳐 보여요. */
+  references?: ReferenceRoute[];
   onAdd: (p: PatrolPoint) => void;
   onRemove: (i: number) => void;
 }) {
   const [pending, setPending] = useState<LatLng | null>(null);
   const notice = useOutsideNotice();
+  // 처음에는 경로가 있는 첫 로봇을 참고해요
+  const [refId, setRefId] = useState<string | null>(references.find((r) => r.points.length > 0)?.id ?? null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const ref = references.find((r) => r.id === refId && r.points.length > 0);
 
   return (
     <>
@@ -367,7 +374,13 @@ export function StepPoints({
           area={area}
           markers={routeMarkers(points, recycle)}
           route={recycle ? [recycle, ...points.map((p) => p.position)] : points.map((p) => p.position)}
+          routes={
+            ref
+              ? [{ id: `ref-${ref.id}`, coords: loopPath(ref.points, ref.station), color: colors.textDisabled }]
+              : undefined
+          }
           onLongPress={(p) => {
+            setMenuOpen(false);
             // 이미 찍은 지점(분리수거장 포함)에서 1km 넘게 떨어진 곳에는 핀을 꽂지 않아요
             const existing = [...(recycle ? [recycle] : []), ...points.map((pt) => pt.position)];
             if (isTooFar(p, existing)) {
@@ -378,7 +391,20 @@ export function StepPoints({
             setPending(p);
           }}
           onLongPressOutside={notice.onOutside}
-        />
+        >
+          {references.length ? (
+            <ReferencePicker
+              references={references}
+              current={ref}
+              open={menuOpen}
+              onToggle={() => setMenuOpen((o) => !o)}
+              onPick={(id) => {
+                setRefId(id);
+                setMenuOpen(false);
+              }}
+            />
+          ) : null}
+        </ParkMap>
         <InfoBar
           tone={notice.outside || notice.tooFar ? 'error' : 'brand'}
           text={
@@ -386,7 +412,9 @@ export function StepPoints({
               ? '공원 밖이에요. 공원 안을 꾹 눌러 주세요'
               : notice.tooFar
                 ? TOO_FAR_TEXT
-                : '지도를 꾹 눌러 순찰 지점을 추가해요'
+                : ref
+                  ? '회색은 다른 로봇 경로예요 · 꾹 눌러 지점 추가'
+                  : '지도를 꾹 눌러 순찰 지점을 추가해요'
           }
         />
         <View style={s.listHead}>
@@ -411,6 +439,77 @@ export function StepPoints({
         }}
       />
     </>
+  );
+}
+
+/** 다른 로봇의 저장된 경로 (참고용) */
+export type ReferenceRoute = { id: string; name: string; station: LatLng | null; points: PatrolPoint[] };
+
+/** 지도 왼쪽 위 "Jubi 1 경로 참고 중 ⌄" 와 펼친 목록 (지도에 함께 볼 로봇) */
+function ReferencePicker({
+  references,
+  current,
+  open,
+  onToggle,
+  onPick,
+}: {
+  references: ReferenceRoute[];
+  current: ReferenceRoute | undefined;
+  open: boolean;
+  onToggle: () => void;
+  onPick: (id: string | null) => void;
+}) {
+  return (
+    <View style={s.refWrap} pointerEvents="box-none">
+      <Pressable
+        style={s.refPill}
+        onPress={onToggle}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+      >
+        <View style={s.refDot} />
+        <Text variant="13-semibold">{current ? `${current.name} 경로 참고 중` : '다른 로봇 경로 안 보기'}</Text>
+        <Text variant="13-semibold" color="textSub">
+          {open ? '⌃' : '⌄'}
+        </Text>
+      </Pressable>
+      {open ? (
+        <View style={s.refMenu}>
+          <Text variant="11-regular" color="textSub" style={s.refMenuTitle}>
+            지도에 함께 볼 로봇
+          </Text>
+          <Pressable style={s.refItem} onPress={() => onPick(null)} accessibilityRole="radio">
+            <View style={[s.refRing, !current ? s.refRingOn : null]} />
+            <Text variant="14-semibold">안 보기</Text>
+          </Pressable>
+          {references.map((r) => {
+            const empty = r.points.length === 0;
+            const on = current?.id === r.id;
+            return (
+              <Pressable
+                key={r.id}
+                style={[s.refItem, on ? s.refItemOn : null]}
+                onPress={() => onPick(r.id)}
+                disabled={empty}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: on, disabled: empty }}
+              >
+                <View style={[s.refRing, on ? s.refRingOn : null]} />
+                <View style={s.flex}>
+                  <Text variant="14-semibold" color={empty ? 'textDisabled' : 'text'}>
+                    {r.name}
+                  </Text>
+                  <Text variant="11-regular" color={empty ? 'textDisabled' : 'textSub'}>
+                    {empty ? '아직 경로 없음' : `지점 ${r.points.length}곳`}
+                  </Text>
+                </View>
+                {on ? <Icon source={icons.checkBrand} size={16} /> : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -532,6 +631,26 @@ export function StepDone({
 
 const s = StyleSheet.create({
   flex: { flex: 1 },
+  // 다른 로봇 경로 참고 (C-03 Jubi 2)
+  refWrap: { position: 'absolute', left: space[12], top: space[12], gap: 6, maxWidth: 240 },
+  refPill: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: space[12],
+    height: 34,
+    borderRadius: radius.pill,
+    backgroundColor: colors.card,
+    ...softShadow,
+  },
+  refDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.textDisabled },
+  refMenu: { backgroundColor: colors.card, borderRadius: 14, paddingVertical: space[8], ...softShadow },
+  refMenuTitle: { paddingHorizontal: space[12], paddingBottom: space[4] },
+  refItem: { flexDirection: 'row', alignItems: 'center', gap: space[8], paddingHorizontal: space[12], minHeight: 44 },
+  refItemOn: { backgroundColor: colors.bgBrandSoft },
+  refRing: { width: 10, height: 10, borderRadius: 5, borderWidth: 1.5, borderColor: colors.textDisabled },
+  refRingOn: { backgroundColor: colors.textDisabled },
   flex1: { flex: 1 },
   // 분리수거장 단계: "로봇이 여기서 출발해 여기로 돌아와요"
   startEndNote: {

@@ -1,15 +1,17 @@
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { useFocusEffect } from '@react-navigation/native';
+import type { CompositeScreenProps } from '@react-navigation/native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ImageSource } from 'expo-image';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ackNotification } from '@/api/notifications';
 import type { AppNotification, NotificationType } from '@/api/types';
 import { AlertCard, FilterChip, Header, Icon, Text } from '@/components';
 import { useNotifications } from '@/hooks/useNotifications';
 import { icons } from '@/icons';
-import type { TabParams } from '@/navigation';
+import type { RootParams, TabParams } from '@/navigation';
 import { colors, space } from '@/theme';
 import type { Tone } from '@/theme';
 import { NOTIFICATION_TYPE_LABEL } from '@/utils/labels';
@@ -32,7 +34,7 @@ const TYPE_ICON: Record<NotificationType, { icon: ImageSource; tone: Tone }> = {
   other: { icon: icons.bot, tone: 'neutral' },
 };
 
-/** 알림 한 줄. 누르면 읽음으로 바꿔요 (PATCH /notifications/{id}/read). */
+/** 알림 한 줄. 누르면 알림 상세(A-06)로 가요. */
 function Item({ a, onRead }: { a: AppNotification; onRead: (a: AppNotification) => void }) {
   const k = TYPE_ICON[a.type];
   const meta = a.note ? `${a.time} · ${a.note}` : a.time;
@@ -44,23 +46,22 @@ function Item({ a, onRead }: { a: AppNotification; onRead: (a: AppNotification) 
       body={a.place}
       meta={meta}
       unread={a.status === 'new'}
-      onPress={a.status === 'new' ? () => onRead(a) : undefined}
+      onPress={() => onRead(a)}
     />
   );
 }
 
-export function AlertsScreen({ navigation }: BottomTabScreenProps<TabParams, 'Alerts'>) {
+type Props = CompositeScreenProps<BottomTabScreenProps<TabParams, 'Alerts'>, NativeStackScreenProps<RootParams>>;
+
+export function AlertsScreen({ navigation }: Props) {
   const [filter, setFilter] = useState<(typeof FILTERS)[number]['key']>('all');
   const { data: list = [], loading, reload } = useNotifications(filter === 'all' ? undefined : filter);
   const [readError, setReadError] = useState<string>();
-  const markRead = async (a: AppNotification) => {
+  // 알림 상세에서 확인 · 조치 완료를 누르면 읽음으로 바뀌어요. 돌아오면 목록을 다시 불러와요.
+  useFocusEffect(useCallback(() => reload(), [reload]));
+  const markRead = (a: AppNotification) => {
     setReadError(undefined);
-    try {
-      await ackNotification(a.id);
-      reload();
-    } catch (e) {
-      setReadError(e instanceof Error ? e.message : '읽음 처리하지 못했어요');
-    }
+    navigation.navigate('AlertDetail', { id: a.id });
   };
   const pinned = list.filter((a) => a.pinned);
   const recent = list.filter((a) => !a.pinned);

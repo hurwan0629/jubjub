@@ -36,3 +36,17 @@ export function useRobotRouteSummaries(robotIds: string[] | undefined) {
     ) as Record<string, RobotRouteSummary>;
   }, [key]);
 }
+
+/** 다른 로봇들의 저장된 경로 (C-03 Jubi 2 - 다른 로봇 경로 참고). 지금 설정하는 로봇은 빼요. */
+export function useReferenceRoutes(robotId?: string) {
+  return useApi(async () => {
+    const robots = (await getPatrolRobots()).filter((r) => r.id !== robotId);
+    const configs = await Promise.all(robots.map((r) => getRouteConfig(r.id).catch(() => null)));
+    return robots.map((r, i) => ({
+      id: r.id,
+      name: r.name,
+      station: configs[i]?.station ?? null,
+      points: configs[i]?.points ?? [],
+    }));
+  }, [robotId]);
+}

@@ -37,9 +37,10 @@ function live<T>(path: string, method = 'GET'): Promise<T> {
 export const getRobotState = (id: string) =>
   live<AssignedRobot & { currentTaskId: string | null; processedPoints: number }>(`${robotPath(id)}/state`);
 /** 최근 순서로 limit개 (서버 최대 100) */
-export const getRobotTasks = (id: string, limit = 20) => live<RobotTask[]>(`${robotPath(id)}/tasks?limit=${limit}`);
-export const getDetections = (id: string, limit = 20) =>
-  live<Detection[]>(`${robotPath(id)}/detections?limit=${limit}`);
+export const getRobotTasks = (id: string, limit = 20, offset = 0) =>
+  live<RobotTask[]>(`${robotPath(id)}/tasks?limit=${limit}&offset=${offset}`);
+export const getDetections = (id: string, limit = 20, offset = 0) =>
+  live<Detection[]>(`${robotPath(id)}/detections?limit=${limit}&offset=${offset}`);
 
 /** 로봇이 보낸 오류 코드 (server/app/schemas/robot_protocol.py ErrorInput) */
 export type RobotErrorCode =
@@ -54,8 +55,8 @@ export type RobotErrorRecord = {
   lng: number | null;
   occurredAt: string;
 };
-export const getRobotErrors = (id: string, limit = 20) =>
-  live<RobotErrorRecord[]>(`${robotPath(id)}/errors?limit=${limit}`);
+export const getRobotErrors = (id: string, limit = 20, offset = 0) =>
+  live<RobotErrorRecord[]>(`${robotPath(id)}/errors?limit=${limit}&offset=${offset}`);
 export const startPatrol = (id: string) => live<RobotTask>(`${robotPath(id)}/patrol/start`, 'POST');
 export const stopPatrol = (id: string) =>
   live<{ taskId: string; accepted: boolean; reason?: string | null }>(`${robotPath(id)}/patrol/stop`, 'POST');

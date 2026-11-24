@@ -112,6 +112,7 @@ export function SettingsScreen({ navigation }: Props) {
 
         {/* 바로가기 */}
         <LinkCard label="공원 변경하기" onPress={() => navigation.navigate('ParkChange')} />
+        <LinkCard label="분리수거장 관리" onPress={() => navigation.navigate('Stations')} />
         {/* A-12 운영 설정은 아직 앱에 없어요 */}
         <LinkCard label="운영 설정" />
 

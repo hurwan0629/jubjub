@@ -46,7 +46,7 @@ test('새 로봇 API는 선택한 로봇으로 순찰 제어와 기록을 조회
   assert.equal(calls.at(-1).url, 'http://localhost:8000/robots/7/patrol/stop');
   response = [];
   await robotProtocol.getDetections('7');
-  assert.equal(calls.at(-1).url, 'http://localhost:8000/robots/7/detections?limit=20');
+  assert.equal(calls.at(-1).url, 'http://localhost:8000/robots/7/detections?limit=20&offset=0');
 });
 
 test('복귀 중인 로봇도 홈 상태로 표시한다', async () => {

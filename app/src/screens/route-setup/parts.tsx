@@ -7,15 +7,15 @@ import { colors, layout, space } from '@/theme';
 
 export const STEP_COUNT = 5;
 
-/** 진행 단계: "N / 5 · 이름" + 막대 5칸 */
-export function Progress({ step, label }: { step: number; label: string }) {
+/** 진행 단계: "N / 전체 · 이름" + 막대 (분리수거장 등록이 있으면 6단계, 없으면 5단계) */
+export function Progress({ step, label, total = STEP_COUNT }: { step: number; label: string; total?: number }) {
   return (
     <View style={st.progress}>
       <Text variant="13-regular" color="brandText" lineHeight="relaxed">
-        {step > STEP_COUNT ? label : `${step} / ${STEP_COUNT} · ${label}`}
+        {step > total ? label : `${step} / ${total} · ${label}`}
       </Text>
       <View style={st.bars}>
-        {Array.from({ length: STEP_COUNT }, (_, i) => (
+        {Array.from({ length: total }, (_, i) => (
           <View key={i} style={[st.bar, { backgroundColor: i < step ? colors.brand : colors.bgDisabled }]} />
         ))}
       </View>

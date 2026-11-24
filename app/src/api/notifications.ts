@@ -98,19 +98,3 @@ export async function ackNotification(id: string): Promise<void> {
   if (mockFor('notifications')) return setMockStatus(id, 'acked');
   await request(`/notifications/${encodeURIComponent(id)}/read`, { method: 'PATCH' });
 }
-
-const NOT_READY = '서버에서 아직 지원하지 않는 기능이에요';
-
-/** 처리 완료 표시 (A-06). 서버 API가 없어서 실제 서버에서는 안내만 해요. */
-export function resolveNotification(id: string): Promise<void> {
-  return mockFor('notifications')
-    ? setMockStatus(id, 'resolved')
-    : Promise.reject(new ApiError(501, NOT_READY, 'not_implemented'));
-}
-
-/** 로봇 재확인 요청 (A-06). 서버 API가 없어서 실제 서버에서는 안내만 해요. */
-export function recheckNotification(_id: string): Promise<void> {
-  return mockFor('notifications')
-    ? mockResponse(undefined)
-    : Promise.reject(new ApiError(501, NOT_READY, 'not_implemented'));
-}
