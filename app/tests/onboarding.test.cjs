@@ -46,13 +46,20 @@ test('새 로봇 API는 선택한 로봇으로 순찰 제어와 기록을 조회
   assert.equal(calls.at(-1).url, 'http://localhost:8000/robots/7/patrol/stop');
   response = [];
   await robotProtocol.getDetections('7');
-  assert.equal(calls.at(-1).url, 'http://localhost:8000/robots/7/detections');
+  assert.equal(calls.at(-1).url, 'http://localhost:8000/robots/7/detections?limit=20');
 });
 
 test('복귀 중인 로봇도 홈 상태로 표시한다', async () => {
-  response = [{ id: '7', name: 'A', status: 'returning' }];
+  const robot = { id: '7', name: 'A', status: 'returning', batteryVoltage: null, lastSeenAt: null };
+  response = (url) =>
+    url.endsWith('/robots')
+      ? [robot]
+      : url.endsWith('/state')
+        ? { ...robot, currentTaskId: null, processedPoints: 0 }
+        : { points: [], schedule: [] };
   const robots = await require('../src/api/robot.ts').getHomeRobots();
   assert.equal(robots[0].state, 'returning');
+  assert.equal(robots[0].activity, '분리수거장으로 돌아가고 있어요');
 });
 
 test('route writes carry the original catalog and propagate a park change conflict', async () => {
@@ -125,7 +132,8 @@ test('mock park change remains pending and cancellation preserves the approved p
 });
 global.fetch = async (url, init) => {
   calls.push({ url, ...init });
-  return new Response(JSON.stringify(response), { status });
+  const body = typeof response === 'function' ? response(url) : response;
+  return new Response(JSON.stringify(body), { status });
 };
 
 test('재신청은 별도 인증을 사용하고 수정할 수 없는 아이디를 제출하지 않는다', async () => {
@@ -249,10 +257,26 @@ test('경로를 다시 저장할 때 선택한 분리수거장 ID를 유지한�
 
 test('홈은 배정된 로봇의 이름과 상태를 각각 표시하고 가짜 배터리 비율을 만들지 않는다', async () => {
   const robots = require('../src/api/robot.ts');
-  response = [
+  const list = [
     { id: '1', name: '로봇 1', status: 'working', batteryVoltage: 11.8, lastSeenAt: '2026-11-17T05:00:00Z' },
     { id: '2', name: '로봇 2', status: 'idle', batteryVoltage: null, lastSeenAt: null },
   ];
+  // GET /robots → 목록, GET /robots/{id}/state → 상태 (1번은 순찰 중 2번째 지점까지 돌았어요), GET /route → 경로
+  response = (url) => {
+    if (url.endsWith('/robots')) return list;
+    const state = url.match(/\/robots\/(\d+)\/state$/);
+    if (state) {
+      const r = list.find((x) => x.id === state[1]);
+      return { ...r, currentTaskId: r.id === '1' ? '50' : null, processedPoints: r.id === '1' ? 1 : 0 };
+    }
+    return {
+      points: [
+        { id: 'a', name: '정문', position: { latitude: 0, longitude: 0 } },
+        { id: 'b', name: '놀이터', position: { latitude: 0, longitude: 0 } },
+      ],
+      schedule: [],
+    };
+  };
   const home = await robots.getHomeRobots();
   assert.deepEqual(
     home.map((r) => [r.id, r.name, r.state]),
@@ -264,7 +288,10 @@ test('홈은 배정된 로봇의 이름과 상태를 각각 표시하고 가짜 
   assert.equal(home[0].battery, null);
   assert.equal(home[0].batteryVoltage, 11.8);
   assert.equal(home[1].battery, null);
-  assert.equal(calls.at(-1).url, 'http://localhost:8000/robots');
+  // 순찰 중인 로봇은 지점 진행과 다음 지점을 서버 상태와 저장된 경로로 보여 줘요
+  assert.equal(home[0].activity, '순찰 지점 2곳 중 1곳을 돌았어요');
+  assert.equal(home[0].nextPoint, '놀이터');
+  assert.ok(calls.some((c) => c.url === 'http://localhost:8000/robots/1/state'));
   response = [];
   assert.deepEqual(await robots.getHomeRobots(), []);
 });

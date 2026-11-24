@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { startPatrol, stopPatrol } from '@/api/robotProtocol';
 
+/** 로봇 순찰 시작 · 멈추기 명령 (POST /robots/{id}/patrol/start · stop). 끝나면 onChanged로 상태를 다시 불러와요. */
 export function useRobotControl(robotId: string, onChanged: () => void) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -10,14 +11,17 @@ export function useRobotControl(robotId: string, onChanged: () => void) {
     setBusy(true);
     setMessage('');
     try {
-      const response = stop ? await stopPatrol(robotId) : await startPatrol(robotId);
-      setMessage(
-        response.accepted
-          ? stop
-            ? '복귀 명령을 수락했어요'
-            : '순찰 시작을 수락했어요'
-          : '순찰을 시작하거나 변경하지 못했어요. 로봇 상태를 확인해 주세요',
-      );
+      if (stop) {
+        const response = await stopPatrol(robotId);
+        setMessage(
+          response.accepted
+            ? '멈추기 명령을 보냈어요'
+            : (response.reason ?? '순찰을 멈추지 못했어요. 로봇 상태를 확인해 주세요'),
+        );
+      } else {
+        await startPatrol(robotId);
+        setMessage('순찰 시작 명령을 보냈어요');
+      }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '명령을 보내지 못했어요');
     } finally {

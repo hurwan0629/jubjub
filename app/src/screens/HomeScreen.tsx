@@ -3,25 +3,39 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { useFocusEffect } from '@react-navigation/native';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { HomeRobotStatus, RobotState } from '@/api/types';
 import { AlertCard, Button, Card, Icon, ROBOT_STATE, SectionHeader, StatRow, Text } from '@/components';
-import { RobotControls } from '@/components/RobotControls';
 import { useProfile } from '@/hooks/useAccount';
 import { useDecisions } from '@/hooks/useDecisions';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useManagedPark } from '@/hooks/useParkChange';
 import { useHomeRobots, useTodaySummary } from '@/hooks/useRobot';
+import { usePendingRobotRequest } from '@/hooks/useRobotRequests';
+import { useRobotRouteSummaries } from '@/hooks/useRoute';
+import { selectRobot, useSelectedRobot } from '@/hooks/useSelectedRobot';
 import { icons } from '@/icons';
 import type { HomeStackParams, RootParams, TabParams } from '@/navigation';
 import { colors, layout, radius, softShadow, space } from '@/theme';
+import type { ColorName } from '@/theme';
 import { SLOT_LABEL, SLOT_WARN_PERCENT } from '@/utils/labels';
+
+import { NoRobotCard } from './home/NoRobotCard';
+import { PatrolControl } from './home/PatrolControl';
 
 /** 로봇 상태 카드를 빨간색으로 보여 주는 상태 (시안: 로봇 오류 · 연결 끊김) */
 const ALARM_STATES = new Set<RobotState>(['error', 'disconnected']);
+
+/** 파란 · 빨간 카드 위 상태 배지 색 (시안: 정상 진한 파랑 · 대기 흰색 · 복귀 중 노랑 · 오류 흰색) */
+function badgeTone(state: RobotState): { bg: ColorName; fg: ColorName } {
+  if (ALARM_STATES.has(state)) return { bg: 'card', fg: 'error' };
+  if (state === 'returning') return { bg: 'robotIcon', fg: 'robotIconText' };
+  if (state === 'idle') return { bg: 'card', fg: 'brandText' };
+  return { bg: 'brandBadge', fg: 'card' };
+}
 
 function subjectParticle(name: string) {
   const last = name.trim().at(-1) ?? '';
@@ -39,17 +53,27 @@ export function HomeScreen({ navigation }: Props) {
   const { data: robots, error: robotError, reload: reloadRobots } = useHomeRobots();
   const { data: managedPark, reload: reloadPark } = useManagedPark();
   const { data: profile, reload: reloadProfile } = useProfile();
+  const { data: pending, reload: reloadPending } = usePendingRobotRequest();
+  const { data: routes, reload: reloadRoutes } = useRobotRouteSummaries(robots?.map((r) => r.id));
   useFocusEffect(
     useCallback(() => {
       reloadRobots();
       reloadPark();
       reloadProfile();
-    }, [reloadRobots, reloadPark, reloadProfile]),
+      reloadPending();
+      reloadRoutes();
+    }, [reloadRobots, reloadPark, reloadProfile, reloadPending, reloadRoutes]),
   );
 
-  // 승인된 공원인데 아직 순찰 경로를 정하지 않았으면 경로 설정 카드만 보여요 (시안: A-01 홈 - 초기 경로 설정 전)
-  const needsRoute = profile?.routeSetupDone === false && managedPark?.status === 'approved';
-  const setupRobotName = robots?.[0]?.name ?? 'Jubi';
+  const approved = managedPark?.status === 'approved';
+  // A-01 홈 - 로봇 배정 전: 승인됐지만 배정된 로봇이 없어요
+  const noRobot = approved && !robotError && robots?.length === 0;
+  // 아직 경로가 없는 로봇 (지점 0곳). 경로 요약을 못 불러오면 프로필의 첫 설정 여부로 판단해요.
+  const missing =
+    robots?.filter((r) => (routes ? routes[r.id]?.points === 0 : profile?.routeSetupDone === false)) ?? [];
+  // A-01 홈 - 초기 경로 설정 전: 모든 로봇이 아직 경로가 없으면 경로 설정 카드만 보여요
+  const allMissing = approved && !!robots?.length && missing.length === robots.length;
+  const startSetup = (robotId: string) => navigation.navigate('RouteSetup', { robotId });
 
   return (
     <SafeAreaView style={s.screen} edges={['top']}>
@@ -79,36 +103,69 @@ export function HomeScreen({ navigation }: Props) {
           {'안녕하세요!\n공원 관리자님'}
         </Text>
 
-        {needsRoute ? (
+        {noRobot ? (
+          <NoRobotCard parkName={managedPark?.name ?? '관리 공원'} pending={pending} onChanged={reloadPending} />
+        ) : allMissing && robots ? (
           <>
-            {/* 초기 경로 설정 카드: 분리수거장부터 정해요 */}
-            <View style={s.setupCard}>
-              <View style={s.robotTop}>
-                <View style={[s.iconCircle44, { backgroundColor: colors.bgBrandSoft }]}>
-                  <Icon source={icons.botBrand} size={22} />
-                </View>
-                <View style={s.robotTitle}>
-                  <Text variant="18-bold">{setupRobotName} 경로를 정해 주세요</Text>
-                  <Text variant="11-regular" color="textSub">
-                    아직 순찰 경로가 없어요
-                    {robots && robots.length > 1 ? ` · 로봇 ${robots.length}대 중 1번째` : ''}
-                  </Text>
-                </View>
-              </View>
-              <Text variant="11-regular" color="textSub">
-                분리수거장 → 순찰 지점 → 순서 → 시간표를 정하면 순찰을 시작해요
-              </Text>
-              <Button label="경로 설정 시작하기" icon={icons.play} onPress={() => navigation.navigate('RouteSetup')} />
-            </View>
+            <RouteSetupCard
+              robotName={missing[0].name}
+              order={robots.indexOf(missing[0]) + 1}
+              total={robots.length}
+              onStart={() => startSetup(missing[0].id)}
+            />
             <Text variant="11-regular" color="textSub" style={s.center}>
               경로를 정하면 오늘 요약·알림이 여기에 보여요
             </Text>
           </>
         ) : (
-          <HomeContent navigation={navigation} robots={robots} robotError={robotError} reloadRobots={reloadRobots} />
+          <HomeContent
+            navigation={navigation}
+            robots={robots}
+            robotError={robotError}
+            reloadRobots={reloadRobots}
+            nextSetup={
+              approved && missing[0] && robots
+                ? { robot: missing[0], order: robots.indexOf(missing[0]) + 1, total: robots.length }
+                : undefined
+            }
+            onStartSetup={startSetup}
+          />
         )}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+/** 경로 설정 카드 (A-01 홈 - 초기 경로 설정 전 · 남은 로봇 경로 설정). 분리수거장부터 정해요. */
+function RouteSetupCard({
+  robotName,
+  order,
+  total,
+  onStart,
+}: {
+  robotName: string;
+  order: number;
+  total: number;
+  onStart: () => void;
+}) {
+  return (
+    <View style={s.setupCard}>
+      <View style={s.robotTop}>
+        <View style={[s.iconCircle44, { backgroundColor: colors.bgBrandSoft }]}>
+          <Icon source={icons.botBrand} size={22} />
+        </View>
+        <View style={s.robotTitle}>
+          <Text variant="18-bold">{robotName} 경로를 정해 주세요</Text>
+          <Text variant="11-regular" color="textSub">
+            아직 순찰 경로가 없어요{total > 1 ? ` · 로봇 ${total}대 중 ${order}번째` : ''}
+          </Text>
+        </View>
+      </View>
+      <Text variant="11-regular" color="textSub">
+        분리수거장 → 순찰 지점 → 순서 → 시간표를 정하면 순찰을 시작해요
+      </Text>
+      <Button label="경로 설정 시작하기" icon={icons.play} onPress={onStart} />
+    </View>
   );
 }
 
@@ -117,11 +174,15 @@ type HomeContentProps = {
   robots: HomeRobotStatus[] | undefined;
   robotError: Error | undefined;
   reloadRobots: () => void;
+  /** 경로를 정한 로봇이 있고, 아직 경로가 없는 로봇이 남았을 때 (A-01 홈 - 남은 로봇 경로 설정) */
+  nextSetup?: { robot: HomeRobotStatus; order: number; total: number };
+  onStartSetup: (robotId: string) => void;
 };
 
-/** 경로를 정한 뒤의 홈: 알림 → 로봇 선택 → 로봇 상태 → 오늘 요약 → 칸별 적재율 → 에이전트가 방금 한 일 */
-function HomeContent({ navigation, robots, robotError, reloadRobots }: HomeContentProps) {
-  const [selectedRobotId, setSelectedRobotId] = useState<string>();
+/** 경로를 정한 뒤의 홈: 알림 → 로봇 선택 → 로봇 상태 → (남은 로봇 경로 설정) → 오늘 요약 → 칸별 적재율 → 에이전트가 방금 한 일 */
+function HomeContent({ navigation, robots, robotError, reloadRobots, nextSetup, onStartSetup }: HomeContentProps) {
+  // 로봇 목록(A-13)에서 카드를 누르면 홈이 그 로봇 기준으로 바뀌어요
+  const selectedRobotId = useSelectedRobot();
   const robot = robots?.find((item) => item.id === selectedRobotId) ?? robots?.[0];
   const { data: today } = useTodaySummary();
   const { data: notifications } = useNotifications();
@@ -163,7 +224,7 @@ function HomeContent({ navigation, robots, robotError, reloadRobots }: HomeConte
                 accessibilityRole="tab"
                 accessibilityState={{ selected }}
                 accessibilityLabel={`${item.name} 선택`}
-                onPress={() => setSelectedRobotId(item.id)}
+                onPress={() => selectRobot(item.id)}
                 style={[s.robotTab, selected ? s.robotTabSelected : null]}
               >
                 {selected ? <Icon source={icons.check} size={16} /> : null}
@@ -196,10 +257,6 @@ function HomeContent({ navigation, robots, robotError, reloadRobots }: HomeConte
       ) : !robots ? (
         <Text variant="13-regular" color="textSub">
           로봇을 불러오고 있어요…
-        </Text>
-      ) : robots.length === 0 ? (
-        <Text variant="13-regular" color="textSub">
-          배정된 로봇이 없어요. 총관리자에게 배정을 요청해 주세요.
         </Text>
       ) : null}
 
@@ -240,8 +297,8 @@ function HomeContent({ navigation, robots, robotError, reloadRobots }: HomeConte
               </View>
             </View>
             <View style={s.robotRight}>
-              <View style={[s.badge, { backgroundColor: alarm ? colors.card : colors.brandBadge }]}>
-                <Text variant="10-semibold" color={alarm ? 'error' : 'card'}>
+              <View style={[s.badge, { backgroundColor: colors[badgeTone(robot.state).bg] }]}>
+                <Text variant="10-semibold" color={badgeTone(robot.state).fg}>
                   {ROBOT_STATE[robot.state].badge}
                 </Text>
               </View>
@@ -262,10 +319,19 @@ function HomeContent({ navigation, robots, robotError, reloadRobots }: HomeConte
               </Text>
             </Pressable>
           ) : null}
+          {/* 순찰 제어: 순찰 중 → 멈추기, 대기 → 지금 순찰 시작, 돌아가는 중 → 그 자리에서 멈추기 */}
+          <PatrolControl key={robot.id} robot={robot} onChanged={reloadRobots} />
         </Pressable>
       ) : null}
 
-      {robot ? <RobotControls key={robot.id} robot={robot} onChanged={reloadRobots} /> : null}
+      {nextSetup ? (
+        <RouteSetupCard
+          robotName={nextSetup.robot.name}
+          order={nextSetup.order}
+          total={nextSetup.total}
+          onStart={() => onStartSetup(nextSetup.robot.id)}
+        />
+      ) : null}
 
       {/* 오늘 요약 */}
       {today ? (

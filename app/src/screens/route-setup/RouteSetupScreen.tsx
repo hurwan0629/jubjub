@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { saveRouteConfig } from '@/api/route';
+import { completeRouteSetup, saveRouteConfig } from '@/api/route';
 import type { LatLng, PatrolPoint, PatrolSlot, RouteConfig } from '@/api/types';
 import { Button, Header, Text } from '@/components';
 import { PatrolRobotScope } from '@/components/PatrolRobotScope';
@@ -29,7 +29,7 @@ type Props = NativeStackScreenProps<RootParams, 'RouteSetup'>;
 
 export function RouteSetupScreen(props: Props) {
   return (
-    <PatrolRobotScope>
+    <PatrolRobotScope fixedRobotId={props.route.params?.robotId} onMissing={() => props.navigation.goBack()}>
       {(robotId, setBusy) => <RobotRouteSetup {...props} robotId={robotId} setBusy={setBusy} />}
     </PatrolRobotScope>
   );
@@ -101,6 +101,8 @@ function SetupWizard({
         points,
         schedule: slots,
       });
+      // 서버가 분리수거장 · 지점 · 시간표가 모두 저장됐는지 확인하고 처음 설정을 끝내요
+      await completeRouteSetup(robotId, initial.catalogId);
       setStep(6);
     } catch (e) {
       setError(e instanceof Error ? e.message : '경로를 저장하지 못했어요. 다시 시도해 주세요');

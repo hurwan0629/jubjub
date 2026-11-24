@@ -37,7 +37,7 @@ export type RootParams = {
   Splash: undefined; // C-00 시작화면 (3초)
   Login: undefined; // C-01 로그인
   SignUpEmail: { reapplication: ReapplicationSession } | undefined; // C-04 회원가입·재신청
-  RouteSetup: undefined; // C-03 공원 승인 후 순찰 경로 처음 설정
+  RouteSetup: { robotId?: string } | undefined; // C-03 순찰 경로 처음 설정. robotId: 홈에서 고른 로봇 (남은 로봇 경로 설정)
   RouteEdit: { robotId?: string } | undefined; // 선택한 로봇의 경로 편집
   RobotList: undefined;
   RobotEdit: { robotId: string };

@@ -17,13 +17,14 @@ export type ApiResource =
   | 'reports'
   | 'robot'
   | 'route'
+  | 'robotRequests' // 로봇 배정 · 추가 요청 (server/app/routers/robot_assignment.py)
   | 'decisions';
 
 /**
  * 서버에 이미 만들어진 API. EXPO_PUBLIC_API_URL 이 있어도 여기 없는 자원은 목업을 써요.
  * 백엔드가 API를 만들면 여기에 추가해요. (server/AUTH.md: 로그인 · 회원가입 · /me, server/PARKS.md: 공원 검색)
  */
-const SERVER_READY: readonly ApiResource[] = ['auth', 'me', 'parks', 'park', 'route'];
+const SERVER_READY: readonly ApiResource[] = ['auth', 'me', 'parks', 'park', 'route', 'robotRequests', 'notifications'];
 
 /** 이 자원을 목업으로 처리할지 */
 export const mockFor = (resource: ApiResource) => USE_MOCK || !SERVER_READY.includes(resource);

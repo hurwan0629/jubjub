@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ackNotification } from '@/api/notifications';
 import type { AppNotification, NotificationType } from '@/api/types';
 import { AlertCard, FilterChip, Header, Icon, Text } from '@/components';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -25,20 +26,42 @@ const TYPE_ICON: Record<NotificationType, { icon: ImageSource; tone: Tone }> = {
   robotError: { icon: icons.alertTriangleRed, tone: 'error' },
   unpickable: { icon: icons.hand, tone: 'error' },
   lowBattery: { icon: icons.alertTriangleRed, tone: 'error' },
+  patrol: { icon: icons.route, tone: 'warn' },
+  robotAssignment: { icon: icons.bot, tone: 'brand' },
   dailyReport: { icon: icons.chartBrand, tone: 'brand' },
+  other: { icon: icons.bot, tone: 'neutral' },
 };
 
-function Item({ a }: { a: AppNotification }) {
+/** 알림 한 줄. 누르면 읽음으로 바꿔요 (PATCH /notifications/{id}/read). */
+function Item({ a, onRead }: { a: AppNotification; onRead: (a: AppNotification) => void }) {
   const k = TYPE_ICON[a.type];
   const meta = a.note ? `${a.time} · ${a.note}` : a.time;
   return (
-    <AlertCard icon={k.icon} tone={k.tone} title={a.title} body={a.place} meta={meta} unread={a.status === 'new'} />
+    <AlertCard
+      icon={k.icon}
+      tone={k.tone}
+      title={a.title}
+      body={a.place}
+      meta={meta}
+      unread={a.status === 'new'}
+      onPress={a.status === 'new' ? () => onRead(a) : undefined}
+    />
   );
 }
 
 export function AlertsScreen({ navigation }: BottomTabScreenProps<TabParams, 'Alerts'>) {
   const [filter, setFilter] = useState<(typeof FILTERS)[number]['key']>('all');
-  const { data: list = [], loading } = useNotifications(filter === 'all' ? undefined : filter);
+  const { data: list = [], loading, reload } = useNotifications(filter === 'all' ? undefined : filter);
+  const [readError, setReadError] = useState<string>();
+  const markRead = async (a: AppNotification) => {
+    setReadError(undefined);
+    try {
+      await ackNotification(a.id);
+      reload();
+    } catch (e) {
+      setReadError(e instanceof Error ? e.message : '읽음 처리하지 못했어요');
+    }
+  };
   const pinned = list.filter((a) => a.pinned);
   const recent = list.filter((a) => !a.pinned);
   const unreadCount = list.filter((a) => a.status === 'new').length;
@@ -66,7 +89,7 @@ export function AlertsScreen({ navigation }: BottomTabScreenProps<TabParams, 'Al
               </Text>
             </View>
             {pinned.map((a) => (
-              <Item key={a.id} a={a} />
+              <Item key={a.id} a={a} onRead={markRead} />
             ))}
           </>
         ) : null}
@@ -79,8 +102,13 @@ export function AlertsScreen({ navigation }: BottomTabScreenProps<TabParams, 'Al
             </Text>
           ) : null}
         </View>
+        {readError ? (
+          <Text variant="13-regular" color="error" accessibilityLiveRegion="polite">
+            {readError}
+          </Text>
+        ) : null}
         {recent.map((a) => (
-          <Item key={a.id} a={a} />
+          <Item key={a.id} a={a} onRead={markRead} />
         ))}
         {/* 빈 안내는 불러오기가 끝난 뒤에만 보여 줘요 (불러오는 중에 깜빡이지 않게) */}
         {!loading && recent.length === 0 ? (

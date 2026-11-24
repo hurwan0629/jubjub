@@ -19,5 +19,5 @@ export function useTaskQueue() {
 
 /** 오늘 요약 */
 export function useTodaySummary() {
-  return useApi(() => getTodaySummary(), []);
+  return useApi(() => getTodaySummary(), [], { refreshMs: 30000 });
 }
