@@ -17,6 +17,8 @@ export const colors = {
   chip: '#e2ebff', // 선택 안 된 로봇 칩 배경
   chipText: '#162044', // 선택 안 된 로봇 칩 글자
   robotAlt: '#f09628', // 두 번째 로봇의 지도 경로 · 마커 (A-02 지도 Jubi 2)
+  robotIconText: '#4b3c0b', // 노란 받침 위 글자 (멈춤 · 복귀 중 배지)
+  onBrandSoft: 'rgba(255, 255, 255, 0.22)', // 파란 카드 위 반투명 버튼 (순찰 멈추기)
 
   // 배경·표면
   bg: '#f3f6fb', // 배경/기본

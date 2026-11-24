@@ -1,23 +1,89 @@
-// 알림 API (A-05 알림 목록, A-06 알림 상세)
-import { mockResponse, request, mockFor } from './client';
+// 알림 API (A-05 알림 목록, A-06 알림 상세). 서버: server/app/routers/notifications.py
+import { ApiError, mockFor, mockResponse, request } from './client';
 import { mockNotifications } from './mock/notifications';
-import type { AppNotification, NotificationStatus, NotificationType } from './types';
+import type { AppNotification, LatLng, NotificationStatus, NotificationType } from './types';
 
-/** GET /notifications?type= */
-export function getNotifications(type?: NotificationType): Promise<AppNotification[]> {
+/** 서버 알림 응답 (NotificationResponse) */
+type ServerNotification = {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  parkId: string | null;
+  robotId: string | null;
+  position: LatLng | null;
+  occurredAt: string;
+  isRead: boolean;
+};
+
+/** 서버 알림 종류 → 앱 알림 종류 (필터 · 아이콘). 모르는 종류는 'other'로 보여요. */
+const SERVER_TYPE: Record<string, NotificationType> = {
+  robot_error: 'robotError',
+  low_battery: 'lowBattery',
+  unpickable: 'unpickable',
+  patrol_missed: 'patrol',
+  robotAssignmentApproved: 'robotAssignment',
+  robotAssignmentRejected: 'robotAssignment',
+  daily_report: 'dailyReport',
+};
+
+/** '11:02', 어제면 '어제 22:00', 그보다 전이면 '11월 18일 09:50' */
+function displayTime(iso: string, now = new Date()) {
+  const d = new Date(iso);
+  const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((day(now) - day(d)) / 86400000);
+  if (diff === 0) return time;
+  if (diff === 1) return `어제 ${time}`;
+  return `${d.getMonth() + 1}월 ${d.getDate()}일 ${time}`;
+}
+
+export function toAppNotification(n: ServerNotification): AppNotification {
+  const type = SERVER_TYPE[n.type] ?? 'other';
+  return {
+    id: n.id,
+    type,
+    status: n.isRead ? 'acked' : 'new',
+    title: n.title,
+    place: n.body,
+    body: n.body,
+    time: displayTime(n.occurredAt),
+    // 확인하지 않은 로봇 오류는 맨 위에 고정해요
+    pinned: type === 'robotError' && !n.isRead,
+    robotId: n.robotId,
+    position: n.position,
+    occurredAt: n.occurredAt,
+  };
+}
+
+/** 한 번에 불러오는 최대 개수 (서버 최대 100) */
+const PAGE = 100;
+
+/**
+ * GET /notifications. type을 주면 그 종류만 보여요.
+ * 앱 종류 하나가 서버 종류 여러 개(배정 승인 · 반려)에 해당해서, 거르기는 앱에서 해요.
+ */
+export async function getNotifications(type?: NotificationType): Promise<AppNotification[]> {
   if (mockFor('notifications')) {
     return mockResponse(mockNotifications.filter((n) => !type || n.type === type));
   }
-  return request(`/notifications${type ? `?type=${type}` : ''}`);
+  const list = await request<ServerNotification[]>(`/notifications?limit=${PAGE}`);
+  return list.map(toAppNotification).filter((n) => !type || n.type === type);
 }
 
 /** GET /notifications/{id} */
-export function getNotification(id: string): Promise<AppNotification> {
+export async function getNotification(id: string): Promise<AppNotification> {
   if (mockFor('notifications')) {
     const found = mockNotifications.find((n) => n.id === id);
-    return found ? mockResponse(found) : Promise.reject(new Error(`알림 ${id} 없음`));
+    return found ? mockResponse(found) : Promise.reject(new ApiError(404, '알림을 찾을 수 없어요', 'not_found'));
   }
-  return request(`/notifications/${id}`);
+  return toAppNotification(await request<ServerNotification>(`/notifications/${encodeURIComponent(id)}`));
+}
+
+/** GET /notifications/unread-count: 하단 탭 배지 · 홈 배너 */
+export async function getUnreadCount(): Promise<number> {
+  if (mockFor('notifications')) return mockResponse(mockNotifications.filter((n) => n.status === 'new').length);
+  return (await request<{ count: number }>('/notifications/unread-count')).count;
 }
 
 // 목업에서는 메모리의 상태를 바꿔서, 다시 불러오면 화면에 반영돼요.
@@ -27,23 +93,24 @@ function setMockStatus(id: string, status: NotificationStatus) {
   return mockResponse(undefined);
 }
 
-/** POST /notifications/{id}/ack: 확인 */
-export function ackNotification(id: string): Promise<void> {
-  return mockFor('notifications')
-    ? setMockStatus(id, 'acked')
-    : request(`/notifications/${id}/ack`, { method: 'POST' });
+/** PATCH /notifications/{id}/read: 읽음(확인) 처리 */
+export async function ackNotification(id: string): Promise<void> {
+  if (mockFor('notifications')) return setMockStatus(id, 'acked');
+  await request(`/notifications/${encodeURIComponent(id)}/read`, { method: 'PATCH' });
 }
 
-/** POST /notifications/{id}/resolve: 처리 완료 표시 → 서버가 로봇 재확인을 대기열에 넣어요 */
+const NOT_READY = '서버에서 아직 지원하지 않는 기능이에요';
+
+/** 처리 완료 표시 (A-06). 서버 API가 없어서 실제 서버에서는 안내만 해요. */
 export function resolveNotification(id: string): Promise<void> {
   return mockFor('notifications')
     ? setMockStatus(id, 'resolved')
-    : request(`/notifications/${id}/resolve`, { method: 'POST' });
+    : Promise.reject(new ApiError(501, NOT_READY, 'not_implemented'));
 }
 
-/** POST /notifications/{id}/recheck: 로봇 재확인 요청 */
-export function recheckNotification(id: string): Promise<void> {
+/** 로봇 재확인 요청 (A-06). 서버 API가 없어서 실제 서버에서는 안내만 해요. */
+export function recheckNotification(_id: string): Promise<void> {
   return mockFor('notifications')
     ? mockResponse(undefined)
-    : request(`/notifications/${id}/recheck`, { method: 'POST' });
+    : Promise.reject(new ApiError(501, NOT_READY, 'not_implemented'));
 }

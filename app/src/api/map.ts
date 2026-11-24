@@ -2,6 +2,7 @@
 import { mockResponse, request, mockFor } from './client';
 import { mockMapOverview } from './mock/map';
 import { getPatrolRobots, getRouteConfig } from './route';
+import { getStations } from './stations';
 import type { MapOverview, RouteConfig, SavedRouteMap } from './types';
 
 /** GET /map/overview: 공원 중심 · 마커 · 순찰 경로. 서버 경로는 API 명세서(KAN-23)가 나오면 맞춰요. */
@@ -16,15 +17,18 @@ export function getMapOverview(): Promise<MapOverview> {
 export async function getSavedRouteMap(): Promise<SavedRouteMap> {
   const robots = await getPatrolRobots();
   // 로봇 배정 전에도 공원 경로는 정할 수 있어서, 로봇이 없으면 공원 경로 하나만 불러와요.
-  const configs: RouteConfig[] = robots.length
-    ? await Promise.all(robots.map((robot) => getRouteConfig(robot.id)))
-    : [await getRouteConfig()];
+  const [configs, parkStations] = await Promise.all([
+    robots.length ? Promise.all(robots.map((robot) => getRouteConfig(robot.id))) : getRouteConfig().then((c) => [c]),
+    // 공원에 등록된 분리수거장 전체 (GET /stations). 못 불러오면 경로에 든 것만 보여요.
+    getStations().catch(() => []),
+  ]);
   const first = configs[0];
   const stations = new Map<
     string,
     { id: string; name: string; position: SavedRouteMap['stations'][number]['position'] }
   >();
-  configs.forEach((config, index) => {
+  parkStations.forEach((station) => stations.set(station.id, station));
+  configs.forEach((config: RouteConfig, index) => {
     config.stations?.forEach((station) => stations.set(station.id, station));
     if (!config.stations?.length && config.station) {
       stations.set(`station-${index}`, { id: `station-${index}`, name: '분리수거장', position: config.station });
