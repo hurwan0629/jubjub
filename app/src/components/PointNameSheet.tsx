@@ -16,10 +16,17 @@ type PointNameSheetProps = {
   order: number;
   onCancel: () => void;
   onSubmit: (name: string) => void;
+  /** 분리수거장처럼 다른 것의 이름을 정할 때 (기본: 순찰 지점) */
+  kind?: 'point' | 'station';
+  /** 저장 중이면 버튼을 막아요 */
+  sending?: boolean;
 };
 
+const STATION_NAMES = ['남문 분리수거장', '북문 분리수거장', '동문 분리수거장'];
+
 /** 지도에서 찍은 순찰 지점의 이름 정하기 (Figma "지점 이름 시트") */
-export function PointNameSheet({ visible, order, onCancel, onSubmit }: PointNameSheetProps) {
+export function PointNameSheet({ visible, order, onCancel, onSubmit, kind = 'point', sending }: PointNameSheetProps) {
+  const station = kind === 'station';
   const [name, setName] = useState('');
   const trimmed = name.trim();
   const close = () => {
@@ -30,26 +37,26 @@ export function PointNameSheet({ visible, order, onCancel, onSubmit }: PointName
   return (
     <BottomSheet
       visible={visible}
-      title={`${order}번째 지점의 이름을 정해요`}
-      description="알림과 기록에 이 이름으로 보여요"
+      title={station ? `${order}번째 분리수거장의 이름을 정해요` : `${order}번째 지점의 이름을 정해요`}
+      description={station ? '모든 로봇이 같이 쓰는 이름이에요' : '알림과 기록에 이 이름으로 보여요'}
       onClose={close}
     >
       <TextInput
         value={name}
         onChangeText={setName}
-        placeholder="예: 벤치 쉼터"
+        placeholder={station ? '예: 남문 분리수거장' : '예: 벤치 쉼터'}
         placeholderTextColor={colors.textDisabled}
         style={s.input}
         autoFocus
-        maxLength={12}
+        maxLength={station ? 20 : 12}
         multiline={false}
         numberOfLines={1}
         scrollEnabled={false}
-        accessibilityLabel="지점 이름"
+        accessibilityLabel={station ? '분리수거장 이름' : '지점 이름'}
       />
       <Text variant="14-bold">자주 쓰는 이름</Text>
       <View style={s.chips}>
-        {QUICK_NAMES.map((n) => (
+        {(station ? STATION_NAMES : QUICK_NAMES).map((n) => (
           <FilterChip key={n} label={n} selected={name === n} onPress={() => setName(n)} />
         ))}
       </View>
@@ -59,8 +66,8 @@ export function PointNameSheet({ visible, order, onCancel, onSubmit }: PointName
         </View>
         <View style={s.flex}>
           <Button
-            label="지점 추가"
-            disabled={!trimmed}
+            label={sending ? '저장 중…' : station ? '분리수거장 추가' : '지점 추가'}
+            disabled={!trimmed || sending}
             onPress={() => {
               onSubmit(trimmed);
               setName('');

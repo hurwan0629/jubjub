@@ -1,9 +1,13 @@
 // 지도 API (A-02 지도)
 import { mockResponse, request, mockFor } from './client';
 import { mockMapOverview } from './mock/map';
+import { getDetections, getRobotErrors } from './robotProtocol';
 import { getPatrolRobots, getRouteConfig } from './route';
 import { getStations } from './stations';
-import type { MapOverview, RouteConfig, SavedRouteMap } from './types';
+import type { MapDetection, MapOverview, RouteConfig, SavedRouteMap } from './types';
+
+/** 히트맵 · 집기 불가 마커에 쓰는 기간 */
+const RECENT_DAYS = 7;
 
 /** GET /map/overview: 공원 중심 · 마커 · 순찰 경로. 서버 경로는 API 명세서(KAN-23)가 나오면 맞춰요. */
 export function getMapOverview(): Promise<MapOverview> {
@@ -22,6 +26,29 @@ export async function getSavedRouteMap(): Promise<SavedRouteMap> {
     // 공원에 등록된 분리수거장 전체 (GET /stations). 못 불러오면 경로에 든 것만 보여요.
     getStations().catch(() => []),
   ]);
+  // 실제 서버에서만: 로봇마다 최근 탐지 (집기 불가 · 히트맵)와 오류 시각
+  const live = !mockFor('route');
+  const since = Date.now() - RECENT_DAYS * 86400000;
+  const [detectionLists, errorLists] = await Promise.all([
+    Promise.all(robots.map((r) => (live ? getDetections(r.id, 100).catch(() => []) : Promise.resolve([])))),
+    Promise.all(
+      robots.map((r) => (live && r.status === 'error' ? getRobotErrors(r.id, 1).catch(() => []) : Promise.resolve([]))),
+    ),
+  ]);
+  const detections: MapDetection[] = detectionLists.flatMap((list, i) =>
+    list
+      .filter((d) => d.lat != null && d.lng != null && new Date(d.detectedAt).getTime() >= since)
+      .map((d) => ({
+        id: d.id,
+        robotName: robots[i].name,
+        material: d.material,
+        confidence: d.confidence,
+        position: { latitude: d.lat, longitude: d.lng },
+        detectedAt: d.detectedAt,
+        pickupResult: d.pickupResult,
+        failReason: d.pickupFailReason,
+      })),
+  );
   const first = configs[0];
   const stations = new Map<
     string,
@@ -48,8 +75,13 @@ export async function getSavedRouteMap(): Promise<SavedRouteMap> {
         points: config.points,
         position:
           robot && robot.lat != null && robot.lng != null ? { latitude: robot.lat, longitude: robot.lng } : null,
+        status: robot?.status,
+        errorSince: errorLists[index]?.[0]?.occurredAt ?? null,
+        errorCode: errorLists[index]?.[0]?.code ?? null,
+        batteryVoltage: robot?.batteryVoltage ?? null,
       };
     }),
+    detections,
     updatedAt: new Date().toISOString(),
   };
 }

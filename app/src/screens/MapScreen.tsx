@@ -7,14 +7,55 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import type { LatLng, SavedRobotRoute, SavedRouteMap } from '@/api/types';
+import type { LatLng, MapDetection, SavedRobotRoute, SavedRouteMap } from '@/api/types';
 import { Button, FilterBar, FilterChip, Header, Icon, ParkMap, Text } from '@/components';
 import type { ParkMapHandle, ParkMapMarker } from '@/components';
 import { useSavedRouteMap } from '@/hooks/useMap';
+import { selectRobot } from '@/hooks/useSelectedRobot';
 import { icons } from '@/icons';
 import type { RootParams, TabParams } from '@/navigation';
 import { colors, layout, radius, softShadow, space } from '@/theme';
 import { formatTime } from '@/utils/date';
+import { distanceMeters } from '@/utils/geo';
+
+import { MapSheet } from './map/MapSheet';
+import type { MapSelection } from './map/MapSheet';
+
+/** 히트맵 칸 크기 (위도 · 경도 약 0.0003도 ≈ 30m). 칸마다 탐지 건수를 숫자로 보여 줘요. */
+const HEAT_CELL = 0.0003;
+
+/** 최근 7일 탐지를 칸으로 묶어요 (A-02 지도 - 발생 히트맵) */
+function heatMarkers(detections: MapDetection[]): ParkMapMarker[] {
+  const cells = new Map<string, { lat: number; lng: number; count: number }>();
+  detections.forEach((d) => {
+    const key = `${Math.round(d.position.latitude / HEAT_CELL)}:${Math.round(d.position.longitude / HEAT_CELL)}`;
+    const cell = cells.get(key) ?? { lat: 0, lng: 0, count: 0 };
+    cell.lat += d.position.latitude;
+    cell.lng += d.position.longitude;
+    cell.count += 1;
+    cells.set(key, cell);
+  });
+  return [...cells.entries()].map(([key, c]) => ({
+    id: `heat-${key}`,
+    kind: 'point' as const,
+    position: { latitude: c.lat / c.count, longitude: c.lng / c.count },
+    label: `${c.count}건`,
+    order: c.count,
+  }));
+}
+
+/** 탐지 위치와 가장 가까운 순찰 지점 이름 (상세 카드 제목) */
+function nearestPlace(data: SavedRouteMap, position: LatLng) {
+  let best: { name: string; d: number } | null = null;
+  data.routes.forEach((r) =>
+    r.points.forEach((p) => {
+      const d = distanceMeters(p.position, position);
+      if (!best || d < best.d) best = { name: p.name, d };
+    }),
+  );
+  const found = best as { name: string; d: number } | null;
+  return found && found.d < 150 ? `${found.name} 근처` : '집기 불가 쓰레기';
+}
 
 /** 로봇마다 경로 색을 달리해요 (시안: Jubi 1 파랑 · Jubi 2 주황) */
 const ROUTE_COLORS = [colors.brand, colors.robotAlt, colors.brandText, colors.done];
@@ -56,8 +97,24 @@ function markersOf(data: SavedRouteMap): ParkMapMarker[] {
         ]
       : [],
   );
-  return [...stations, ...points, ...robots];
+  // 집기 불가 쓰레기 (최근 7일, 줍지 못한 것)
+  const unpickable: ParkMapMarker[] = data.detections
+    .filter((d) => d.pickupResult === 'failed')
+    .map((d) => ({
+      id: `detection-${d.id}`,
+      kind: 'unpickable' as const,
+      position: d.position,
+      label: `${MATERIAL_SHORT[d.material]} · ${formatTime(new Date(d.detectedAt))}`,
+    }));
+  return [...stations, ...points, ...unpickable, ...robots];
 }
+
+const MATERIAL_SHORT: Record<MapDetection['material'], string> = {
+  plastic: '페트',
+  can: '캔',
+  glass: '깨진 유리',
+  general: '쓰레기',
+};
 
 const LEGEND = [
   { icon: icons.legendBot, label: '로봇' },
@@ -83,20 +140,64 @@ export function MapScreen({ navigation }: Props) {
       })) ?? [],
     [data],
   );
-  const markers = useMemo(() => (data ? markersOf(data) : []), [data]);
+  const markers = useMemo(
+    () => (data ? (layer === 'heat' ? heatMarkers(data.detections) : markersOf(data)) : []),
+    [data, layer],
+  );
   const hasRoute = !!data?.routes.some((route) => route.points.length > 0);
+  const [selection, setSelection] = useState<MapSelection | null>(null);
+  // 오류로 멈춘 로봇이 있으면 위 안내를 바꿔요 (A-02 지도 - 로봇 오류)
+  const stopped = data?.routes.find((r) => r.status === 'error');
+
+  /** 마커 id → 상세 카드 (A-03) */
+  const openMarker = (id: string) => {
+    if (!data || layer === 'heat') return;
+    if (id.startsWith('detection-')) {
+      const detection = data.detections.find((d) => `detection-${d.id}` === id);
+      if (detection) setSelection({ kind: 'detection', detection, place: nearestPlace(data, detection.position) });
+    } else if (id.startsWith('robot-')) {
+      const route = data.routes.find((r, i) => `robot-${r.robotId ?? i}` === id);
+      if (route) setSelection({ kind: 'robot', route });
+    } else if (id.startsWith('point-')) {
+      data.routes.forEach((r, ri) =>
+        r.points.forEach((p, i) => {
+          if (`point-${ri}-${p.id}` === id)
+            setSelection({ kind: 'point', point: p, order: i + 1, robotName: r.robotName });
+        }),
+      );
+    } else if (id.startsWith('station-')) {
+      const st = data.stations.find((x) => `station-${x.id}` === id);
+      if (st) setSelection({ kind: 'station', name: st.name });
+    }
+  };
 
   return (
     <SafeAreaView style={s.screen} edges={['top']}>
       <Header title={data?.parkName ?? '지도'} onBack={() => navigation.navigate('Home')} />
       <FilterBar>
         <FilterChip label="실시간" selected={layer === 'live'} onPress={() => setLayer('live')} minWidth={104} />
-        <FilterChip label="히트맵" selected={layer === 'heat'} onPress={() => setLayer('heat')} minWidth={88} />
+        <FilterChip
+          label="히트맵"
+          selected={layer === 'heat'}
+          onPress={() => {
+            setLayer('heat');
+            setSelection(null);
+          }}
+          minWidth={88}
+        />
       </FilterBar>
 
       <View style={s.body}>
         {data ? (
-          <ParkMap ref={map} style={s.map} bounds={data.bounds} area={data.area} routes={routes} markers={markers} />
+          <ParkMap
+            ref={map}
+            style={s.map}
+            bounds={data.bounds}
+            area={data.area}
+            routes={layer === 'heat' ? undefined : routes}
+            markers={markers}
+            onMarkerPress={openMarker}
+          />
         ) : (
           <View style={s.map} />
         )}
@@ -104,8 +205,12 @@ export function MapScreen({ navigation }: Props) {
         {/* 실시간 상태 */}
         <View style={s.liveBadge}>
           <Icon source={icons.radio} size={16} />
-          <Text variant="12-semibold" color="brandText">
-            실시간 · {data ? formatTime(new Date(data.updatedAt)) : '--:--'} 갱신
+          <Text variant="12-semibold" color={stopped && layer === 'live' ? 'error' : 'brandText'}>
+            {layer === 'heat'
+              ? `최근 7일 · ${data ? formatTime(new Date(data.updatedAt)) : '--:--'} 갱신`
+              : stopped
+                ? `로봇 오류 · ${stopped.errorSince ? `${formatTime(new Date(stopped.errorSince))}부터 ` : ''}멈춰 있어요`
+                : `실시간 · ${data ? formatTime(new Date(data.updatedAt)) : '--:--'} 갱신`}
           </Text>
         </View>
 
@@ -156,19 +261,42 @@ export function MapScreen({ navigation }: Props) {
         </View>
 
         {/* 지도 하단 정보 */}
-        <View style={s.bottomInfo}>
-          <View style={s.legend}>
-            {LEGEND.map((l) => (
-              <View key={l.label} style={s.legendItem}>
-                <Icon source={l.icon} size={18} />
-                <Text variant="11-regular" color="textSub">
-                  {l.label}
-                </Text>
-              </View>
-            ))}
+        {selection ? (
+          <MapSheet
+            selection={selection}
+            onClose={() => setSelection(null)}
+            onAlerts={() => navigation.navigate('Alerts')}
+            onRobotHome={(robotId) => {
+              selectRobot(robotId);
+              navigation.navigate('Home');
+            }}
+            onEditRoute={() => navigation.navigate('RouteEdit')}
+            onStations={() => navigation.navigate('Stations')}
+          />
+        ) : layer === 'heat' ? (
+          <View style={s.bottomInfo}>
+            <View style={s.heatLegend}>
+              <Text variant="12-bold">최근 7일 기준 · 탐지 {data?.detections.length ?? 0}건</Text>
+              <Text variant="11-regular" color="textSub">
+                숫자는 그 근처에서 로봇이 찾은 쓰레기 수예요. 많은 곳일수록 숫자가 커요
+              </Text>
+            </View>
           </View>
-          {hasRoute ? <Button label="경로 편집" onPress={() => navigation.navigate('RouteEdit')} /> : null}
-        </View>
+        ) : (
+          <View style={s.bottomInfo}>
+            <View style={s.legend}>
+              {LEGEND.map((l) => (
+                <View key={l.label} style={s.legendItem}>
+                  <Icon source={l.icon} size={18} />
+                  <Text variant="11-regular" color="textSub">
+                    {l.label}
+                  </Text>
+                </View>
+              ))}
+            </View>
+            {hasRoute ? <Button label="경로 편집" onPress={() => navigation.navigate('RouteEdit')} /> : null}
+          </View>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -212,6 +340,13 @@ const s = StyleSheet.create({
     ...softShadow,
   },
   legendItem: { alignItems: 'center', gap: 5 },
+  heatLegend: {
+    backgroundColor: colors.card,
+    borderRadius: radius[16],
+    padding: space[16],
+    gap: 6,
+    ...softShadow,
+  },
   notice: {
     position: 'absolute',
     left: space[16],

@@ -12,6 +12,8 @@ type Session = {
   robots?: AssignedRobot[];
   robotRoutes?: Record<string, RouteConfig>;
   station?: LatLng | null;
+  /** 공원 분리수거장 목록 (C-02 · C-03 여러 곳) */
+  stations?: { id: string; name: string; position: LatLng }[];
 };
 let loginId = '';
 const key = () => `jubjub:onboarding:${loginId}`;
