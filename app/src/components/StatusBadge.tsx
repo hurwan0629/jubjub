@@ -11,12 +11,12 @@ import { Text } from './Text';
  *   title: 상태 이름   sentence: "Jubi가 ~" 뒤에 붙는 문장   badge: 배지 글자   tone: 배지 색
  */
 export const ROBOT_STATE: Record<RobotState, { title: string; sentence: string; badge: string; tone: Tone }> = {
+  returning: { title: '복귀 중', sentence: '돌아가고 있어요', badge: '복귀 중', tone: 'warn' },
   patrolling: { title: '순찰 중', sentence: '순찰 중이에요', badge: '정상', tone: 'brand' },
   picking: { title: '줍는 중', sentence: '쓰레기를 줍고 있어요', badge: '정상', tone: 'brand' },
   toStation: { title: '분리수거장 이동 중', sentence: '분리수거장으로 가고 있어요', badge: '이동', tone: 'brand' },
   emptying: { title: '비우는 중', sentence: '칸을 비우고 있어요', badge: '처리', tone: 'done' },
-  charging: { title: '충전 중', sentence: '충전 중이에요', badge: '충전', tone: 'brand' },
-  idle: { title: '대기', sentence: '쉬고 있어요', badge: '준비', tone: 'neutral' },
+  idle: { title: '대기', sentence: '대기 중이에요', badge: '대기', tone: 'neutral' },
   teleop: { title: '원격 조종 중', sentence: '원격 조종 중이에요', badge: '조종', tone: 'warn' },
   error: { title: '오류', sentence: '멈췄어요', badge: '확인 필요', tone: 'error' },
   disconnected: { title: '연결 끊김', sentence: '연결이 끊겼어요', badge: '확인 필요', tone: 'error' },

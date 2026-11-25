@@ -1,178 +1,359 @@
+// C-04 회원가입 - 계정 정보 및 입력 오류. 다음 단계에서 공원을 선택해요.
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useState } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useEffect, useRef, useState } from 'react';
+import type { ComponentRef } from 'react';
+import { LayoutChangeEvent, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { markNeedsRouteSetup } from '@/api/auth';
-import { Checkbox, TextField, Button, Icon, Header, Txt } from '@/components';
-import { icons } from '@/icons';
+import { ApiError } from '@/api/client';
+import type { Park } from '@/api/types';
+import { Button, Checkbox, Header, Text, TextField } from '@/components';
+import { useAuth } from '@/hooks/useAuth';
+import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 import type { RootParams } from '@/navigation';
-import { colors, radius, softShadow } from '@/theme';
+import { colors, layout, radius, space } from '@/theme';
+import { digitsOnly, formatPhone, INVALID, PASSWORD_MISMATCH, RULES } from '@/utils/validation';
 
-const ID_RULE = /^[A-Za-z0-9]{4,16}$/;
-const PW_RULE = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
-const EMAIL_RULE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import { PrivacyConsentDialog } from './PrivacyConsentDialog';
+import { StepPark } from '../route-setup/steps';
 
-/** C-04 회원가입 - 이메일 → 가입 완료 창 */
-export function SignUpEmailScreen({ navigation }: NativeStackScreenProps<RootParams, 'SignUpEmail'>) {
-  const [form, setForm] = useState({ name: '', id: '', pw: '', pw2: '', email: '' });
-  const [agreed, setAgreed] = useState(false);
-  const [done, setDone] = useState(false);
-  const set = (k: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
+type Field = 'loginId' | 'password' | 'password2' | 'name' | 'email' | 'phone';
+type Form = Record<Field, string>;
 
-  // 입력이 있을 때만 형식 오류를 보여 줘요
-  const errors = {
-    id: form.id && !ID_RULE.test(form.id) ? '영문, 숫자 4~16자로 입력해 주세요' : undefined,
-    pw: form.pw && !PW_RULE.test(form.pw) ? '영문과 숫자를 넣어 8자 이상으로 입력해 주세요' : undefined,
-    pw2: form.pw2 && form.pw2 !== form.pw ? '비밀번호가 서로 달라요' : undefined,
-    email: form.email && !EMAIL_RULE.test(form.email) ? '이메일 형식을 확인해 주세요' : undefined,
+const EMPTY: Form = { loginId: '', password: '', password2: '', name: '', email: '', phone: '' };
+
+/** 칸마다 오류 문구 (없으면 undefined) */
+function validate(f: Form): Partial<Record<Field, string>> {
+  return {
+    loginId: RULES.loginId.test(f.loginId) ? undefined : INVALID,
+    password: RULES.password.test(f.password) ? undefined : INVALID,
+    password2: f.password2 === f.password ? undefined : PASSWORD_MISMATCH,
+    name: RULES.name.test(f.name.trim()) ? undefined : INVALID,
+    email: RULES.email.test(f.email.trim()) ? undefined : INVALID,
+    phone: RULES.phone.test(digitsOnly(f.phone)) ? undefined : INVALID,
   };
+}
+
+/** C-04 가입 정보 → 공원 선택 → 가입 신청. 승인 전에는 로그인하지 않아요. */
+export function SignUpEmailScreen({ navigation, route }: NativeStackScreenProps<RootParams, 'SignUpEmail'>) {
+  const { signUp, reapply } = useAuth();
+  const reapplication = route.params?.reapplication;
+  const title = reapplication ? '다시 신청하기' : '회원가입';
+  const [form, setForm] = useState<Form>(() =>
+    reapplication
+      ? {
+          ...EMPTY,
+          loginId: reapplication.loginId,
+          name: reapplication.name,
+          email: reapplication.email,
+          phone: formatPhone(reapplication.phone),
+        }
+      : EMPTY,
+  );
+  // 칸을 벗어났거나 가입하기를 눌렀을 때부터 오류를 보여 줘요
+  const [touched, setTouched] = useState<Partial<Record<Field, boolean>>>({});
+  const [serverErrors, setServerErrors] = useState<Partial<Record<Field, string>>>({});
+  const [formError, setFormError] = useState<string>();
+  const [agreed, setAgreed] = useState(!!reapplication);
+  const [consentOpen, setConsentOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [expired, setExpired] = useState(false);
+  const [stage, setStage] = useState<'form' | 'park' | 'done'>('form');
+  const [park, setPark] = useState<Park | null>(reapplication?.park ?? null);
+  const submission = useRef<AbortController | null>(null);
+  useEffect(() => () => submission.current?.abort(), []);
+
+  // 키보드가 올라오면 그 높이만큼 화면 아래를 비워서, 입력칸이 키보드에 가리지 않고 끝까지 스크롤돼요.
+  // (안드로이드 edge-to-edge에서는 KeyboardAvoidingView가 동작하지 않아 직접 계산해요)
+  const insets = useSafeAreaInsets();
+  const keyboardHeight = useKeyboardHeight();
+  const keyboardSpace = Math.max(0, keyboardHeight - insets.bottom);
+  const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
+  const [fieldY, setFieldY] = useState<Partial<Record<Field, number>>>({});
+  const [focused, setFocused] = useState<Field | null>(null);
+
+  // 키보드가 다 올라온 뒤(화면이 줄어든 뒤)나 키보드가 떠 있는 채로 다른 칸을 누르면,
+  // 입력 중인 칸이 보이도록 그 칸을 화면 위쪽으로 올려요
+  const focusedY = focused ? fieldY[focused] : undefined;
+  useEffect(() => {
+    if (keyboardHeight > 0 && focusedY !== undefined) {
+      scrollRef.current?.scrollTo({ y: Math.max(0, focusedY - space[16]), animated: true });
+    }
+  }, [keyboardHeight, focusedY]);
+
+  const errors = validate(form);
+  const errorOf = (k: Field) => serverErrors[k] ?? (touched[k] ? errors[k] : undefined);
+
+  const set = (k: Field) => (v: string) => {
+    setForm((f) => ({ ...f, [k]: k === 'phone' ? formatPhone(v) : v }));
+    setServerErrors((e) => ({ ...e, [k]: undefined }));
+    setFormError(undefined);
+  };
+  /** 칸마다 같은 연결: 값 · 입력 · 포커스 · 오류 · 위치 */
+  const bind = (k: Field) => ({
+    editable: !busy,
+    value: form[k],
+    onChangeText: set(k),
+    onFocus: () => setFocused(k),
+    onBlur: () => setTouched((t) => ({ ...t, [k]: true })),
+    error: errorOf(k),
+    onFieldLayout: (e: LayoutChangeEvent) => {
+      const { y } = e.nativeEvent.layout;
+      setFieldY((p) => (p[k] === y ? p : { ...p, [k]: y }));
+    },
+  });
+
   const filled = Object.values(form).every((v) => v.trim().length > 0);
-  const valid = filled && agreed && !Object.values(errors).some(Boolean);
+  const canSubmit = filled && agreed && !busy && !expired;
+
+  const next = () => {
+    setTouched({ loginId: true, password: true, password2: true, name: true, email: true, phone: true });
+    if (!agreed || Object.values(errors).some(Boolean)) return;
+    setFormError(undefined);
+    setStage('park');
+  };
+
+  const submit = async () => {
+    if (busy) return;
+    setTouched({ loginId: true, password: true, password2: true, name: true, email: true, phone: true });
+    if (!park || !agreed || Object.values(errors).some(Boolean)) return;
+    const controller = new AbortController();
+    submission.current = controller;
+    setBusy(true);
+    setFormError(undefined);
+    try {
+      const body = {
+        loginId: form.loginId,
+        password: form.password,
+        name: form.name.trim(),
+        email: form.email.trim(),
+        phone: digitsOnly(form.phone),
+        catalogId: park.id,
+      };
+      if (reapplication) {
+        const { loginId: _loginId, ...information } = body;
+        await reapply({ ...information, reapplicationToken: reapplication.reapplicationToken });
+      } else await signUp(body);
+      if (controller.signal.aborted) return;
+      setForm(EMPTY);
+      setStage('done');
+    } catch (e) {
+      if (controller.signal.aborted) return;
+      if (!(e instanceof ApiError)) {
+        setFormError('가입하지 못했어요. 잠시 후 다시 시도해 주세요');
+      } else if (reapplication && (e.status === 401 || e.code === 'registration_not_rejected')) {
+        setExpired(true);
+        setStage('form');
+        setFormError('재신청 인증이 만료되었거나 이미 처리된 신청이에요. 다시 로그인해 주세요.');
+      } else if (e.code === 'account_exists') {
+        // 서버는 아이디 · 이메일 중 어느 쪽이 겹치는지 알려 주지 않아서 두 칸에 모두 보여 줘요
+        setServerErrors(reapplication ? { email: e.message } : { loginId: e.message, email: e.message });
+        setStage('form');
+        setFormError(
+          reapplication
+            ? '다른 이메일로 수정한 뒤 다시 신청해 주세요.'
+            : '이미 제출한 가입 신청이 있다면 승인 후 로그인해 주세요.',
+        );
+      } else if (e.status === 422 && e.details?.length) {
+        // details[].field = "body.loginId" → 해당 칸 아래에 오류를 보여 줘요
+        const fields = e.details.map((d) => d.field.split('.').pop()).filter((f): f is Field => !!f && f in EMPTY);
+        if (fields.length) {
+          setServerErrors(Object.fromEntries(fields.map((f) => [f, INVALID])));
+          setStage('form');
+        } else setFormError(e.message);
+      } else {
+        setFormError(e.message);
+      }
+    } finally {
+      if (!controller.signal.aborted) setBusy(false);
+    }
+  };
+
+  if (stage === 'done')
+    return (
+      <SafeAreaView style={s.screen} edges={['top', 'bottom']}>
+        <Header title={title} />
+        <View style={s.confirmation}>
+          <Text variant="18-bold">
+            {reapplication ? '총관리자에게 재신청을 보냈어요.' : '총관리자에게 회원가입 승인을 요청했습니다.'}
+          </Text>
+          <Text variant="15-bold" color="brandText">
+            {park?.name}
+          </Text>
+          <Text variant="13-regular" color="textSub" lineHeight="relaxed">
+            {'가입 정보와 담당 공원이 함께 제출되었어요.\n총관리자가 승인한 뒤 로그인할 수 있어요.'}
+          </Text>
+          <Button label="확인" onPress={() => navigation.reset({ index: 0, routes: [{ name: 'Login' }] })} />
+        </View>
+      </SafeAreaView>
+    );
+  if (stage === 'park')
+    return (
+      <SafeAreaView style={s.screen} edges={['top', 'bottom']}>
+        <Header title={title} onBack={busy ? undefined : () => setStage('form')} />
+        <View style={s.flex} pointerEvents={busy ? 'none' : 'auto'}>
+          <StepPark park={park} onPick={setPark} />
+        </View>
+        <View style={s.bottom}>
+          {formError ? (
+            <Text variant="12-regular" color="error" accessibilityLiveRegion="polite">
+              {formError}
+            </Text>
+          ) : null}
+          <Button label={busy ? '가입 신청 중…' : '이 공원으로 정할게요'} disabled={!park || busy} onPress={submit} />
+          <Button label="이전" variant="soft" disabled={busy} onPress={() => setStage('form')} />
+        </View>
+      </SafeAreaView>
+    );
 
   return (
     <SafeAreaView style={s.screen} edges={['top', 'bottom']}>
-      <Header title="이메일로 가입하기" onBack={() => navigation.goBack()} />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
-          <TextField
-            label="이름"
-            icon={icons.userRound}
-            placeholder="이름을 입력해 주세요"
-            value={form.name}
-            onChangeText={set('name')}
-          />
+      <Header title={title} onBack={busy ? undefined : () => navigation.goBack()} />
+      <View style={[s.flex, { paddingBottom: keyboardSpace }]}>
+        <ScrollView ref={scrollRef} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+          {reapplication ? (
+            <View style={s.rejection}>
+              <Text variant="12-bold" color="error">
+                반려 사유
+              </Text>
+              <Text variant="13-regular" lineHeight="relaxed">
+                {reapplication.rejectReason || '총관리자에게 반려 사유를 확인해 주세요.'}
+              </Text>
+              <Text variant="12-regular" color="textSub">
+                정보를 수정하고 담당 공원을 확인한 뒤 다시 신청해 주세요.
+              </Text>
+            </View>
+          ) : null}
           <TextField
             label="아이디"
-            icon={icons.atSign}
             placeholder="영문, 숫자 4~16자"
-            value={form.id}
-            onChangeText={set('id')}
+            {...bind('loginId')}
+            editable={!reapplication && !busy}
             autoCapitalize="none"
-            error={errors.id}
+            autoCorrect={false}
+            autoComplete="username-new"
           />
           <TextField
             label="비밀번호"
-            icon={icons.lockKeyhole}
             placeholder="영문, 숫자 포함 8자 이상"
-            value={form.pw}
-            onChangeText={set('pw')}
+            {...bind('password')}
             secure
-            error={errors.pw}
+            revealToggle={false}
+            autoComplete="new-password"
           />
           <TextField
             label="비밀번호 확인"
-            icon={icons.lockKeyhole}
             placeholder="비밀번호를 한 번 더 입력해 주세요"
-            value={form.pw2}
-            onChangeText={set('pw2')}
+            {...bind('password2')}
             secure
-            error={errors.pw2}
+            revealToggle={false}
+            autoComplete="new-password"
           />
+          <TextField label="이름" placeholder="이름을 입력해 주세요" {...bind('name')} autoComplete="name" />
           <TextField
             label="이메일"
-            icon={icons.mailInput}
             placeholder="example@email.com"
-            value={form.email}
-            onChangeText={set('email')}
+            {...bind('email')}
             autoCapitalize="none"
+            autoCorrect={false}
             keyboardType="email-address"
-            error={errors.email}
+            autoComplete="email"
+          />
+          <TextField
+            label="전화번호"
+            placeholder="010-1234-5678"
+            {...bind('phone')}
+            keyboardType="phone-pad"
+            autoComplete="tel"
+            maxLength={13}
           />
 
-          {/* 개인정보 동의 */}
-          <Pressable
-            style={s.consent}
-            onPress={() => setAgreed((a) => !a)}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: agreed }}
-          >
-            <Checkbox checked={agreed} />
-            <Txt size={13} style={{ flex: 1 }}>
-              [필수] 개인정보 수집·이용에 동의해요
-            </Txt>
-            <Txt size={12} color={colors.textSub} style={{ textDecorationLine: 'underline' }}>
-              보기
-            </Txt>
-          </Pressable>
+          {/* 개인정보 수집 · 이용 동의 */}
+          {!reapplication ? (
+            <View style={s.consent}>
+              <Pressable
+                style={s.consentCheck}
+                onPress={() => setAgreed((a) => !a)}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: agreed }}
+              >
+                <Checkbox checked={agreed} />
+                <Text variant="13-regular" style={s.flex}>
+                  [필수] 개인정보 수집 · 이용 동의
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setConsentOpen(true)}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="개인정보 수집 및 이용 동의서 보기"
+              >
+                <Text variant="12-regular" color="textSub" style={s.underline}>
+                  보기
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
+
+          {formError ? (
+            <Text variant="12-regular" color="error" accessibilityLiveRegion="polite">
+              {formError}
+            </Text>
+          ) : null}
         </ScrollView>
 
         <View style={s.bottom}>
-          <Button
-            label="가입하기"
-            disabled={!valid}
-            onPress={async () => {
-              await markNeedsRouteSetup(form.id);
-              setDone(true);
-            }}
-          />
+          {expired ? (
+            <Button
+              label="다시 로그인하기"
+              onPress={() => navigation.reset({ index: 0, routes: [{ name: 'Login' }] })}
+            />
+          ) : null}
+          <Button label="다음" disabled={!canSubmit} onPress={next} />
         </View>
-      </KeyboardAvoidingView>
+      </View>
 
-      {/* 가입 완료 창 */}
-      <Modal visible={done} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setDone(false)}>
-        <View style={s.dim}>
-          <View style={s.dialog} accessibilityViewIsModal>
-            <View style={s.doneBadge}>
-              <Icon source={icons.checkDone} size={28} />
-            </View>
-            <View style={{ gap: 8, alignItems: 'center' }}>
-              <Txt size={18} weight="bold">
-                가입되었습니다
-              </Txt>
-              <Txt size={13} lineHeight={1.4} color={colors.textSub} style={{ textAlign: 'center' }}>
-                {'JUBJUB 계정이 만들어졌어요.\n로그인하고 공원 관리를 시작해 보세요.'}
-              </Txt>
-            </View>
-            <View style={{ alignSelf: 'stretch', marginTop: 4 }}>
-              <Button
-                label="홈으로 가기"
-                onPress={() => {
-                  setDone(false);
-                  navigation.popTo('Login');
-                }}
-              />
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <PrivacyConsentDialog
+        visible={consentOpen}
+        onAgree={() => {
+          setAgreed(true);
+          setConsentOpen(false);
+        }}
+        onClose={() => setConsentOpen(false)}
+      />
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
+  rejection: {
+    backgroundColor: colors.bgError,
+    borderColor: colors.error,
+    borderWidth: 1,
+    borderRadius: radius[16],
+    padding: space[16],
+    gap: space[8],
+  },
   screen: { flex: 1, backgroundColor: colors.bg },
-  content: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 24, gap: 16 },
+  flex: { flex: 1 },
+  content: {
+    paddingHorizontal: layout.screenPadding,
+    paddingTop: space[20],
+    paddingBottom: space[24],
+    gap: space[16],
+  },
+  consentCheck: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
   consent: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    padding: 16,
+    padding: space[16],
     borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.card,
   },
-  bottom: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 12 },
-  dim: { flex: 1, backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  dialog: {
-    width: 310,
-    maxWidth: '100%',
-    backgroundColor: colors.card,
-    borderRadius: radius[20],
-    paddingTop: 28,
-    paddingBottom: 24,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    gap: 16,
-    ...softShadow,
-  },
-  doneBadge: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.bgDone,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  underline: { textDecorationLine: 'underline' },
+  bottom: { paddingHorizontal: layout.screenPadding, paddingVertical: space[12], gap: space[8] },
+  confirmation: { flex: 1, justifyContent: 'center', padding: layout.screenPadding, gap: space[16] },
 });

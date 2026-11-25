@@ -3,7 +3,7 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 SERVER_DIR = Path(__file__).resolve().parents[2]
@@ -24,18 +24,36 @@ class Settings(BaseSettings):
     cors_origin_regex: str = LOCAL_NETWORK_ORIGINS
 
     # 인증 (KAN-88)
-    jwt_secret: str = "change-me"
+    jwt_secret: str = Field(default="", repr=False)
+    jwt_access_token_minutes: int = Field(default=60, gt=0, le=1440)
 
     # 로봇
     robot_bridge_url: str = "ws://localhost:9090"
     use_simulator: bool = True
+    robot_command_timeout_seconds: float = Field(default=5, gt=0, le=60)
+    robot_heartbeat_timeout_seconds: float = Field(default=10, ge=5, le=120)
+    robot_schedule_enabled: bool = False
 
     # 사진 저장 폴더
     photo_dir: Path = Path("./storage/photos")
 
+    # R2 비공개 사진 저장소. 키 값은 repr·로그에 노출하지 않아요.
+    r2_account_id: str = Field(default="", repr=False)
+    r2_endpoint: str = Field(default="", repr=False)
+    r2_access_key_id: SecretStr = SecretStr("")
+    r2_secret_access_key: SecretStr = SecretStr("")
+    r2_bucket_name: str = ""
+    photo_max_bytes: int = Field(default=5 * 1024 * 1024, ge=1, le=20 * 1024 * 1024)
+
     # 운영 에이전트 LLM
     llm_api_key: str = ""
     llm_model: str = ""
+
+    # Expo 푸시. 실제 발송은 운영 설정에서 명시적으로 켜요.
+    expo_push_enabled: bool = False
+    expo_push_base_url: str = "https://exp.host/--/api/v2/push"
+    expo_push_access_token: SecretStr = SecretStr("")
+    expo_push_timeout_seconds: float = Field(default=10, gt=0, le=30)
 
     @field_validator("database_url")
     @classmethod

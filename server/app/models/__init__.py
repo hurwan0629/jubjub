@@ -5,5 +5,38 @@
 """
 
 from app.core.db import Base
+from app.models.notification_push import NotificationPushDelivery
+from app.models.operations import ParkChangeRequest
+from app.models.park_catalog import ParkCatalogEntry
+from app.models.patrol import Park, PatrolPoint, Route, RoutePoint, Schedule
+from app.models.robot import Robot, RobotState
+from app.models.robot_assignment import RobotAssignmentRequest, RobotAssignmentRequestRobot
+from app.models.robot_protocol import RobotError, RobotMessageReceipt, RobotTaskPoint
+from app.models.station import RecyclingStation
+from app.models.telemetry import Detection, Notification, PushToken, RobotTask
+from app.models.user import User
 
-__all__ = ["Base"]
+__all__ = [
+    "Base",
+    "ParkCatalogEntry",
+    "User",
+    "Park",
+    "PatrolPoint",
+    "Route",
+    "RoutePoint",
+    "Schedule",
+    "Robot",
+    "RobotState",
+    "RobotTaskPoint",
+    "RobotError",
+    "RobotMessageReceipt",
+    "RobotAssignmentRequest",
+    "RobotAssignmentRequestRobot",
+    "RecyclingStation",
+    "ParkChangeRequest",
+    "Detection",
+    "RobotTask",
+    "Notification",
+    "NotificationPushDelivery",
+    "PushToken",
+]

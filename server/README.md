@@ -4,6 +4,8 @@
 
 - Jira: KAN-84 백엔드 에픽 / KAN-85 기본 세팅
 - 문서: Confluence "시스템 아키텍처 설계서", "DB 설계서 (ERD)"
+- 공원 지정·분리수거장·순찰 경로·시간표 API: [PATROL.md](PATROL.md)
+- 총관리자 승인·로봇 할당 API: [ADMIN.md](ADMIN.md)
 
 ## 처음 실행하기
 
@@ -103,6 +105,9 @@ server/
 
 ## DB 마이그레이션 (Alembic)
 
+로그인·회원가입 API와 시드 계정 실행 방법은 [AUTH.md](AUTH.md)를 참고해 주세요.
+서울 공원 검색 API·경계 데이터 적재와 프론트 연결 안내는 [PARKS.md](PARKS.md)에 있어요.
+
 테이블은 Supabase 대시보드에서 직접 바꾸지 않고 Alembic으로만 바꿔요.
 
 ```bash
@@ -112,6 +117,8 @@ alembic downgrade -1                                     # 하나 되돌리기
 ```
 
 생성된 `alembic/versions/` 파일은 꼭 열어서 확인하고 커밋해요. DB를 같이 쓰기 때문에 `upgrade`는 팀에 알리고 실행해요.
+
+기본 분리수거장은 활성 `routes.default_station_id`에서만 조회해요. `station_selections` 및 `PUT /robots/{robot_id}/default-station`은 0014에서 제거했어요. 선택 변경은 `PUT /route` 또는 `PUT /routes` 요청에 `defaultStationId`를 함께 보내요. 경로 저장 전에는 선택값이 null이며, 등록된 장소는 `GET /stations`로 조회해요. `GET /station?robotId=...`도 해당 활성 경로의 장소를 반환해요. 0014는 기존 선택 중 활성 경로와 다른 값이 있으면 중단하므로, 해당 선택을 경로에 반영한 뒤 재실행해 주세요.
 
 ## 린트 · 포맷 · 테스트
 
@@ -144,3 +151,10 @@ VS Code에 Ruff 확장을 설치하면 저장할 때 자동으로 포맷돼요.
 ## 의존성 바꾸기
 
 `requirements.txt`는 버전을 고정해요. 패키지를 추가하면 `pip install <패키지>==<버전>` 후 파일에 한 줄 추가하고, PR에 적어 주세요.
+# R2 사진 저장 연동
+
+비공개 사진 업로드·임시 조회 API와 연결 확인 방법은 [R2.md](R2.md)를 참고해 주세요.
+
+## 로봇 통신과 순찰 제어
+
+DB 0015의 상태·기록을 사용하는 API, 로봇 토큰 발급, WebSocket 메시지와 실행 설정은 [ROBOT_PROTOCOL_API.md](ROBOT_PROTOCOL_API.md)를 참고해요. 연결을 메모리에서 관리하므로 서버 worker는 한 개로 실행해요.

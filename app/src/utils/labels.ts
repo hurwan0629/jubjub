@@ -12,7 +12,10 @@ export const NOTIFICATION_TYPE_LABEL: Record<NotificationType, string> = {
   robotError: '로봇 오류',
   unpickable: '집기 불가',
   lowBattery: '배터리 부족',
+  patrol: '순찰',
+  robotAssignment: '로봇 배정',
   dailyReport: '보고',
+  other: '기타',
 };
 
 /** 적재율이 이 값 이상이면 주의 색으로 강조해요 (운영 설정 확장 전까지 고정값) */

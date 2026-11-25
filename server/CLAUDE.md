@@ -5,6 +5,7 @@
 ## 반드시 지킬 규칙
 
 - 라우터는 얇게: 요청 받기 → services 호출 → schemas로 응답. 로직·DB 쿼리는 `services/`에.
+- 인증이 필요한 업무 라우터는 `app/routers/api.py`의 공통 `router`에 등록한다. `get_current_user`가 Bearer JWT를 검증한다. 로그인·가입·health는 공개 API다.
 - 에러는 `raise AppError(status, "해요체 문장", code="snake_case")`. `HTTPException`을 직접 쓰지 않는다. 응답 형식 `{status, message, code}`를 바꾸지 않는다 (앱 `api/client.ts`가 읽음).
 - DB 세션은 `db: Session = Depends(get_db)`. 테이블 변경은 `app/models/` 수정 후 Alembic 마이그레이션으로만.
 - 설정은 `get_settings()`로만 읽는다. 주소·키·경로를 코드에 쓰지 않는다. 새 설정은 `Settings`와 `.env.example`에 같이 추가.

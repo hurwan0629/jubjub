@@ -1,36 +1,65 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import type { NavigatorScreenParams } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+import type { ReapplicationSession } from '@/api/types';
 import { TabBar } from '@/components';
 import { useUnreadCount } from '@/hooks/useNotifications';
+import { AlertDetailScreen } from '@/screens/alerts/AlertDetailScreen';
 import { AlertsScreen } from '@/screens/AlertsScreen';
 import { LoginScreen } from '@/screens/auth/LoginScreen';
 import { SignUpEmailScreen } from '@/screens/auth/SignUpEmailScreen';
-import { SignUpScreen } from '@/screens/auth/SignUpScreen';
 import { HomeScreen } from '@/screens/HomeScreen';
 import { MapScreen } from '@/screens/MapScreen';
+import { ParkChangeScreen } from '@/screens/ParkChangeScreen';
 import { ReportScreen } from '@/screens/ReportScreen';
+import { RobotEditScreen } from '@/screens/robots/RobotEditScreen';
+import { RobotListScreen } from '@/screens/robots/RobotListScreen';
+import { RouteEditScreen } from '@/screens/route-edit/RouteEditScreen';
 import { RouteSetupScreen } from '@/screens/route-setup/RouteSetupScreen';
+import { StationsScreen } from '@/screens/settings/StationsScreen';
+import { SettingsScreen } from '@/screens/SettingsScreen';
 import { SplashScreen } from '@/screens/SplashScreen';
 
+/** 홈 탭 안의 화면들. 설정에서도 하단 탭이 그대로 보여요 (Figma C-02) */
+export type HomeStackParams = {
+  HomeMain: undefined; // A-01 홈
+  Settings: undefined; // C-02 설정 [확장]
+};
+
 export type TabParams = {
-  Home: undefined;
+  Home: NavigatorScreenParams<HomeStackParams> | undefined;
   Map: undefined;
   Alerts: undefined;
   Report: undefined;
 };
 
 export type RootParams = {
+  ParkChange: undefined;
   Splash: undefined; // C-00 시작화면 (3초)
   Login: undefined; // C-01 로그인
-  SignUp: undefined; // C-04 회원가입
-  SignUpEmail: undefined; // C-04 회원가입 - 이메일 (+ 완료 창)
-  RouteSetup: undefined; // C-03 순찰 경로 처음 설정 (가입 후 첫 로그인)
-  Main: undefined; // 하단 탭
+  SignUpEmail: { reapplication: ReapplicationSession } | undefined; // C-04 회원가입·재신청
+  RouteSetup: { robotId?: string } | undefined; // C-03 순찰 경로 처음 설정. robotId: 홈에서 고른 로봇 (남은 로봇 경로 설정)
+  RouteEdit: { robotId?: string } | undefined; // 선택한 로봇의 경로 편집
+  RobotList: undefined;
+  RobotEdit: { robotId: string };
+  Stations: undefined; // C-02 분리수거장 관리
+  AlertDetail: { id: string }; // A-06 알림 상세
+  Main: NavigatorScreenParams<TabParams> | undefined; // 하단 탭 (screen으로 탭을 골라 열 수 있어요)
 };
 
 const Tab = createBottomTabNavigator<TabParams>();
 const Stack = createNativeStackNavigator<RootParams>();
+const HomeStack = createNativeStackNavigator<HomeStackParams>();
+
+function HomeTab() {
+  return (
+    <HomeStack.Navigator screenOptions={{ headerShown: false }}>
+      <HomeStack.Screen name="HomeMain" component={HomeScreen} />
+      <HomeStack.Screen name="Settings" component={SettingsScreen} />
+    </HomeStack.Navigator>
+  );
+}
 
 function MainTabs() {
   const unreadCount = useUnreadCount();
@@ -39,7 +68,7 @@ function MainTabs() {
       screenOptions={{ headerShown: false }}
       tabBar={(props) => <TabBar {...props} unreadCount={unreadCount} />}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
+      <Tab.Screen name="Home" component={HomeTab} />
       <Tab.Screen name="Map" component={MapScreen} />
       <Tab.Screen name="Alerts" component={AlertsScreen} />
       <Tab.Screen name="Report" component={ReportScreen} />
@@ -52,9 +81,14 @@ export function RootNavigator() {
     <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Splash" component={SplashScreen} options={{ animation: 'none' }} />
       <Stack.Screen name="Login" component={LoginScreen} options={{ animation: 'fade' }} />
-      <Stack.Screen name="SignUp" component={SignUpScreen} />
       <Stack.Screen name="SignUpEmail" component={SignUpEmailScreen} />
       <Stack.Screen name="RouteSetup" component={RouteSetupScreen} />
+      <Stack.Screen name="ParkChange" component={ParkChangeScreen} />
+      <Stack.Screen name="RouteEdit" component={RouteEditScreen} />
+      <Stack.Screen name="RobotList" component={RobotListScreen} />
+      <Stack.Screen name="RobotEdit" component={RobotEditScreen} />
+      <Stack.Screen name="Stations" component={StationsScreen} />
+      <Stack.Screen name="AlertDetail" component={AlertDetailScreen} />
       <Stack.Screen name="Main" component={MainTabs} />
     </Stack.Navigator>
   );

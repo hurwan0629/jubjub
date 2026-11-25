@@ -3,10 +3,10 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 
-import { Icon, Txt } from '@/components';
+import { Icon, Text } from '@/components';
 import { icons } from '@/icons';
 import type { RootParams } from '@/navigation';
-import { colors } from '@/theme';
+import { colors, space } from '@/theme';
 
 const SHOW_MS = 3000;
 
@@ -18,19 +18,20 @@ export function SplashScreen({ navigation }: NativeStackScreenProps<RootParams, 
   }, [navigation]);
 
   return (
-    <Pressable style={st.screen} onPress={() => navigation.replace('Login')} accessibilityLabel="JUBJUB 시작화면">
+    <Pressable style={s.screen} onPress={() => navigation.replace('Login')} accessibilityLabel="JUBJUB 시작화면">
       <StatusBar style="light" />
       <Icon source={icons.jubjubSplash} size={140} />
-      <Txt size={52} weight="brand" color={colors.card} style={{ letterSpacing: 2.08 }}>
+      <Text variant="logo-52" color="card">
         JUBJUB
-      </Txt>
-      <Txt size={15} color={colors.card} style={{ opacity: 0.85, textAlign: 'center' }}>
+      </Text>
+      <Text variant="15-regular" color="card" style={s.tagline}>
         공원 로봇 Jubi와 깨끗한 하루를 함께해요
-      </Txt>
+      </Text>
     </Pressable>
   );
 }
 
-const st = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center', gap: 20 },
+const s = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center', gap: space[20] },
+  tagline: { opacity: 0.85, textAlign: 'center' },
 });

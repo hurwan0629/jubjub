@@ -12,6 +12,13 @@ export const colors = {
   brand: '#748bff', // 브랜드/기본 (메인 블루: 주요 버튼·선택·로봇 위치)
   brandText: '#5268d4', // 브랜드/강조 글자 (작은 글씨용 진한 블루)
   brandDeep: '#3f4fa8', // 워드마크
+  brandBadge: '#4356ad', // 브랜드 카드 위 상태 배지 (홈 로봇 상태 카드)
+  robotIcon: '#ffe078', // 로봇 상태 카드 아이콘 받침 (노랑)
+  chip: '#e2ebff', // 선택 안 된 로봇 칩 배경
+  chipText: '#162044', // 선택 안 된 로봇 칩 글자
+  robotAlt: '#f09628', // 두 번째 로봇의 지도 경로 · 마커 (A-02 지도 Jubi 2)
+  robotIconText: '#4b3c0b', // 노란 받침 위 글자 (멈춤 · 복귀 중 배지)
+  onBrandSoft: 'rgba(255, 255, 255, 0.22)', // 파란 카드 위 반투명 버튼 (순찰 멈추기)
 
   // 배경·표면
   bg: '#f3f6fb', // 배경/기본
@@ -25,6 +32,7 @@ export const colors = {
   card: '#ffffff', // 표면/카드
   border: '#e5eaf3', // 테두리/기본
   map: '#e3eddf', // 지도 바탕
+  parkArea: 'rgba(116, 139, 255, 0.12)', // 지도 위 공원 경계 안쪽 (브랜드/기본 12%)
 
   // 상태 (색만으로 구분하지 않고 아이콘·문구를 함께 써요)
   done: '#36b88b', // 상태/완료 (완료 그린)

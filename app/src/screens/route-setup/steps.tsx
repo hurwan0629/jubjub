@@ -1,23 +1,58 @@
 import { useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  TextInput,
-  View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Linking, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
-import { Icon, Txt } from '@/components';
+import { ApiError } from '@/api/client';
+import type { LatLng, Park, ParkArea, ParkBounds, PatrolPoint, PatrolSlot } from '@/api/types';
+import { AddTimeSheet, Icon, MapHint, ParkMap, PointList, PointNameSheet, ScheduleList, Text } from '@/components';
+import type { ParkMapMarker } from '@/components';
+import { useParkSearch } from '@/hooks/useParks';
 import { icons } from '@/icons';
-import { colors, font, radius } from '@/theme';
+import { colors, layout, radius, softShadow, space, typography } from '@/theme';
+import { isTooFar, lapMinutes, loopPath, nextPatrolTime, REPEAT_LABEL } from '@/utils/route';
 
-import { ParkMap, Pt } from './ParkMap';
-import { InfoBar, lapMinutes, PointList, RoutePoint } from './parts';
+const MAP_HEIGHT = 290;
+const InfoBar = MapHint;
+
+/** 분리수거장 + 순찰 지점 마커 */
+function routeMarkers(points: PatrolPoint[], recycle: LatLng | null, recycleLabel = false): ParkMapMarker[] {
+  return [
+    ...(recycle
+      ? [{ id: 'station', kind: 'station' as const, position: recycle, label: '분리수거장', showLabel: recycleLabel }]
+      : []),
+    ...points.map((p, i) => ({
+      id: p.id,
+      kind: 'point' as const,
+      position: p.position,
+      label: p.name,
+      order: i + 1,
+    })),
+  ];
+}
+
+/** 공원 범위 밖 · 기존 지점에서 너무 먼 곳을 꾹 눌렀을 때 보여 줄 안내 */
+function useOutsideNotice() {
+  const [outside, setOutside] = useState(false);
+  const [tooFar, setTooFar] = useState(false);
+  return {
+    outside,
+    tooFar,
+    onInside: () => {
+      setOutside(false);
+      setTooFar(false);
+    },
+    onOutside: () => {
+      setOutside(true);
+      setTooFar(false);
+    },
+    onTooFar: () => {
+      setOutside(false);
+      setTooFar(true);
+    },
+  };
+}
+
+/** 1km 제한 안내 문구 */
+const TOO_FAR_TEXT = '기존 지점에서 1km 넘게 떨어져 있어요. 더 가까운 곳을 꾹 눌러 주세요';
 
 /* ---------- 1. 안내 ---------- */
 const GUIDE = [
@@ -30,64 +65,64 @@ const GUIDE = [
 
 export function StepIntro() {
   return (
-    <ScrollView contentContainerStyle={st.pad}>
-      <Txt size={18} weight="bold">
-        {'Jubi가 돌 순찰 경로를\n처음 한 번 정해 주세요'}
-      </Txt>
-      <Txt size={13} lineHeight={1.5} color={colors.textSub}>
+    <ScrollView contentContainerStyle={s.pad}>
+      <Text variant="18-bold">{'Jubi가 돌 순찰 경로를\n처음 한 번 정해 주세요'}</Text>
+      <Text variant="13-regular" color="textSub" lineHeight="relaxed">
         Jubi는 정해 준 지점을 순서대로 돌며 쓰레기를 주워요. 지점마다 붙인 이름은 알림과 기록에서 장소 이름으로 쓰여요.
-      </Txt>
-      <View style={st.guideCard}>
+      </Text>
+      <View style={s.guideCard}>
         {GUIDE.map(([title, desc], i) => (
-          <View key={title} style={st.guideRow}>
-            <View style={st.guideNum}>
-              <Txt size={13} lineHeight={1.5} color={colors.brandText}>
+          <View key={title} style={s.guideRow}>
+            <View style={s.guideNum}>
+              <Text variant="13-regular-digits" color="brandText">
                 {i + 1}
-              </Txt>
+              </Text>
             </View>
-            <View style={{ flex: 1, gap: 2 }}>
-              <Txt size={15} weight="bold">
-                {title}
-              </Txt>
-              <Txt size={13} lineHeight={1.5} color={colors.textSub}>
+            <View style={s.textCol}>
+              <Text variant="15-bold">{title}</Text>
+              <Text variant="13-regular" color="textSub" lineHeight="relaxed">
                 {desc}
-              </Txt>
+              </Text>
             </View>
           </View>
         ))}
       </View>
-      <Txt size={13} lineHeight={1.5} color={colors.textSub}>
+      <Text variant="13-regular" color="textSub" lineHeight="relaxed">
         {'나중에 지도 > 경로 편집에서 언제든 바꿀 수 있어요'}
-      </Txt>
+      </Text>
     </ScrollView>
   );
 }
 
 /* ---------- 2. 공원 찾기 ---------- */
-export type Park = { name: string; address: string; distance: string };
-const PARKS: Park[] = [
-  { name: '한강공원', address: '서울 영등포구 여의동로 330', distance: '2.1km' },
-  { name: '반포한강공원', address: '서울 서초구 신반포로11길 40', distance: '6.8km' },
-  { name: '뚝섬한강공원', address: '서울 광진구 강변북로 139', distance: '12.4km' },
-];
-
 export function StepPark({ park, onPick }: { park: Park | null; onPick: (p: Park | null) => void }) {
   const [query, setQuery] = useState(park?.name ?? '');
   const q = query.trim();
-  const results = q ? PARKS.filter((p) => p.name.includes(q) || p.address.includes(q)) : [];
+  const search = useParkSearch(q);
+  const results = search.items;
+
+  const clearSearch = () => {
+    setQuery('');
+    onPick(null);
+  };
+
+  const listTitle = search.loading ? '찾는 중이에요…' : `검색 결과 ${results.length}곳${search.hasMore ? ' 이상' : ''}`;
+  const errorText = !search.error
+    ? undefined
+    : search.error instanceof ApiError && search.error.status === 401
+      ? '로그인이 만료됐어요. 다시 로그인해 주세요'
+      : search.error.message;
 
   return (
-    <View style={{ flex: 1 }}>
-      <View style={[st.padTight, { gap: 8 }]}>
-        <Txt size={18} weight="bold">
-          Jubi가 일할 공원을 찾아 주세요
-        </Txt>
-        {!q ? (
-          <Txt size={13} lineHeight={1.5} color={colors.textSub}>
+    <View style={s.flex}>
+      <View style={[s.padTight, { gap: space[8] }]}>
+        <Text variant="18-bold">Jubi가 일할 공원을 찾아 주세요</Text>
+        {!search.active ? (
+          <Text variant="13-regular" color="textSub" lineHeight="relaxed">
             공원 이름이나 주소로 찾으면 지도가 그곳으로 이동해요
-          </Txt>
+          </Text>
         ) : null}
-        <View style={st.search}>
+        <View style={s.search}>
           <Icon source={icons.search} size={20} />
           <TextInput
             value={query}
@@ -97,158 +132,205 @@ export function StepPark({ park, onPick }: { park: Park | null; onPick: (p: Park
             }}
             placeholder="공원 이름이나 주소를 입력해요"
             placeholderTextColor={colors.textSub}
-            style={[st.searchInput, q ? { fontFamily: font.bold } : null]}
+            style={[s.searchInput, q ? s.searchInputFilled : null]}
             accessibilityLabel="공원 검색"
             returnKeyType="search"
           />
-          {q ? (
-            <Pressable
-              onPress={() => {
-                setQuery('');
-                onPick(null);
-              }}
-              hitSlop={8}
-              accessibilityLabel="검색어 지우기"
-            >
+          {search.active ? (
+            <Pressable onPress={clearSearch} hitSlop={8} accessibilityLabel="검색어 지우기">
               <Icon source={icons.xCircle} size={18} />
             </Pressable>
           ) : null}
         </View>
 
-        {!q ? (
-          <Pressable
-            style={st.locate}
-            onPress={() => {
-              // 위치 권한 연동 전까지는 가장 가까운 공원을 보여 줘요
-              setQuery('한강');
-              onPick(PARKS[0]);
-            }}
-          >
-            <Icon source={icons.buttonRoute} size={19} />
-            <Txt size={15} weight="bold" color={colors.brandText}>
-              내 위치에서 찾기
-            </Txt>
-          </Pressable>
-        ) : (
+        {search.active ? (
           <>
-            <Txt size={12} weight="semibold" color={colors.textSub} style={{ marginTop: 4 }}>
-              검색 결과 {results.length}곳
-            </Txt>
-            <View style={st.results}>
-              {results.length === 0 ? (
-                <Txt size={13} color={colors.textSub} style={{ padding: 12 }}>
+            <Text variant="12-semibold" color={errorText ? 'error' : 'textSub'} style={s.mt4}>
+              {errorText ?? listTitle}
+            </Text>
+            <ScrollView style={s.results} contentContainerStyle={s.resultsContent} nestedScrollEnabled>
+              {search.loading || errorText ? null : results.length === 0 ? (
+                <Text variant="13-regular" color="textSub" style={s.p12}>
                   찾는 공원이 없어요. 다른 이름으로 찾아 보세요
-                </Txt>
+                </Text>
               ) : (
                 results.map((p) => {
-                  const on = park?.name === p.name;
+                  const on = park?.id === p.id;
                   return (
                     <Pressable
-                      key={p.name}
+                      key={p.id}
                       onPress={() => onPick(p)}
-                      style={[st.result, on ? { backgroundColor: colors.bgSelected } : null]}
+                      style={[s.result, on ? { backgroundColor: colors.bgSelected } : null]}
                     >
-                      <View style={st.pinCircle}>
+                      <View style={s.pinCircle}>
                         <Icon source={icons.mapPin} size={20} />
                       </View>
-                      <View style={{ flex: 1, gap: 3 }}>
-                        <Txt size={14} weight="bold" color={on ? colors.brandText : colors.text}>
+                      <View style={s.textColLoose}>
+                        <Text variant="14-bold" color={on ? 'brandText' : 'text'}>
                           {p.name}
-                        </Txt>
-                        <Txt size={12} color={colors.textSub}>
+                        </Text>
+                        <Text variant="12-regular" color="textSub">
                           {p.address}
-                        </Txt>
+                        </Text>
                       </View>
-                      <Txt size={12} color={colors.textSub}>
-                        {p.distance}
-                      </Txt>
                       {on ? <Icon source={icons.checkBrand} size={20} /> : null}
                     </Pressable>
                   );
                 })
               )}
-            </View>
+              {search.hasMore && !search.loading ? (
+                <Pressable style={s.more} onPress={search.loadMore} accessibilityRole="button">
+                  <Text variant="13-semibold" color="brandText">
+                    {search.loadingMore ? '불러오는 중…' : '더 보기'}
+                  </Text>
+                </Pressable>
+              ) : null}
+            </ScrollView>
           </>
-        )}
+        ) : null}
       </View>
 
-      <View style={{ flex: 1, marginTop: 8 }}>
-        <ParkMap height={500} faded={!park}>
-          {park ? (
-            <View style={[st.parkPinWrap, { top: 60 }]} pointerEvents="none">
-              <View style={st.parkPin}>
+      <View style={s.flexMt8}>
+        {park ? (
+          // 고른 공원 범위로 지도가 옮겨가요. 공원 밖으로는 움직이지 않아요.
+          <ParkMap key={park.id} style={s.fill} bounds={park.bounds} area={park.area}>
+            <View style={[s.parkPinWrap, { top: 60 }]} pointerEvents="none">
+              <View style={s.parkPin}>
                 <Icon source={icons.mapPinWhite} size={22} />
               </View>
-              <View style={st.parkLabel}>
-                <Txt size={12} weight="bold" color={colors.brandText}>
+              <View style={s.parkLabel}>
+                <Text variant="12-bold" color="brandText">
                   {park.name}
-                </Txt>
+                </Text>
               </View>
             </View>
-          ) : (
-            <View style={st.mapChip} pointerEvents="none">
-              <Icon source={icons.searchSmall} size={14} />
-              <Txt size={12} weight="semibold" color={colors.brandText}>
-                공원을 찾으면 지도가 그곳으로 이동해요
-              </Txt>
+            {/* 공원 경계 출처 (ODbL) */}
+            <Pressable
+              style={s.attribution}
+              onPress={() => Linking.openURL('https://www.openstreetmap.org/copyright')}
+              accessibilityRole="link"
+            >
+              <Text variant="10-regular" color="textSub">
+                공원 경계 © OpenStreetMap contributors
+              </Text>
+            </Pressable>
+          </ParkMap>
+        ) : (
+          // 아직 공원을 고르지 않았을 때: 흐린 도식 지도 + 안내
+          <View style={[s.fill, s.mapPlaceholder]}>
+            <View style={s.placeholderImage} pointerEvents="none">
+              <Icon source={icons.parkMapBase} width={390} height={500} />
             </View>
-          )}
-        </ParkMap>
+            <View style={s.mapChip} pointerEvents="none">
+              <Icon source={icons.searchSmall} size={14} />
+              <Text variant="12-semibold" color="brandText">
+                공원을 찾으면 지도가 그곳으로 이동해요
+              </Text>
+            </View>
+          </View>
+        )}
       </View>
     </View>
   );
 }
 
 /* ---------- 3. 분리수거장 위치 (지도를 꾹 눌러 정해요) ---------- */
-export function StepRecycle({ recycle, onSet }: { recycle: Pt | null; onSet: (p: Pt) => void }) {
+export function StepRecycle({
+  bounds,
+  area,
+  recycle,
+  points = [],
+  onSet,
+}: {
+  bounds: ParkBounds;
+  area: ParkArea;
+  recycle: LatLng | null;
+  /** 이미 찍은 순찰 지점 (뒤로 와서 분리수거장을 옮길 때 1km 제한에 써요) */
+  points?: PatrolPoint[];
+  onSet: (p: LatLng) => void;
+}) {
+  const notice = useOutsideNotice();
   return (
-    <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
-      <View style={[st.padTight, { gap: 8, paddingBottom: 12 }]}>
-        <Txt size={18} weight="bold">
-          분리수거장 위치를 정해 주세요
-        </Txt>
-        <Txt size={13} lineHeight={1.5} color={colors.textSub}>
+    <ScrollView contentContainerStyle={{ paddingBottom: space[16] }}>
+      <View style={[s.padTight, { gap: space[8], paddingBottom: space[12] }]}>
+        <Text variant="18-bold">분리수거장 위치를 정해 주세요</Text>
+        <Text variant="13-regular" color="textSub" lineHeight="relaxed">
           Jubi가 칸을 비우러 가는 곳이에요. 1곳만 정할 수 있어요
-        </Txt>
+        </Text>
+        {/* 분리수거장은 순찰의 출발 · 종료 지점이에요 */}
+        <View style={s.startEndNote}>
+          <Icon source={icons.legendRecycle} size={18} />
+          <Text variant="13-semibold" color="textDone" style={s.flex1}>
+            로봇이 여기서 출발해 여기로 돌아와요
+          </Text>
+        </View>
       </View>
-      <ParkMap height={290} recycle={recycle} recycleLabel onLongPress={onSet} />
-      <InfoBar
-        text={recycle ? '다른 곳을 꾹 누르면 위치를 옮길 수 있어요' : '지도를 꾹 눌러 분리수거장 위치를 찍어요'}
+      <ParkMap
+        style={s.mapBox}
+        bounds={bounds}
+        area={area}
+        markers={routeMarkers(points, recycle, true)}
+        onLongPress={(p) => {
+          // 이미 찍은 순찰 지점이 있으면(뒤로 와서 옮길 때) 그 지점들에서 1km 안에만 둘 수 있어요
+          if (
+            isTooFar(
+              p,
+              points.map((pt) => pt.position),
+            )
+          ) {
+            notice.onTooFar();
+            return;
+          }
+          notice.onInside();
+          onSet(p);
+        }}
+        onLongPressOutside={notice.onOutside}
       />
-      <View style={{ paddingHorizontal: 24, paddingTop: 12 }}>
-        <View style={st.legendCard}>
-          <View style={st.legendRow}>
-            <View style={st.legendRecycle}>
+      <InfoBar
+        tone={notice.outside || notice.tooFar ? 'error' : 'brand'}
+        text={
+          notice.outside
+            ? '공원 밖이에요. 공원 안을 꾹 눌러 주세요'
+            : notice.tooFar
+              ? TOO_FAR_TEXT
+              : recycle
+                ? '다른 곳을 꾹 누르면 위치를 옮길 수 있어요'
+                : '지도를 꾹 눌러 분리수거장 위치를 찍어요'
+        }
+      />
+      <View style={s.padTop}>
+        <View style={s.legendCard}>
+          <View style={s.legendRow}>
+            <View style={s.legendRecycle}>
               <Icon source={icons.markerRecycle} size={22} />
             </View>
-            <View style={{ flex: 1, gap: 2 }}>
-              <Txt size={13} weight="semibold">
-                분리수거장
-              </Txt>
-              <Txt size={12} color={colors.textSub}>
+            <View style={s.textCol}>
+              <Text variant="13-semibold">분리수거장</Text>
+              <Text variant="12-regular" color="textSub">
                 Jubi가 칸을 비우는 곳 · 1곳
-              </Txt>
+              </Text>
+              <Text variant="12-regular" color="textSub">
+                순찰을 여기서 출발해 여기로 돌아와요
+              </Text>
             </View>
-            <Txt size={12} weight="semibold" color={recycle ? colors.textDone : colors.textSub}>
+            <Text variant="12-semibold" color={recycle ? 'textDone' : 'textSub'}>
               {recycle ? '정했어요' : '아직 안 정했어요'}
-            </Txt>
+            </Text>
           </View>
-          <View style={st.divider} />
-          <View style={st.legendRow}>
-            <View style={{ width: 44, alignItems: 'center' }}>
-              <View style={st.legendPoint}>
-                <Txt size={14} weight="bold" color={colors.card}>
+          <View style={s.divider} />
+          <View style={s.legendRow}>
+            <View style={s.iconCol}>
+              <View style={s.legendPoint}>
+                <Text variant="14-bold-digits" color="card">
                   1
-                </Txt>
+                </Text>
               </View>
             </View>
-            <View style={{ flex: 1, gap: 2 }}>
-              <Txt size={13} weight="semibold">
-                순찰 지점
-              </Txt>
-              <Txt size={12} color={colors.textSub}>
+            <View style={s.textCol}>
+              <Text variant="13-semibold">순찰 지점</Text>
+              <Text variant="12-regular" color="textSub">
                 쓰레기를 줍는 곳 · 다음 단계에서 찍어요
-              </Txt>
+              </Text>
             </View>
           </View>
         </View>
@@ -258,188 +340,237 @@ export function StepRecycle({ recycle, onSet }: { recycle: Pt | null; onSet: (p:
 }
 
 /* ---------- 4. 순찰 지점 찍기 ---------- */
-const QUICK_NAMES = ['정문', '화장실 앞', '놀이터'];
-
 export function StepPoints({
+  bounds,
+  area,
   points,
   recycle,
+  references = [],
   onAdd,
   onRemove,
 }: {
-  points: RoutePoint[];
-  recycle: Pt | null;
-  onAdd: (p: RoutePoint) => void;
+  bounds: ParkBounds;
+  area: ParkArea;
+  points: PatrolPoint[];
+  recycle: LatLng | null;
+  /** 다른 로봇의 저장된 경로 (C-03 Jubi 2 - 다른 로봇 경로 참고). 회색 점선으로 겹쳐 보여요. */
+  references?: ReferenceRoute[];
+  onAdd: (p: PatrolPoint) => void;
   onRemove: (i: number) => void;
 }) {
-  const [pending, setPending] = useState<Pt | null>(null);
-  const [name, setName] = useState('');
-  const insets = useSafeAreaInsets();
-  const close = () => {
-    setPending(null);
-    setName('');
-  };
+  const [pending, setPending] = useState<LatLng | null>(null);
+  const notice = useOutsideNotice();
+  // 처음에는 경로가 있는 첫 로봇을 참고해요
+  const [refId, setRefId] = useState<string | null>(references.find((r) => r.points.length > 0)?.id ?? null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const ref = references.find((r) => r.id === refId && r.points.length > 0);
 
   return (
     <>
-      <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
-        <ParkMap height={290} recycle={recycle} points={points} onLongPress={(p) => setPending(p)} />
-        <InfoBar text="지도를 꾹 눌러 순찰 지점을 추가해요" />
-        <View style={st.listHead}>
-          <Txt size={17} weight="bold">
-            순찰 지점
-          </Txt>
-          <Txt size={12} color={colors.textSub}>
+      <ScrollView contentContainerStyle={{ paddingBottom: space[16] }}>
+        <ParkMap
+          style={s.mapBox}
+          bounds={bounds}
+          area={area}
+          markers={routeMarkers(points, recycle)}
+          route={recycle ? [recycle, ...points.map((p) => p.position)] : points.map((p) => p.position)}
+          routes={
+            ref
+              ? [{ id: `ref-${ref.id}`, coords: loopPath(ref.points, ref.station), color: colors.textDisabled }]
+              : undefined
+          }
+          onLongPress={(p) => {
+            setMenuOpen(false);
+            // 이미 찍은 지점(분리수거장 포함)에서 1km 넘게 떨어진 곳에는 핀을 꽂지 않아요
+            const existing = [...(recycle ? [recycle] : []), ...points.map((pt) => pt.position)];
+            if (isTooFar(p, existing)) {
+              notice.onTooFar();
+              return;
+            }
+            notice.onInside();
+            setPending(p);
+          }}
+          onLongPressOutside={notice.onOutside}
+        >
+          {references.length ? (
+            <ReferencePicker
+              references={references}
+              current={ref}
+              open={menuOpen}
+              onToggle={() => setMenuOpen((o) => !o)}
+              onPick={(id) => {
+                setRefId(id);
+                setMenuOpen(false);
+              }}
+            />
+          ) : null}
+        </ParkMap>
+        <InfoBar
+          tone={notice.outside || notice.tooFar ? 'error' : 'brand'}
+          text={
+            notice.outside
+              ? '공원 밖이에요. 공원 안을 꾹 눌러 주세요'
+              : notice.tooFar
+                ? TOO_FAR_TEXT
+                : ref
+                  ? '회색은 다른 로봇 경로예요 · 꾹 눌러 지점 추가'
+                  : '지도를 꾹 눌러 순찰 지점을 추가해요'
+          }
+        />
+        <View style={s.listHead}>
+          <Text variant="17-bold">순찰 지점</Text>
+          <Text variant="12-regular" color="textSub">
             {points.length}개 지점 · 약 {lapMinutes(points, recycle)}분
-          </Txt>
+          </Text>
         </View>
-        <View style={{ paddingHorizontal: 24 }}>
+        <View style={s.padX}>
           <PointList points={points} onRemove={onRemove} />
         </View>
       </ScrollView>
 
       {/* 지점 이름 정하기 */}
-      <Modal visible={!!pending} transparent animationType="slide" onRequestClose={close}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <Pressable style={st.sheetDim} onPress={close} accessibilityLabel="닫기" />
-          <View style={[st.sheet, { paddingBottom: Math.max(insets.bottom, 24) }]}>
-            <Txt size={18} weight="bold">
-              {points.length + 1}번째 지점의 이름을 정해요
-            </Txt>
-            <Txt size={13} color={colors.textSub}>
-              알림과 기록에 이 이름으로 보여요
-            </Txt>
-            <TextInput
-              value={name}
-              onChangeText={setName}
-              placeholder="예: 벤치 쉼터"
-              placeholderTextColor={colors.textDisabled}
-              style={st.nameInput}
-              autoFocus
-              maxLength={12}
-              accessibilityLabel="지점 이름"
-            />
-            <Txt size={14} weight="bold">
-              자주 쓰는 이름
-            </Txt>
-            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-              {QUICK_NAMES.map((n) => (
-                <Pressable key={n} style={[st.quick, name === n ? st.quickOn : null]} onPress={() => setName(n)}>
-                  <Txt size={13} weight="semibold" color={name === n ? colors.brandText : colors.textSub}>
-                    {n}
-                  </Txt>
-                </Pressable>
-              ))}
-            </View>
-            <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
-              <Pressable style={[st.sheetBtn, { backgroundColor: colors.bgBrandSoft }]} onPress={close}>
-                <Txt size={15} weight="bold" color={colors.brandText}>
-                  취소
-                </Txt>
-              </Pressable>
-              <Pressable
-                style={[st.sheetBtn, { backgroundColor: name.trim() ? colors.brand : colors.bgDisabled }]}
-                disabled={!name.trim()}
-                onPress={() => {
-                  if (!pending) return;
-                  onAdd({ ...pending, name: name.trim() });
-                  close();
-                }}
-              >
-                <Txt size={15} weight="bold" color={name.trim() ? colors.card : colors.textDisabled}>
-                  지점 추가
-                </Txt>
-              </Pressable>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+      <PointNameSheet
+        visible={!!pending}
+        order={points.length + 1}
+        onCancel={() => setPending(null)}
+        onSubmit={(name) => {
+          if (pending) onAdd({ id: `p${Date.now()}`, position: pending, name });
+          setPending(null);
+        }}
+      />
     </>
+  );
+}
+
+/** 다른 로봇의 저장된 경로 (참고용) */
+export type ReferenceRoute = { id: string; name: string; station: LatLng | null; points: PatrolPoint[] };
+
+/** 지도 왼쪽 위 "Jubi 1 경로 참고 중 ⌄" 와 펼친 목록 (지도에 함께 볼 로봇) */
+function ReferencePicker({
+  references,
+  current,
+  open,
+  onToggle,
+  onPick,
+}: {
+  references: ReferenceRoute[];
+  current: ReferenceRoute | undefined;
+  open: boolean;
+  onToggle: () => void;
+  onPick: (id: string | null) => void;
+}) {
+  return (
+    <View style={s.refWrap} pointerEvents="box-none">
+      <Pressable
+        style={s.refPill}
+        onPress={onToggle}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+      >
+        <View style={s.refDot} />
+        <Text variant="13-semibold">{current ? `${current.name} 경로 참고 중` : '다른 로봇 경로 안 보기'}</Text>
+        <Text variant="13-semibold" color="textSub">
+          {open ? '⌃' : '⌄'}
+        </Text>
+      </Pressable>
+      {open ? (
+        <View style={s.refMenu}>
+          <Text variant="11-regular" color="textSub" style={s.refMenuTitle}>
+            지도에 함께 볼 로봇
+          </Text>
+          <Pressable style={s.refItem} onPress={() => onPick(null)} accessibilityRole="radio">
+            <View style={[s.refRing, !current ? s.refRingOn : null]} />
+            <Text variant="14-semibold">안 보기</Text>
+          </Pressable>
+          {references.map((r) => {
+            const empty = r.points.length === 0;
+            const on = current?.id === r.id;
+            return (
+              <Pressable
+                key={r.id}
+                style={[s.refItem, on ? s.refItemOn : null]}
+                onPress={() => onPick(r.id)}
+                disabled={empty}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: on, disabled: empty }}
+              >
+                <View style={[s.refRing, on ? s.refRingOn : null]} />
+                <View style={s.flex}>
+                  <Text variant="14-semibold" color={empty ? 'textDisabled' : 'text'}>
+                    {r.name}
+                  </Text>
+                  <Text variant="11-regular" color={empty ? 'textDisabled' : 'textSub'}>
+                    {empty ? '아직 경로 없음' : `지점 ${r.points.length}곳`}
+                  </Text>
+                </View>
+                {on ? <Icon source={icons.checkBrand} size={16} /> : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+    </View>
   );
 }
 
 /* ---------- 5. 순서 ---------- */
 export function StepOrder({
+  bounds,
+  area,
   points,
   recycle,
   onMove,
   onRemove,
 }: {
-  points: RoutePoint[];
-  recycle: Pt | null;
+  bounds: ParkBounds;
+  area: ParkArea;
+  points: PatrolPoint[];
+  recycle: LatLng | null;
   onMove: (from: number, to: number) => void;
   onRemove: (i: number) => void;
 }) {
   return (
-    <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
-      <ParkMap height={290} recycle={recycle} points={points} route />
+    <ScrollView contentContainerStyle={{ paddingBottom: space[16] }}>
+      {/* 지점 → 분리수거장 → 처음 지점으로 돌아오는 한 바퀴 */}
+      <ParkMap
+        style={s.mapBox}
+        bounds={bounds}
+        area={area}
+        markers={routeMarkers(points, recycle)}
+        route={loopPath(points, recycle)}
+      />
       <InfoBar text="끌어서 순서를 바꿀 수 있어요" center />
-      <View style={st.listHead}>
-        <Txt size={17} weight="bold">
-          순찰 지점
-        </Txt>
-        <Txt size={12} color={colors.textSub}>
+      <View style={s.listHead}>
+        <Text variant="17-bold">순찰 지점</Text>
+        <Text variant="12-regular" color="textSub">
           {points.length}개 지점 · 약 {lapMinutes(points, recycle)}분
-        </Txt>
+        </Text>
       </View>
-      <View style={{ paddingHorizontal: 24 }}>
-        <PointList points={points} reorder onMove={onMove} onRemove={onRemove} />
+      <View style={s.padX}>
+        <PointList points={points} reorder onMove={onMove} onRemove={onRemove} stationFixed={!!recycle} />
       </View>
     </ScrollView>
   );
 }
 
 /* ---------- 6. 순찰 시간표 ---------- */
-export type Slot = { id: string; time: string; label: string; on: boolean };
-
-export function StepSchedule({ slots, onChange }: { slots: Slot[]; onChange: (s: Slot[]) => void }) {
-  const add = () => {
-    const last = slots[slots.length - 1]?.time ?? '09:00';
-    const [h, m] = last.split(':').map(Number);
-    const time = `${String((h + 1) % 24).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-    onChange([...slots, { id: String(Date.now()), time, label: '추가 순찰', on: true }]);
-  };
+export function StepSchedule({ slots, onChange }: { slots: PatrolSlot[]; onChange: (s: PatrolSlot[]) => void }) {
+  const [adding, setAdding] = useState(false);
   return (
-    <ScrollView contentContainerStyle={[st.padTight, { gap: 12, paddingTop: 16 }]}>
-      <View style={st.listHeadInline}>
-        <Txt size={17} weight="bold">
-          순찰 시간표
-        </Txt>
-        <Txt size={12} color={colors.textSub}>
-          {slots.length}개 항목
-        </Txt>
-      </View>
-      {slots.map((s) => (
-        <View key={s.id} style={st.slot}>
-          <Switch
-            value={s.on}
-            onValueChange={(on) => onChange(slots.map((x) => (x.id === s.id ? { ...x, on } : x)))}
-            trackColor={{ true: colors.brand, false: colors.bgDisabled }}
-            thumbColor={colors.card}
-            {...(Platform.OS === 'web' ? ({ activeThumbColor: colors.card } as object) : {})}
-            accessibilityLabel={`${s.time} 순찰 켜기`}
-          />
-          <View style={st.timeChip}>
-            <Txt size={15} weight="bold" color={s.on ? colors.brandText : colors.textDisabled}>
-              {s.time}
-            </Txt>
-          </View>
-          <View style={{ flex: 1, gap: 3 }}>
-            <Txt size={13} weight="bold" color={s.on ? colors.text : colors.textDisabled}>
-              전체 경로
-            </Txt>
-            <Txt size={12} color={colors.textSub}>
-              {s.label}
-            </Txt>
-          </View>
-          <Icon source={icons.pencil} size={22} />
-        </View>
-      ))}
-      <Pressable style={st.addSlot} onPress={add} accessibilityRole="button">
-        <Txt size={15} weight="bold" color={colors.card}>
-          + 순찰 시간 추가
-        </Txt>
-      </Pressable>
-    </ScrollView>
+    <>
+      <ScrollView contentContainerStyle={[s.padTight, { paddingTop: space[16], paddingBottom: space[24] }]}>
+        <ScheduleList slots={slots} onChange={onChange} onAddPress={() => setAdding(true)} />
+      </ScrollView>
+      <AddTimeSheet
+        visible={adding}
+        onCancel={() => setAdding(false)}
+        onSubmit={({ time, repeat }) => {
+          const slot = { id: `s${Date.now()}`, time, repeat, on: true, label: `${REPEAT_LABEL[repeat]} 순찰` };
+          onChange([...slots, slot].sort((a, b) => a.time.localeCompare(b.time)));
+          setAdding(false);
+        }}
+      />
+    </>
   );
 }
 
@@ -451,17 +582,15 @@ export function StepDone({
   slots,
 }: {
   park: Park | null;
-  points: RoutePoint[];
-  recycle: Pt | null;
-  slots: Slot[];
+  points: PatrolPoint[];
+  recycle: LatLng | null;
+  slots: PatrolSlot[];
 }) {
   const on = slots
-    .filter((s) => s.on)
-    .map((s) => s.time)
+    .filter((slot) => slot.on)
+    .map((slot) => slot.time)
     .sort();
-  const now = new Date();
-  const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-  const next = on.find((t) => t > hhmm) ?? on[0];
+  const next = nextPatrolTime(slots);
   const rows: [string, string][] = [
     ['공원', park?.name ?? '-'],
     ['분리수거장', recycle ? '1곳' : '-'],
@@ -471,40 +600,88 @@ export function StepDone({
     ['시간표', on.length ? `하루 ${on.length}번 · ${on.join(' ')}` : '꺼져 있어요'],
   ];
   return (
-    <ScrollView contentContainerStyle={[st.padTight, { alignItems: 'center', paddingTop: 40, gap: 0 }]}>
-      <View style={st.doneCircle}>
+    <ScrollView contentContainerStyle={[s.padTight, { alignItems: 'center', paddingTop: 40, gap: 0 }]}>
+      <View style={s.doneCircle}>
         <Icon source={icons.checkWhiteLg} size={40} />
       </View>
-      <Txt size={18} weight="bold" style={{ marginTop: 22 }}>
+      <Text variant="18-bold" style={s.doneTitle}>
         순찰 경로를 저장했어요
-      </Txt>
-      <Txt size={13} color={colors.textSub} style={{ marginTop: 18 }}>
+      </Text>
+      <Text variant="13-regular" color="textSub" style={s.doneBody}>
         {next ? `${next} 순찰부터 Jubi가 이 경로로 돌아요` : '시간표를 켜면 Jubi가 이 경로로 돌아요'}
-      </Txt>
-      <View style={st.summary}>
+      </Text>
+      <View style={s.summary}>
         {rows.map(([k, v]) => (
-          <View key={k} style={st.summaryRow}>
-            <Txt size={13} color={colors.textSub}>
+          <View key={k} style={s.summaryRow}>
+            <Text variant="13-regular" color="textSub">
               {k}
-            </Txt>
-            <Txt size={13} style={{ flexShrink: 1, textAlign: 'right' }}>
+            </Text>
+            <Text variant="13-regular" style={s.summaryValue}>
               {v}
-            </Txt>
+            </Text>
           </View>
         ))}
       </View>
-      <Txt size={13} color={colors.textSub} style={{ marginTop: 20 }}>
+      <Text variant="13-regular" color="textSub" style={s.mt20}>
         {'지도 > 경로 편집에서 언제든 바꿀 수 있어요'}
-      </Txt>
+      </Text>
     </ScrollView>
   );
 }
 
-const st = StyleSheet.create({
-  pad: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24, gap: 16 },
-  padTight: { paddingHorizontal: 24, paddingTop: 8 },
-  guideCard: { backgroundColor: colors.card, borderRadius: radius[16], padding: 16, gap: 14 },
-  guideRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
+const s = StyleSheet.create({
+  flex: { flex: 1 },
+  // 다른 로봇 경로 참고 (C-03 Jubi 2)
+  refWrap: { position: 'absolute', left: space[12], top: space[12], gap: 6, maxWidth: 240 },
+  refPill: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: space[12],
+    height: 34,
+    borderRadius: radius.pill,
+    backgroundColor: colors.card,
+    ...softShadow,
+  },
+  refDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.textDisabled },
+  refMenu: { backgroundColor: colors.card, borderRadius: 14, paddingVertical: space[8], ...softShadow },
+  refMenuTitle: { paddingHorizontal: space[12], paddingBottom: space[4] },
+  refItem: { flexDirection: 'row', alignItems: 'center', gap: space[8], paddingHorizontal: space[12], minHeight: 44 },
+  refItemOn: { backgroundColor: colors.bgBrandSoft },
+  refRing: { width: 10, height: 10, borderRadius: 5, borderWidth: 1.5, borderColor: colors.textDisabled },
+  refRingOn: { backgroundColor: colors.textDisabled },
+  flex1: { flex: 1 },
+  // 분리수거장 단계: "로봇이 여기서 출발해 여기로 돌아와요"
+  startEndNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space[8],
+    paddingHorizontal: space[12],
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: colors.bgDone,
+  },
+  textCol: { flex: 1, gap: 2 },
+  textColLoose: { flex: 1, gap: 3 },
+  flexMt8: { flex: 1, marginTop: space[8] },
+  mt4: { marginTop: space[4] },
+  mt20: { marginTop: space[20] },
+  p12: { padding: space[12] },
+  padX: { paddingHorizontal: layout.screenPadding },
+  padTop: { paddingHorizontal: layout.screenPadding, paddingTop: space[12] },
+  iconCol: { width: layout.touchMin, alignItems: 'center' },
+  doneTitle: { marginTop: 22 }, // Figma 완료 화면 간격 (토큰 없음)
+  doneBody: { marginTop: 18 },
+  summaryValue: { flexShrink: 1, textAlign: 'right' },
+  fill: { flex: 1 },
+  mapBox: { height: MAP_HEIGHT },
+  mapPlaceholder: { backgroundColor: colors.map, overflow: 'hidden', alignItems: 'center' },
+  placeholderImage: { opacity: 0.35 },
+  pad: { paddingHorizontal: space[24], paddingTop: space[24], paddingBottom: space[24], gap: space[16] },
+  padTight: { paddingHorizontal: space[24], paddingTop: space[8] },
+  guideCard: { backgroundColor: colors.card, borderRadius: radius[16], padding: space[16], gap: 14 },
+  guideRow: { flexDirection: 'row', gap: space[12], alignItems: 'flex-start' },
   guideNum: {
     width: 28,
     height: 28,
@@ -514,33 +691,36 @@ const st = StyleSheet.create({
     justifyContent: 'center',
   },
   search: {
-    marginTop: 4,
+    marginTop: space[4],
     backgroundColor: colors.bgBrandSoft,
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: radius[16],
+    padding: space[16],
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: space[12],
   },
+  searchInputFilled: { fontFamily: typography['15-bold'].fontFamily },
   searchInput: {
     flex: 1,
-    fontSize: 15,
-    fontFamily: font.regular,
+    ...typography['15-regular'],
     color: colors.text,
     padding: 0,
     outlineStyle: 'none',
   } as object,
-  locate: {
-    height: 52,
-    borderRadius: 14,
-    backgroundColor: colors.bgBrandSoft,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
+  results: { backgroundColor: colors.card, borderRadius: radius[16], maxHeight: 248, flexGrow: 0 },
+  resultsContent: { padding: 6, gap: 2 },
+  more: { alignItems: 'center', paddingVertical: space[12] },
+  attribution: {
+    position: 'absolute',
+    left: space[8],
+    bottom: space[8],
+    backgroundColor: colors.card,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    opacity: 0.9,
   },
-  results: { backgroundColor: colors.card, borderRadius: radius[16], padding: 6, gap: 2 },
-  result: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, borderRadius: 12 },
+  result: { flexDirection: 'row', alignItems: 'center', gap: space[12], padding: 10, borderRadius: 12 },
   pinCircle: {
     width: 36,
     height: 36,
@@ -558,8 +738,8 @@ const st = StyleSheet.create({
     gap: 6,
     backgroundColor: colors.card,
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: space[12],
+    paddingVertical: space[8],
   },
   parkPinWrap: { position: 'absolute', alignSelf: 'center', alignItems: 'center', gap: 6 },
   parkPin: {
@@ -572,15 +752,15 @@ const st = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  parkLabel: { backgroundColor: colors.card, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  parkLabel: { backgroundColor: colors.card, borderRadius: 8, paddingHorizontal: space[8], paddingVertical: space[4] },
   legendCard: {
     backgroundColor: colors.card,
     borderRadius: radius[20],
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 4,
+    paddingHorizontal: space[12],
+    paddingVertical: space[8],
+    gap: space[4],
   },
-  legendRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6 },
+  legendRow: { flexDirection: 'row', alignItems: 'center', gap: space[12], paddingVertical: 6 },
   legendRecycle: {
     width: 44,
     height: 44,
@@ -594,7 +774,7 @@ const st = StyleSheet.create({
   legendPoint: {
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: radius[16],
     borderWidth: 3,
     borderColor: colors.card,
     backgroundColor: colors.brand,
@@ -606,63 +786,9 @@ const st = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 12,
-  },
-  listHeadInline: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sheetDim: { flex: 1, backgroundColor: colors.overlaySoft },
-  sheet: {
-    backgroundColor: colors.card,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    gap: 14,
-  },
-  nameInput: {
-    backgroundColor: colors.bgBrandSoft,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    height: 56,
-    fontSize: 20,
-    fontFamily: font.bold,
-    color: colors.brandText,
-    outlineStyle: 'none',
-  } as object,
-  quick: {
-    paddingHorizontal: 18,
-    height: 44,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  quickOn: { borderColor: colors.brand, backgroundColor: colors.bgBrandSoft },
-  sheetBtn: { flex: 1, height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  slot: {
-    backgroundColor: colors.card,
-    borderRadius: radius[16],
-    padding: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  timeChip: {
-    backgroundColor: colors.bgBrandSoft,
-    borderRadius: 12,
-    width: 64,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addSlot: {
-    height: 52,
-    borderRadius: 14,
-    backgroundColor: colors.brand,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: space[24],
+    paddingTop: space[20],
+    paddingBottom: space[12],
   },
   doneCircle: {
     width: 72,
@@ -674,11 +800,11 @@ const st = StyleSheet.create({
   },
   summary: {
     alignSelf: 'stretch',
-    marginTop: 24,
+    marginTop: space[24],
     backgroundColor: colors.card,
     borderRadius: radius[16],
-    padding: 16,
-    gap: 16,
+    padding: space[16],
+    gap: space[16],
   },
-  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 16 },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', gap: space[16] },
 });

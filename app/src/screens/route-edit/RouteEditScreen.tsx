@@ -1,0 +1,346 @@
+// A-04 순찰 경로 편집. A-02 지도의 "경로 편집"으로 들어와요.
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useEffect, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { saveRouteConfig } from '@/api/route';
+import type { LatLng, PatrolPoint, RouteConfig } from '@/api/types';
+import {
+  AddTimeSheet,
+  Button,
+  FilterChip,
+  Header,
+  Icon,
+  MapHint,
+  ParkMap,
+  PointList,
+  PointNameSheet,
+  ScheduleList,
+  Text,
+} from '@/components';
+import type { ParkMapMarker } from '@/components';
+import { PatrolRobotScope } from '@/components/PatrolRobotScope';
+import { useRouteConfig } from '@/hooks/useRoute';
+import { useStations } from '@/hooks/useStations';
+import { icons } from '@/icons';
+import type { RootParams } from '@/navigation';
+import { colors, layout, radius, softShadow, space } from '@/theme';
+import { isTooFar, lapMinutes, loopPath, moveItem, nextPatrolTime, REPEAT_LABEL } from '@/utils/route';
+
+type Props = NativeStackScreenProps<RootParams, 'RouteEdit'>;
+type Tab = 'route' | 'schedule';
+
+const MAP_HEIGHT = 290;
+const NOTICE_MS = 2500;
+const TOAST_MS = 1600;
+
+export function RouteEditScreen(props: Props) {
+  return (
+    <PatrolRobotScope fixedRobotId={props.route.params?.robotId} onMissing={() => props.navigation.goBack()}>
+      {(robotId, setBusy) => <RobotRouteEdit {...props} robotId={robotId} setBusy={setBusy} />}
+    </PatrolRobotScope>
+  );
+}
+
+function RobotRouteEdit({
+  navigation,
+  robotId,
+  setBusy,
+}: Props & { robotId?: string; setBusy: (busy: boolean) => void }) {
+  const { data, error, loading, reload } = useRouteConfig(robotId);
+
+  return (
+    <SafeAreaView style={s.screen} edges={[]}>
+      <Header title="순찰 경로 편집" onBack={() => navigation.goBack()} />
+      {/* 불러온 경로를 고쳐 쓰는 편집기. 처음 불러온 값으로 한 번만 시작해요. */}
+      {data && !error ? (
+        <RouteEditor initial={data} onDone={() => navigation.goBack()} setBusy={setBusy} />
+      ) : (
+        <View style={s.padded}>
+          <Text variant="13-regular" color={error ? 'error' : 'textSub'}>
+            {loading ? '경로를 불러오고 있어요…' : error?.message}
+          </Text>
+          {error ? <Button label="다시 불러오기" onPress={reload} /> : null}
+        </View>
+      )}
+    </SafeAreaView>
+  );
+}
+
+function RouteEditor({
+  initial,
+  onDone,
+  setBusy,
+}: {
+  initial: RouteConfig;
+  onDone: () => void;
+  setBusy: (busy: boolean) => void;
+}) {
+  const insets = useSafeAreaInsets();
+  const [tab, setTab] = useState<Tab>('route');
+  const [draft, setDraft] = useState<RouteConfig>(initial);
+  const [pending, setPending] = useState<LatLng | null>(null);
+  const [addingTime, setAddingTime] = useState(false);
+  // 공원 밖(outside) · 기존 지점에서 1km 넘게 떨어진 곳(tooFar)을 꾹 눌렀을 때 경고
+  const [blocked, setBlocked] = useState<'outside' | 'tooFar' | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string>();
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+  const later = (fn: () => void, ms: number) => timers.current.push(setTimeout(fn, ms));
+
+  const setPoints = (points: PatrolPoint[]) => setDraft((d) => ({ ...d, points }));
+  const { data: stations } = useStations();
+
+  const markers: ParkMapMarker[] = [
+    ...(draft.station
+      ? [{ id: 'station', kind: 'station' as const, position: draft.station, label: '분리수거장' }]
+      : []),
+    ...draft.points.map((p, i) => ({
+      id: p.id,
+      kind: 'point' as const,
+      position: p.position,
+      label: p.name,
+      order: i + 1,
+    })),
+  ];
+
+  const handleSave = async () => {
+    if (saving) return;
+    setSaving(true);
+    setBusy(true);
+    setSaveError(undefined);
+    try {
+      await saveRouteConfig(draft);
+      const next = nextPatrolTime(draft.schedule);
+      setToast(next ? `경로를 저장했어요 · ${next} 순찰부터 적용돼요` : '경로를 저장했어요');
+      later(onDone, TOAST_MS);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : '경로를 저장하지 못했어요. 다시 시도해 주세요');
+    } finally {
+      setSaving(false);
+      setBusy(false);
+    }
+  };
+
+  return (
+    <View style={s.flex}>
+      {/* 경로 편집 · 시간표 설정 */}
+      <View style={s.tabs} accessibilityRole="tablist">
+        {(
+          [
+            ['route', '경로 편집'],
+            ['schedule', '시간표 설정'],
+          ] as const
+        ).map(([key, label]) => {
+          const on = tab === key;
+          return (
+            <Pressable
+              key={key}
+              onPress={() => setTab(key)}
+              style={[s.tab, on ? s.tabOn : null]}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: on }}
+            >
+              <Text variant="14-bold" color={on ? 'brandText' : 'textSub'}>
+                {label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {tab === 'route' ? (
+        <ScrollView contentContainerStyle={s.scroll}>
+          <ParkMap
+            style={s.map}
+            bounds={draft.bounds}
+            area={draft.area}
+            markers={markers}
+            route={loopPath(draft.points, draft.station)}
+            onLongPress={(p) => {
+              // 이미 찍은 지점(분리수거장 포함)에서 1km 넘게 떨어진 곳에는 핀을 꽂지 않아요
+              const existing = [...(draft.station ? [draft.station] : []), ...draft.points.map((pt) => pt.position)];
+              if (isTooFar(p, existing)) {
+                setBlocked('tooFar');
+                later(() => setBlocked(null), NOTICE_MS);
+                return;
+              }
+              setBlocked(null);
+              setPending(p);
+            }}
+            onLongPressOutside={() => {
+              setBlocked('outside');
+              later(() => setBlocked(null), NOTICE_MS);
+            }}
+          />
+          {blocked === 'tooFar' ? (
+            <MapHint tone="error" text="기존 지점에서 1km 넘게 떨어져 있어요. 더 가까운 곳을 꾹 눌러 주세요" />
+          ) : blocked ? (
+            <MapHint tone="error" text="로봇이 갈 수 없는 위치예요" />
+          ) : (
+            <MapHint text="지도를 꾹 눌러 지점을 추가할 수 있어요" />
+          )}
+          {/* 비우러 갈 분리수거장 (C-02에서 삭제가 막혔을 때 여기서 바꿔요) */}
+          {stations && stations.length > 1 ? (
+            <View style={s.stationRow}>
+              <Text variant="13-bold">비우러 갈 분리수거장</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.stationChips}>
+                {stations.map((st) => {
+                  const on =
+                    draft.defaultStationId === st.id ||
+                    (!draft.defaultStationId &&
+                      st.position.latitude === draft.station?.latitude &&
+                      st.position.longitude === draft.station?.longitude);
+                  return (
+                    <FilterChip
+                      key={st.id}
+                      label={st.name}
+                      selected={on}
+                      onPress={() => setDraft((d) => ({ ...d, defaultStationId: st.id, station: st.position }))}
+                    />
+                  );
+                })}
+              </ScrollView>
+            </View>
+          ) : null}
+          <View style={s.listHead}>
+            <Text variant="17-bold">순찰 지점</Text>
+            <Text variant="12-regular" color="textSub">
+              {draft.points.length}개 지점 · 약 {lapMinutes(draft.points, draft.station)}분
+            </Text>
+          </View>
+          <View style={s.padded}>
+            <PointList
+              points={draft.points}
+              reorder
+              onRemove={(i) => setPoints(draft.points.filter((_, j) => j !== i))}
+              onMove={(from, to) => setPoints(moveItem(draft.points, from, to))}
+              stationFixed={!!draft.station}
+            />
+          </View>
+        </ScrollView>
+      ) : (
+        <ScrollView contentContainerStyle={[s.scroll, s.padded, s.scheduleTop]}>
+          <ScheduleList
+            slots={draft.schedule}
+            onChange={(schedule) => setDraft((d) => ({ ...d, schedule }))}
+            onAddPress={() => setAddingTime(true)}
+          />
+        </ScrollView>
+      )}
+
+      {/* 저장 완료 알림 */}
+      {toast ? (
+        <View style={s.toast} accessibilityLiveRegion="polite">
+          <View style={s.toastIcon}>
+            <Icon source={icons.check} size={14} />
+          </View>
+          <Text variant="13-semibold" color="card" style={s.flexShrink}>
+            {toast}
+          </Text>
+        </View>
+      ) : null}
+
+      {/* 취소 · 저장하기 */}
+      {saveError ? (
+        <Text variant="13-regular" color="error" style={s.padded} accessibilityLiveRegion="polite">
+          {saveError}
+        </Text>
+      ) : null}
+      <View style={[s.footer, { paddingBottom: Math.max(insets.bottom, space[12]) }]}>
+        <View style={s.cancel}>
+          <Button label="취소" variant="soft" disabled={saving} onPress={onDone} />
+        </View>
+        <View style={s.flex}>
+          <Button
+            label={saving ? '저장 중…' : '저장하기'}
+            disabled={saving || !!toast || draft.points.length === 0 || draft.schedule.length === 0 || !draft.station}
+            onPress={handleSave}
+          />
+        </View>
+      </View>
+
+      <PointNameSheet
+        visible={!!pending}
+        order={draft.points.length + 1}
+        onCancel={() => setPending(null)}
+        onSubmit={(name) => {
+          if (pending) setPoints([...draft.points, { id: `p${Date.now()}`, name, position: pending }]);
+          setPending(null);
+        }}
+      />
+      <AddTimeSheet
+        visible={addingTime}
+        onCancel={() => setAddingTime(false)}
+        onSubmit={({ time, repeat }) => {
+          const slot = { id: `s${Date.now()}`, time, repeat, on: true, label: `${REPEAT_LABEL[repeat]} 순찰` };
+          setDraft((d) => ({ ...d, schedule: [...d.schedule, slot].sort((a, b) => a.time.localeCompare(b.time)) }));
+          setAddingTime(false);
+        }}
+      />
+    </View>
+  );
+}
+
+const s = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.bg },
+  flex: { flex: 1 },
+  flexShrink: { flexShrink: 1 },
+  tabs: {
+    flexDirection: 'row',
+    marginHorizontal: layout.screenPadding,
+    marginVertical: space[12],
+    padding: space[4],
+    borderRadius: radius[16],
+    backgroundColor: colors.bgDisabled,
+  },
+  tab: { flex: 1, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  tabOn: { backgroundColor: colors.card, ...softShadow },
+  scroll: { paddingBottom: space[24] },
+  padded: { paddingHorizontal: layout.screenPadding },
+  scheduleTop: { paddingTop: space[8] },
+  map: { height: MAP_HEIGHT },
+  stationRow: { paddingHorizontal: layout.screenPadding, paddingTop: space[12], gap: space[8] },
+  stationChips: { gap: space[8] },
+  listHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: layout.screenPadding,
+    paddingTop: space[20],
+    paddingBottom: space[12],
+  },
+  toast: {
+    position: 'absolute',
+    left: layout.screenPadding,
+    right: layout.screenPadding,
+    bottom: 100,
+    minHeight: 48,
+    borderRadius: 14,
+    backgroundColor: colors.text,
+    paddingHorizontal: space[16],
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space[12],
+  },
+  toastIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: radius.pill,
+    backgroundColor: colors.done,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  footer: {
+    backgroundColor: colors.card,
+    paddingTop: space[12],
+    paddingHorizontal: layout.screenPadding,
+    flexDirection: 'row',
+    gap: 10,
+  },
+  cancel: { width: 106 },
+});

@@ -2,14 +2,17 @@
   "expo": {
     "name": "jubjub",
     "slug": "jubjub",
+    "owner": "baesungwook",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "app.jubjub.app"
     },
     "android": {
+      "package": "app.jubjub.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -21,6 +24,22 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["expo-image", "expo-font"]
+    "plugins": [
+      "expo-image",
+      "expo-font",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "extraMavenRepos": ["https://repository.map.naver.com/archive/maven"]
+          }
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "e51576fe-45e5-44be-85e9-a30979c0f799"
+      }
+    }
   }
 }
