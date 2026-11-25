@@ -1,0 +1,35 @@
+# /lidar_app
+## node info
+/lidar_app
+  Subscribers:
+
+  Publishers:
+    /controller/cmd_vel: geometry_msgs/msg/Twist
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /rosout: rcl_interfaces/msg/Log
+    /servo_controller: servo_controller_msgs/msg/ServosPosition
+  Service Servers:
+    /lidar_app/describe_parameters: rcl_interfaces/srv/DescribeParameters
+    /lidar_app/enter: std_srvs/srv/Trigger
+    /lidar_app/exit: std_srvs/srv/Trigger
+    /lidar_app/get_parameter_types: rcl_interfaces/srv/GetParameterTypes
+    /lidar_app/get_parameters: rcl_interfaces/srv/GetParameters
+    /lidar_app/heartbeat: std_srvs/srv/SetBool
+    /lidar_app/init_finish: std_srvs/srv/Trigger
+    /lidar_app/list_parameters: rcl_interfaces/srv/ListParameters
+    /lidar_app/set_param: interfaces/srv/SetFloat64List
+    /lidar_app/set_parameters: rcl_interfaces/srv/SetParameters
+    /lidar_app/set_parameters_atomically: rcl_interfaces/srv/SetParametersAtomically
+    /lidar_app/set_running: interfaces/srv/SetInt64
+  Service Clients:
+
+  Action Servers:
+
+  Action Clients:
+
+
+## param dump
+/lidar_app:
+  ros__parameters:
+    use_sim_time: false
+

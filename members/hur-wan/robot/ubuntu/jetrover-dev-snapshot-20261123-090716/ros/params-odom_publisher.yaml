@@ -1,0 +1,11 @@
+/odom_publisher:
+  ros__parameters:
+    angular_correction_factor: 1.0
+    base_frame_id: base_footprint
+    linear_correction_factor: 1.0
+    linear_correction_factor_tank: 0.52
+    machine_type: JetRover_Mecanum
+    odom_frame_id: odom
+    pub_odom_topic: true
+    use_sim_time: false
+

@@ -1,0 +1,13 @@
+geometry_msgs/PointStamped target  # end_effector_link target position (any frame with TF)
+bool use_pitch                     # true: try 'pitch' first, then search pitch_min..pitch_max
+float64 pitch                      # gripper angle from vertical-up in the arm plane [rad]; pi = pointing straight down
+float64 pitch_min
+float64 pitch_max
+---
+bool success
+string message
+string[] joint_names
+float64[] positions                # rad, same order as joint_names
+float64 solved_pitch
+float64 position_error_m           # KDL forward-kinematics check
+geometry_msgs/Point target_in_base

@@ -1,0 +1,8 @@
+geometry_msgs/PoseStamped start
+bool use_start               # false: plan from the current (virtual) robot pose
+geometry_msgs/PoseStamped goal
+---
+bool success
+string message
+nav_msgs/Path path
+float64 length_m

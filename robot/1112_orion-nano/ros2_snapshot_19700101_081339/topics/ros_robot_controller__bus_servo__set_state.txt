@@ -1,0 +1,58 @@
+# /ros_robot_controller/bus_servo/set_state    [ros_robot_controller_msgs/msg/SetBusServoState]
+
+## info -v  (pub/sub 노드, QoS: reliability/durability)
+Type: ros_robot_controller_msgs/msg/SetBusServoState
+
+Publisher count: 1
+
+Node name: odom_publisher
+Node namespace: /
+Topic type: ros_robot_controller_msgs/msg/SetBusServoState
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.b4.07.bd.1d.00.00.00.00.00.00.13.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 1
+
+Node name: ros_robot_controller
+Node namespace: /
+Topic type: ros_robot_controller_msgs/msg/SetBusServoState
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.64.5b.b2.07.8c.5b.00.00.00.00.00.00.1b.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+
+## 메시지 구조 (ros2 interface show)
+ros_robot_controller_msgs/BusServoState[] state
+	uint16[] present_id
+	uint16[] target_id
+	uint16[] position
+	int16[] offset
+	uint16[] voltage
+	uint16[] temperature
+	uint16[] position_limit
+	uint16[] voltage_limit
+	uint16[] max_temperature_limit
+	uint16[] enable_torque
+	uint16[] save_offset
+	uint16[] stop
+
+float64 duration
+
+## 주기 (hz, 약 4초)
+
+## 샘플 1개 (배열 생략)

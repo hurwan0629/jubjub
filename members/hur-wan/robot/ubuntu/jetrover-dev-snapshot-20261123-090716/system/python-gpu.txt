@@ -1,0 +1,12 @@
+python: 3.10.12 (main, Nov  6 2024, 20:22:13) [GCC 11.4.0]
+executable: /usr/bin/python3
+torch 2.7.0
+torchvision 0.22.0
+ultralytics 8.3.143
+tensorrt 10.7.0
+onnx 1.17.0
+cv2 4.11.0
+numpy 1.26.4
+rclpy installed
+cuda_available: True
+cuda_runtime: 12.6

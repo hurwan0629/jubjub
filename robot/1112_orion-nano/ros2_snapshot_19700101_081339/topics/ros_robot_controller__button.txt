@@ -1,0 +1,32 @@
+# /ros_robot_controller/button    [ros_robot_controller_msgs/msg/ButtonState]
+
+## info -v  (pub/sub 노드, QoS: reliability/durability)
+Type: ros_robot_controller_msgs/msg/ButtonState
+
+Publisher count: 1
+
+Node name: ros_robot_controller
+Node namespace: /
+Topic type: ros_robot_controller_msgs/msg/ButtonState
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.b2.07.8c.5b.00.00.00.00.00.00.14.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 0
+
+
+## 메시지 구조 (ros2 interface show)
+uint8 id
+uint8 state
+
+## 주기 (hz, 약 4초)
+WARNING: topic [/ros_robot_controller/button] does not appear to be published yet
+
+## 샘플 1개 (배열 생략)

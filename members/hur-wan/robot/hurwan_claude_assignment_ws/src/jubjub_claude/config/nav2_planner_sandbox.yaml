@@ -1,0 +1,57 @@
+# Nav2 PLANNER ONLY (no controller / behavior server -> nothing that publishes cmd_vel).
+# Global frame is odom with a rolling window because the robot has no map->odom localization
+# running (see Notion log, decision 2). Switch global_frame to map once AMCL/SLAM runs.
+planner_server:
+  ros__parameters:
+    use_sim_time: false
+    expected_planner_frequency: 1.0
+    planner_plugins: ["GridBased"]
+    GridBased:
+      plugin: "nav2_navfn_planner/NavfnPlanner"
+      tolerance: 0.25
+      use_astar: true
+      allow_unknown: true
+
+global_costmap:
+  global_costmap:
+    ros__parameters:
+      use_sim_time: false
+      update_frequency: 2.0
+      publish_frequency: 1.0
+      global_frame: odom
+      robot_base_frame: base_footprint
+      transform_tolerance: 0.5
+      rolling_window: true
+      width: 16
+      height: 16
+      resolution: 0.05
+      # JetRover mecanum: wheel centres at x=+-0.098, y=+-0.112 -> body ~0.30 x 0.26 m
+      footprint: "[[0.17, 0.15], [0.17, -0.15], [-0.17, -0.15], [-0.17, 0.15]]"
+      track_unknown_space: false
+      always_send_full_costmap: false
+      plugins: ["obstacle_layer", "inflation_layer"]
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
+        enabled: true
+        observation_sources: scan
+        scan:
+          topic: /scan
+          data_type: "LaserScan"
+          marking: true
+          clearing: true
+          raytrace_max_range: 6.0
+          obstacle_max_range: 5.0
+          max_obstacle_height: 2.0
+        depth:
+          topic: /depth_cam/depth/points
+          data_type: "PointCloud2"
+          marking: true
+          clearing: false
+          min_obstacle_height: 0.04
+          max_obstacle_height: 0.6
+          obstacle_max_range: 2.0
+          raytrace_max_range: 2.5
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        cost_scaling_factor: 4.0
+        inflation_radius: 0.35

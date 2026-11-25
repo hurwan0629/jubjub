@@ -1,0 +1,40 @@
+# /imu_calib
+## node info
+/imu_calib
+  Subscribers:
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /ros_robot_controller/imu_raw: sensor_msgs/msg/Imu
+  Publishers:
+    /imu_corrected: sensor_msgs/msg/Imu
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /rosout: rcl_interfaces/msg/Log
+  Service Servers:
+    /imu_calib/describe_parameters: rcl_interfaces/srv/DescribeParameters
+    /imu_calib/get_parameter_types: rcl_interfaces/srv/GetParameterTypes
+    /imu_calib/get_parameters: rcl_interfaces/srv/GetParameters
+    /imu_calib/list_parameters: rcl_interfaces/srv/ListParameters
+    /imu_calib/set_parameters: rcl_interfaces/srv/SetParameters
+    /imu_calib/set_parameters_atomically: rcl_interfaces/srv/SetParametersAtomically
+  Service Clients:
+
+  Action Servers:
+
+  Action Clients:
+
+
+## param dump
+/imu_calib:
+  ros__parameters:
+    calib_file: /home/ubuntu/ros2_ws/src/calibration/config/imu_calib.yaml
+    calibrate_gyros: true
+    gyro_calib_samples: 100
+    qos_overrides:
+      /parameter_events:
+        publisher:
+          depth: 1000
+          durability: volatile
+          history: keep_last
+          reliability: reliable
+    queue_size: 5
+    use_sim_time: false
+

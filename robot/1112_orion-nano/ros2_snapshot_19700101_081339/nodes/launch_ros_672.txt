@@ -1,0 +1,27 @@
+# /launch_ros_672
+## node info
+/launch_ros_672
+  Subscribers:
+
+  Publishers:
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /rosout: rcl_interfaces/msg/Log
+  Service Servers:
+    /launch_ros_672/describe_parameters: rcl_interfaces/srv/DescribeParameters
+    /launch_ros_672/get_parameter_types: rcl_interfaces/srv/GetParameterTypes
+    /launch_ros_672/get_parameters: rcl_interfaces/srv/GetParameters
+    /launch_ros_672/list_parameters: rcl_interfaces/srv/ListParameters
+    /launch_ros_672/set_parameters: rcl_interfaces/srv/SetParameters
+    /launch_ros_672/set_parameters_atomically: rcl_interfaces/srv/SetParametersAtomically
+  Service Clients:
+
+  Action Servers:
+
+  Action Clients:
+
+
+## param dump
+/launch_ros_672:
+  ros__parameters:
+    use_sim_time: false
+

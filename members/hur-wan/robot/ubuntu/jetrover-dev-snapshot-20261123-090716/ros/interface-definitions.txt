@@ -1,0 +1,1385 @@
+===== control_msgs/action/FollowJointTrajectory
+# The trajectory for all revolute, continuous or prismatic joints
+trajectory_msgs/JointTrajectory trajectory
+	std_msgs/Header header
+		builtin_interfaces/Time stamp
+			int32 sec
+			uint32 nanosec
+		string frame_id
+	string[] joint_names
+	JointTrajectoryPoint[] points
+		float64[] positions
+		float64[] velocities
+		float64[] accelerations
+		float64[] effort
+		builtin_interfaces/Duration time_from_start
+			int32 sec
+			uint32 nanosec
+# The trajectory for all planar or floating joints (i.e. individual joints with more than one DOF)
+trajectory_msgs/MultiDOFJointTrajectory multi_dof_trajectory
+	std_msgs/Header header
+		builtin_interfaces/Time stamp
+			int32 sec
+			uint32 nanosec
+		string frame_id
+	string[] joint_names
+	MultiDOFJointTrajectoryPoint[] points
+		geometry_msgs/Transform[] transforms
+			Vector3 translation
+				float64 x
+				float64 y
+				float64 z
+			Quaternion rotation
+				float64 x 0
+				float64 y 0
+				float64 z 0
+				float64 w 1
+		geometry_msgs/Twist[] velocities
+			Vector3  linear
+				float64 x
+				float64 y
+				float64 z
+			Vector3  angular
+				float64 x
+				float64 y
+				float64 z
+		geometry_msgs/Twist[] accelerations
+			Vector3  linear
+				float64 x
+				float64 y
+				float64 z
+			Vector3  angular
+				float64 x
+				float64 y
+				float64 z
+		builtin_interfaces/Duration time_from_start
+			int32 sec
+			uint32 nanosec
+
+# Tolerances for the trajectory.  If the measured joint values fall
+# outside the tolerances the trajectory goal is aborted.  Any
+# tolerances that are not specified (by being omitted or set to 0) are
+# set to the defaults for the action server (often taken from the
+# parameter server).
+
+# Tolerances applied to the joints as the trajectory is executed.  If
+# violated, the goal aborts with error_code set to
+# PATH_TOLERANCE_VIOLATED.
+JointTolerance[] path_tolerance
+	#
+	string name
+	float64 position  #
+	float64 velocity  #
+	float64 acceleration  #
+JointComponentTolerance[] component_path_tolerance
+	uint16 X_AXIS=1
+	uint16 Y_AXIS=2
+	uint16 Z_AXIS=3
+	uint16 TRANSLATION=4
+	uint16 ROTATION=5
+	string joint_name
+	uint16 component
+	float64 position
+	float64 velocity
+	float64 acceleration
+
+# To report success, the joints must be within goal_tolerance of the
+# final trajectory value.  The goal must be achieved by time the
+# trajectory ends plus goal_time_tolerance.  (goal_time_tolerance
+# allows some leeway in time, so that the trajectory goal can still
+# succeed even if the joints reach the goal some time after the
+# precise end time of the trajectory).
+#
+# If the joints are not within goal_tolerance after "trajectory finish
+# time" + goal_time_tolerance, the goal aborts with error_code set to
+# GOAL_TOLERANCE_VIOLATED
+JointTolerance[] goal_tolerance
+	#
+	string name
+	float64 position  #
+	float64 velocity  #
+	float64 acceleration  #
+JointComponentTolerance[] component_goal_tolerance
+	uint16 X_AXIS=1
+	uint16 Y_AXIS=2
+	uint16 Z_AXIS=3
+	uint16 TRANSLATION=4
+	uint16 ROTATION=5
+	string joint_name
+	uint16 component
+	float64 position
+	float64 velocity
+	float64 acceleration
+builtin_interfaces/Duration goal_time_tolerance
+	int32 sec
+	uint32 nanosec
+
+---
+int32 error_code
+int32 SUCCESSFUL = 0
+int32 INVALID_GOAL = -1
+int32 INVALID_JOINTS = -2
+int32 OLD_HEADER_TIMESTAMP = -3
+int32 PATH_TOLERANCE_VIOLATED = -4
+int32 GOAL_TOLERANCE_VIOLATED = -5
+
+# Human readable description of the error code. Contains complementary
+# information that is especially useful when execution fails, for instance:
+# - INVALID_GOAL: The reason for the invalid goal (e.g., the requested
+#   trajectory is in the past).
+# - INVALID_JOINTS: The mismatch between the expected controller joints
+#   and those provided in the goal.
+# - PATH_TOLERANCE_VIOLATED and GOAL_TOLERANCE_VIOLATED: Which joint
+#   violated which tolerance, and by how much.
+string error_string
+
+---
+std_msgs/Header header
+	builtin_interfaces/Time stamp
+		int32 sec
+		uint32 nanosec
+	string frame_id
+string[] joint_names
+trajectory_msgs/JointTrajectoryPoint desired
+	float64[] positions
+	float64[] velocities
+	float64[] accelerations
+	float64[] effort
+	builtin_interfaces/Duration time_from_start
+		int32 sec
+		uint32 nanosec
+trajectory_msgs/JointTrajectoryPoint actual
+	float64[] positions
+	float64[] velocities
+	float64[] accelerations
+	float64[] effort
+	builtin_interfaces/Duration time_from_start
+		int32 sec
+		uint32 nanosec
+trajectory_msgs/JointTrajectoryPoint error
+	float64[] positions
+	float64[] velocities
+	float64[] accelerations
+	float64[] effort
+	builtin_interfaces/Duration time_from_start
+		int32 sec
+		uint32 nanosec
+
+string[] multi_dof_joint_names
+trajectory_msgs/MultiDOFJointTrajectoryPoint multi_dof_desired
+	geometry_msgs/Transform[] transforms
+		Vector3 translation
+			float64 x
+			float64 y
+			float64 z
+		Quaternion rotation
+			float64 x 0
+			float64 y 0
+			float64 z 0
+			float64 w 1
+	geometry_msgs/Twist[] velocities
+		Vector3  linear
+			float64 x
+			float64 y
+			float64 z
+		Vector3  angular
+			float64 x
+			float64 y
+			float64 z
+	geometry_msgs/Twist[] accelerations
+		Vector3  linear
+			float64 x
+			float64 y
+			float64 z
+		Vector3  angular
+			float64 x
+			float64 y
+			float64 z
+	builtin_interfaces/Duration time_from_start
+		int32 sec
+		uint32 nanosec
+trajectory_msgs/MultiDOFJointTrajectoryPoint multi_dof_actual
+	geometry_msgs/Transform[] transforms
+		Vector3 translation
+			float64 x
+			float64 y
+			float64 z
+		Quaternion rotation
+			float64 x 0
+			float64 y 0
+			float64 z 0
+			float64 w 1
+	geometry_msgs/Twist[] velocities
+		Vector3  linear
+			float64 x
+			float64 y
+			float64 z
+		Vector3  angular
+			float64 x
+			float64 y
+			float64 z
+	geometry_msgs/Twist[] accelerations
+		Vector3  linear
+			float64 x
+			float64 y
+			float64 z
+		Vector3  angular
+			float64 x
+			float64 y
+			float64 z
+	builtin_interfaces/Duration time_from_start
+		int32 sec
+		uint32 nanosec
+trajectory_msgs/MultiDOFJointTrajectoryPoint multi_dof_error
+	geometry_msgs/Transform[] transforms
+		Vector3 translation
+			float64 x
+			float64 y
+			float64 z
+		Quaternion rotation
+			float64 x 0
+			float64 y 0
+			float64 z 0
+			float64 w 1
+	geometry_msgs/Twist[] velocities
+		Vector3  linear
+			float64 x
+			float64 y
+			float64 z
+		Vector3  angular
+			float64 x
+			float64 y
+			float64 z
+	geometry_msgs/Twist[] accelerations
+		Vector3  linear
+			float64 x
+			float64 y
+			float64 z
+		Vector3  angular
+			float64 x
+			float64 y
+			float64 z
+	builtin_interfaces/Duration time_from_start
+		int32 sec
+		uint32 nanosec
+===== diagnostic_msgs/msg/DiagnosticArray
+# This message is used to send diagnostic information about the state of the robot.
+std_msgs/Header header # for timestamp
+	builtin_interfaces/Time stamp
+		int32 sec
+		uint32 nanosec
+	string frame_id
+DiagnosticStatus[] status # an array of components being reported on
+	byte OK=0
+	byte WARN=1
+	byte ERROR=2
+	byte STALE=3
+	byte level
+	string name
+	string message
+	string hardware_id
+	KeyValue[] values
+		string key
+		string value
+===== geometry_msgs/msg/Pose2D
+# Deprecated as of Foxy and will potentially be removed in any following release.
+# Please use the full 3D pose.
+
+# In general our recommendation is to use a full 3D representation of everything and for 2D specific applications make the appropriate projections into the plane for their calculations but optimally will preserve the 3D information during processing.
+
+# If we have parallel copies of 2D datatypes every UI and other pipeline will end up needing to have dual interfaces to plot everything. And you will end up with not being able to use 3D tools for 2D use cases even if they're completely valid, as you'd have to reimplement it with different inputs and outputs. It's not particularly hard to plot the 2D pose or compute the yaw error for the Pose message and there are already tools and libraries that can do this for you.# This expresses a position and orientation on a 2D manifold.
+
+float64 x
+float64 y
+float64 theta
+===== geometry_msgs/msg/PoseWithCovarianceStamped
+# This expresses an estimated pose with a reference coordinate frame and timestamp
+
+std_msgs/Header header
+	builtin_interfaces/Time stamp
+		int32 sec
+		uint32 nanosec
+	string frame_id
+PoseWithCovariance pose
+	Pose pose
+		Point position
+			float64 x
+			float64 y
+			float64 z
+		Quaternion orientation
+			float64 x 0
+			float64 y 0
+			float64 z 0
+			float64 w 1
+	float64[36] covariance
+===== geometry_msgs/msg/Twist
+# This expresses velocity in free space broken into its linear and angular parts.
+
+Vector3  linear
+	float64 x
+	float64 y
+	float64 z
+Vector3  angular
+	float64 x
+	float64 y
+	float64 z
+===== interfaces/msg/Points
+interfaces/PixelPosition[] points
+	int32 x
+	int32 y
+===== interfaces/srv/SetFloat64
+float64 data
+---
+bool success
+string message
+===== interfaces/srv/SetFloat64List
+float64[] data
+---
+bool success
+string message
+===== interfaces/srv/SetInt64
+int64 data
+---
+bool success
+string message
+===== interfaces/srv/SetPoint
+geometry_msgs/Point data
+	float64 x
+	float64 y
+	float64 z
+---
+bool success
+string message
+===== interfaces/srv/SetString
+string data
+---
+bool success
+string message
+===== nav_msgs/msg/Odometry
+# This represents an estimate of a position and velocity in free space.
+# The pose in this message should be specified in the coordinate frame given by header.frame_id
+# The twist in this message should be specified in the coordinate frame given by the child_frame_id
+
+# Includes the frame id of the pose parent.
+std_msgs/Header header
+	builtin_interfaces/Time stamp
+		int32 sec
+		uint32 nanosec
+	string frame_id
+
+# Frame id the pose points to. The twist is in this coordinate frame.
+string child_frame_id
+
+# Estimated pose that is typically relative to a fixed world frame.
+geometry_msgs/PoseWithCovariance pose
+	Pose pose
+		Point position
+			float64 x
+			float64 y
+			float64 z
+		Quaternion orientation
+			float64 x 0
+			float64 y 0
+			float64 z 0
+			float64 w 1
+	float64[36] covariance
+
+# Estimated linear and angular velocity relative to child_frame_id.
+geometry_msgs/TwistWithCovariance twist
+	Twist twist
+		Vector3  linear
+			float64 x
+			float64 y
+			float64 z
+		Vector3  angular
+			float64 x
+			float64 y
+			float64 z
+	float64[36] covariance
+===== orbbec_camera_msgs/msg/Extrinsics
+std_msgs/Header header
+	builtin_interfaces/Time stamp
+		int32 sec
+		uint32 nanosec
+	string frame_id
+float64[9] rotation
+float64[3] translation
+===== orbbec_camera_msgs/srv/GetBool
+---
+bool data
+bool success
+string message
+===== orbbec_camera_msgs/srv/GetDeviceInfo
+---
+DeviceInfo info
+	std_msgs/Header header
+		builtin_interfaces/Time stamp
+			int32 sec
+			uint32 nanosec
+		string frame_id
+	string name
+	string serial_number
+	string firmware_version
+	string supported_min_sdk_version
+	string hardware_version
+bool success
+string message
+===== orbbec_camera_msgs/srv/GetInt32
+---
+int32 data
+bool success
+string message
+===== orbbec_camera_msgs/srv/GetString
+---
+string data
+bool success
+string message
+===== orbbec_camera_msgs/srv/SetInt32
+int32 data
+---
+bool success
+string message
+===== orbbec_camera_msgs/srv/SetString
+string data
+---
+bool success
+string message
+===== rcl_interfaces/msg/Log
+##
+## Severity level constants
+##
+## These logging levels follow the Python Standard
+## https://docs.python.org/3/library/logging.html#logging-levels
+## And are implemented in rcutils as well
+## https://github.com/ros2/rcutils/blob/35f29850064e0c33a4063cbc947ebbfeada11dba/include/rcutils/logging.h#L164-L172
+## This leaves space for other standard logging levels to be inserted in the middle in the future,
+## as well as custom user defined levels.
+## Since there are several other logging enumeration standard for different implementations,
+## other logging implementations may need to provide level mappings to match their internal implementations.
+##
+
+# Debug is for pedantic information, which is useful when debugging issues.
+byte DEBUG=10
+
+# Info is the standard informational level and is used to report expected
+# information.
+byte INFO=20
+
+# Warning is for information that may potentially cause issues or possibly unexpected
+# behavior.
+byte WARN=30
+
+# Error is for information that this node cannot resolve.
+byte ERROR=40
+
+# Information about a impending node shutdown.
+byte FATAL=50
+
+##
+## Fields
+##
+
+# Timestamp when this message was generated by the node.
+builtin_interfaces/Time stamp
+	int32 sec
+	uint32 nanosec
+
+# Corresponding log level, see above definitions.
+uint8 level
+
+# The name representing the logger this message came from.
+string name
+
+# The full log message.
+string msg
+
+# The file the message came from.
+string file
+
+# The function the message came from.
+string function
+
+# The line in the file the message came from.
+uint32 line
+===== rcl_interfaces/msg/ParameterEvent
+# This message contains a parameter event.
+# Because the parameter event was an atomic update, a specific parameter name
+# can only be in one of the three sets.
+
+# The time stamp when this parameter event occurred.
+builtin_interfaces/Time stamp
+	int32 sec
+	uint32 nanosec
+
+# Fully qualified ROS path to node.
+string node
+
+# New parameters that have been set for this node.
+Parameter[] new_parameters
+	string name
+	ParameterValue value
+		uint8 type
+		bool bool_value
+		int64 integer_value
+		float64 double_value
+		string string_value
+		byte[] byte_array_value
+		bool[] bool_array_value
+		int64[] integer_array_value
+		float64[] double_array_value
+		string[] string_array_value
+
+# Parameters that have been changed during this event.
+Parameter[] changed_parameters
+	string name
+	ParameterValue value
+		uint8 type
+		bool bool_value
+		int64 integer_value
+		float64 double_value
+		string string_value
+		byte[] byte_array_value
+		bool[] bool_array_value
+		int64[] integer_array_value
+		float64[] double_array_value
+		string[] string_array_value
+
+# Parameters that have been deleted during this event.
+Parameter[] deleted_parameters
+	string name
+	ParameterValue value
+		uint8 type
+		bool bool_value
+		int64 integer_value
+		float64 double_value
+		string string_value
+		byte[] byte_array_value
+		bool[] bool_array_value
+		int64[] integer_array_value
+		float64[] double_array_value
+		string[] string_array_value
+===== rcl_interfaces/srv/DescribeParameters
+# A list of parameters of which to get the descriptor.
+string[] names
+
+---
+# A list of the descriptors of all parameters requested in the same order
+# as they were requested. This list has the same length as the list of
+# parameters requested.
+ParameterDescriptor[] descriptors
+	string name
+	uint8 type
+	string description
+	#
+	string additional_constraints
+	bool read_only false
+	bool dynamic_typing false
+	#
+	FloatingPointRange[<=1] floating_point_range
+		float64 from_value
+		float64 to_value
+		#
+		#
+		#
+		#
+		float64 step
+	IntegerRange[<=1] integer_range
+		int64 from_value
+		int64 to_value
+		#
+		#
+		#
+		uint64 step
+===== rcl_interfaces/srv/GetParameters
+# TODO(wjwwood): Decide on the rules for grouping, nodes, and parameter "names"
+# in general, then link to that.
+#
+# For more information about parameters and naming rules, see:
+# https://design.ros2.org/articles/ros_parameters.html
+# https://github.com/ros2/design/pull/241
+
+# A list of parameter names to get.
+string[] names
+
+---
+# List of values which is the same length and order as the provided names. If a
+# parameter was not yet set, the value will have PARAMETER_NOT_SET as the
+# type.
+ParameterValue[] values
+	uint8 type
+	bool bool_value
+	int64 integer_value
+	float64 double_value
+	string string_value
+	byte[] byte_array_value
+	bool[] bool_array_value
+	int64[] integer_array_value
+	float64[] double_array_value
+	string[] string_array_value
+===== rcl_interfaces/srv/GetParameterTypes
+# A list of parameter names.
+# TODO(wjwwood): link to parameter naming rules.
+string[] names
+
+---
+# List of types which is the same length and order as the provided names.
+#
+# The type enum is defined in ParameterType.msg. ParameterType.PARAMETER_NOT_SET
+# indicates that the parameter is not currently set.
+uint8[] types
+===== rcl_interfaces/srv/ListParameters
+# Recursively get parameters with unlimited depth.
+uint64 DEPTH_RECURSIVE=0
+
+# The list of parameter prefixes to query.
+string[] prefixes
+
+# Relative depth from given prefixes to return.
+#
+# Use DEPTH_RECURSIVE to get the recursive parameters and prefixes for each prefix.
+uint64 depth
+
+---
+# The list of parameter names and their prefixes.
+ListParametersResult result
+	string[] names
+	string[] prefixes
+===== rcl_interfaces/srv/SetParameters
+# A list of parameters to set.
+Parameter[] parameters
+	string name
+	ParameterValue value
+		uint8 type
+		bool bool_value
+		int64 integer_value
+		float64 double_value
+		string string_value
+		byte[] byte_array_value
+		bool[] bool_array_value
+		int64[] integer_array_value
+		float64[] double_array_value
+		string[] string_array_value
+
+---
+# Indicates whether setting each parameter succeeded or not and why.
+SetParametersResult[] results
+	bool successful
+	string reason
+===== rcl_interfaces/srv/SetParametersAtomically
+# A list of parameters to set atomically.
+#
+# This call will either set all values, or none of the values.
+Parameter[] parameters
+	string name
+	ParameterValue value
+		uint8 type
+		bool bool_value
+		int64 integer_value
+		float64 double_value
+		string string_value
+		byte[] byte_array_value
+		bool[] bool_array_value
+		int64[] integer_array_value
+		float64[] double_array_value
+		string[] string_array_value
+
+---
+# Indicates whether setting all of the parameters succeeded or not and why.
+SetParametersResult result
+	bool successful
+	string reason
+===== robot_localization/srv/SetPose
+geometry_msgs/PoseWithCovarianceStamped pose
+	std_msgs/Header header
+		builtin_interfaces/Time stamp
+			int32 sec
+			uint32 nanosec
+		string frame_id
+	PoseWithCovariance pose
+		Pose pose
+			Point position
+				float64 x
+				float64 y
+				float64 z
+			Quaternion orientation
+				float64 x 0
+				float64 y 0
+				float64 z 0
+				float64 w 1
+		float64[36] covariance
+---
+===== robot_localization/srv/ToggleFilterProcessing
+bool on
+---
+bool status
+===== rosapi_msgs/srv/DeleteParam
+string name
+---
+===== rosapi_msgs/srv/GetActionServers
+
+---
+string[] action_servers
+===== rosapi_msgs/srv/GetParam
+string name
+string default_value
+---
+string value
+===== rosapi_msgs/srv/GetParamNames
+---
+string[] names
+===== rosapi_msgs/srv/GetROSVersion
+---
+uint8 version
+string distro
+===== rosapi_msgs/srv/GetTime
+---
+builtin_interfaces/Time time
+	int32 sec
+	uint32 nanosec
+===== rosapi_msgs/srv/HasParam
+string name
+---
+bool exists
+===== rosapi_msgs/srv/Interfaces
+---
+string[] interfaces
+===== rosapi_msgs/srv/MessageDetails
+string type
+---
+TypeDef[] typedefs
+	string type
+	string[] fieldnames
+	string[] fieldtypes
+	int32[] fieldarraylen
+	string[] examples
+	string[] constnames
+	string[] constvalues
+===== rosapi_msgs/srv/NodeDetails
+string node
+---
+string[] subscribing
+string[] publishing
+string[] services
+===== rosapi_msgs/srv/Nodes
+
+---
+string[] nodes
+===== rosapi_msgs/srv/Publishers
+string topic
+---
+string[] publishers
+===== rosapi_msgs/srv/ServiceNode
+string service
+---
+string node
+===== rosapi_msgs/srv/ServiceProviders
+string service
+---
+string[] providers
+===== rosapi_msgs/srv/ServiceRequestDetails
+string type
+---
+TypeDef[] typedefs
+	string type
+	string[] fieldnames
+	string[] fieldtypes
+	int32[] fieldarraylen
+	string[] examples
+	string[] constnames
+	string[] constvalues
+===== rosapi_msgs/srv/ServiceResponseDetails
+string type
+---
+TypeDef[] typedefs
+	string type
+	string[] fieldnames
+	string[] fieldtypes
+	int32[] fieldarraylen
+	string[] examples
+	string[] constnames
+	string[] constvalues
+===== rosapi_msgs/srv/Services
+
+---
+string[] services
+===== rosapi_msgs/srv/ServicesForType
+string type
+---
+string[] services
+===== rosapi_msgs/srv/ServiceType
+string service
+---
+string type
+===== rosapi_msgs/srv/SetParam
+string name
+string value
+---
+===== rosapi_msgs/srv/Subscribers
+string topic
+---
+string[] subscribers
+===== rosapi_msgs/srv/Topics
+
+---
+string[] topics
+string[] types
+===== rosapi_msgs/srv/TopicsAndRawTypes
+
+---
+string[] topics
+string[] types
+string[] typedefs_full_text
+===== rosapi_msgs/srv/TopicsForType
+string type
+---
+string[] topics
+===== rosapi_msgs/srv/TopicType
+string topic
+---
+string type
+===== rosbridge_msgs/msg/ConnectedClients
+ConnectedClient[] clients
+	string ip_address
+	builtin_interfaces/Time connection_time
+		int32 sec
+		uint32 nanosec
+===== ros_robot_controller_msgs/msg/ButtonState
+uint8 id
+uint8 state
+===== ros_robot_controller_msgs/msg/BuzzerState
+uint16 freq
+float32 on_time
+float32 off_time
+uint16 repeat
+===== ros_robot_controller_msgs/msg/LedState
+uint8 id
+float32 on_time
+float32 off_time
+uint16 repeat
+===== ros_robot_controller_msgs/msg/MotorsState
+ros_robot_controller_msgs/MotorState[] data
+	uint16 id
+	float64 rps
+===== ros_robot_controller_msgs/msg/OLEDState
+uint8 index
+string text
+===== ros_robot_controller_msgs/msg/Sbus
+std_msgs/Header header
+	builtin_interfaces/Time stamp
+		int32 sec
+		uint32 nanosec
+	string frame_id
+float32[] channel
+===== ros_robot_controller_msgs/msg/ServosPosition
+float64 duration
+ros_robot_controller_msgs/ServoPosition[] position
+	uint16 id
+	uint16 position
+===== ros_robot_controller_msgs/msg/SetBusServoState
+ros_robot_controller_msgs/BusServoState[] state
+	uint16[] present_id
+	uint16[] target_id
+	uint16[] position
+	int16[] offset
+	uint16[] voltage
+	uint16[] temperature
+	uint16[] position_limit
+	uint16[] voltage_limit
+	uint16[] max_temperature_limit
+	uint16[] enable_torque
+	uint16[] save_offset
+	uint16[] stop
+
+float64 duration
+===== ros_robot_controller_msgs/msg/SetPWMServoState
+ros_robot_controller_msgs/PWMServoState[] state
+	uint16[] id
+	uint16[] position
+	int16[] offset
+
+float64 duration
+===== ros_robot_controller_msgs/srv/GetBusServoState
+ros_robot_controller_msgs/GetBusServoCmd[] cmd
+	uint8 id
+	uint8 get_id
+	uint8 get_position
+	uint8 get_offset
+	uint8 get_voltage
+	uint8 get_temperature
+	uint8 get_position_limit
+	uint8 get_voltage_limit
+	uint8 get_max_temperature_limit
+	uint8 get_torque_state
+---
+bool success
+ros_robot_controller_msgs/BusServoState[] state
+	uint16[] present_id
+	uint16[] target_id
+	uint16[] position
+	int16[] offset
+	uint16[] voltage
+	uint16[] temperature
+	uint16[] position_limit
+	uint16[] voltage_limit
+	uint16[] max_temperature_limit
+	uint16[] enable_torque
+	uint16[] save_offset
+	uint16[] stop
+===== ros_robot_controller_msgs/srv/GetPWMServoState
+ros_robot_controller_msgs/GetPWMServoCmd[] cmd
+	uint8 id
+	uint8 get_position
+	uint8 get_offset
+---
+bool success
+ros_robot_controller_msgs/PWMServoState[] state
+	uint16[] id
+	uint16[] position
+	int16[] offset
+===== sensor_msgs/msg/CameraInfo
+# This message defines meta information for a camera. It should be in a
+# camera namespace on topic "camera_info" and accompanied by up to five
+# image topics named:
+#
+#   image_raw - raw data from the camera driver, possibly Bayer encoded
+#   image            - monochrome, distorted
+#   image_color      - color, distorted
+#   image_rect       - monochrome, rectified
+#   image_rect_color - color, rectified
+#
+# The image_pipeline contains packages (image_proc, stereo_image_proc)
+# for producing the four processed image topics from image_raw and
+# camera_info. The meaning of the camera parameters are described in
+# detail at http://www.ros.org/wiki/image_pipeline/CameraInfo.
+#
+# The image_geometry package provides a user-friendly interface to
+# common operations using this meta information. If you want to, e.g.,
+# project a 3d point into image coordinates, we strongly recommend
+# using image_geometry.
+#
+# If the camera is uncalibrated, the matrices D, K, R, P should be left
+# zeroed out. In particular, clients may assume that K[0] == 0.0
+# indicates an uncalibrated camera.
+
+#######################################################################
+#                     Image acquisition info                          #
+#######################################################################
+
+# Time of image acquisition, camera coordinate frame ID
+std_msgs/Header header # Header timestamp should be acquisition time of image
+	builtin_interfaces/Time stamp
+		int32 sec
+		uint32 nanosec
+	string frame_id
+                             # Header frame_id should be optical frame of camera
+                             # origin of frame should be optical center of camera
+                             # +x should point to the right in the image
+                             # +y should point down in the image
+                             # +z should point into the plane of the image
+
+
+#######################################################################
+#                      Calibration Parameters                         #
+#######################################################################
+# These are fixed during camera calibration. Their values will be the #
+# same in all messages until the camera is recalibrated. Note that    #
+# self-calibrating systems may "recalibrate" frequently.              #
+#                                                                     #
+# The internal parameters can be used to warp a raw (distorted) image #
+# to:                                                                 #
+#   1. An undistorted image (requires D and K)                        #
+#   2. A rectified image (requires D, K, R)                           #
+# The projection matrix P projects 3D points into the rectified image.#
+#######################################################################
+
+# The image dimensions with which the camera was calibrated.
+# Normally this will be the full camera resolution in pixels.
+uint32 height
+uint32 width
+
+# The distortion model used. Supported models are listed in
+# sensor_msgs/distortion_models.hpp. For most cameras, "plumb_bob" - a
+# simple model of radial and tangential distortion - is sufficent.
+string distortion_model
+
+# The distortion parameters, size depending on the distortion model.
+# For "plumb_bob", the 5 parameters are: (k1, k2, t1, t2, k3).
+float64[] d
+
+# Intrinsic camera matrix for the raw (distorted) images.
+#     [fx  0 cx]
+# K = [ 0 fy cy]
+#     [ 0  0  1]
+# Projects 3D points in the camera coordinate frame to 2D pixel
+# coordinates using the focal lengths (fx, fy) and principal point
+# (cx, cy).
+float64[9]  k # 3x3 row-major matrix
+
+# Rectification matrix (stereo cameras only)
+# A rotation matrix aligning the camera coordinate system to the ideal
+# stereo image plane so that epipolar lines in both stereo images are
+# parallel.
+float64[9]  r # 3x3 row-major matrix
+
+# Projection/camera matrix
+#     [fx'  0  cx' Tx]
+# P = [ 0  fy' cy' Ty]
+#     [ 0   0   1   0]
+# By convention, this matrix specifies the intrinsic (camera) matrix
+#  of the processed (rectified) image. That is, the left 3x3 portion
+#  is the normal camera intrinsic matrix for the rectified image.
+# It projects 3D points in the camera coordinate frame to 2D pixel
+#  coordinates using the focal lengths (fx', fy') and principal point
+#  (cx', cy') - these may differ from the values in K.
+# For monocular cameras, Tx = Ty = 0. Normally, monocular cameras will
+#  also have R = the identity and P[1:3,1:3] = K.
+# For a stereo pair, the fourth column [Tx Ty 0]' is related to the
+#  position of the optical center of the second camera in the first
+#  camera's frame. We assume Tz = 0 so both cameras are in the same
+#  stereo image plane. The first camera always has Tx = Ty = 0. For
+#  the right (second) camera of a horizontal stereo pair, Ty = 0 and
+#  Tx = -fx' * B, where B is the baseline between the cameras.
+# Given a 3D point [X Y Z]', the projection (x, y) of the point onto
+#  the rectified image is given by:
+#  [u v w]' = P * [X Y Z 1]'
+#         x = u / w
+#         y = v / w
+#  This holds for both images of a stereo pair.
+float64[12] p # 3x4 row-major matrix
+
+
+#######################################################################
+#                      Operational Parameters                         #
+#######################################################################
+# These define the image region actually captured by the camera       #
+# driver. Although they affect the geometry of the output image, they #
+# may be changed freely without recalibrating the camera.             #
+#######################################################################
+
+# Binning refers here to any camera setting which combines rectangular
+#  neighborhoods of pixels into larger "super-pixels." It reduces the
+#  resolution of the output image to
+#  (width / binning_x) x (height / binning_y).
+# The default values binning_x = binning_y = 0 is considered the same
+#  as binning_x = binning_y = 1 (no subsampling).
+uint32 binning_x
+uint32 binning_y
+
+# Region of interest (subwindow of full camera resolution), given in
+#  full resolution (unbinned) image coordinates. A particular ROI
+#  always denotes the same window of pixels on the camera sensor,
+#  regardless of binning settings.
+# The default setting of roi (all values 0) is considered the same as
+#  full resolution (roi.width = width, roi.height = height).
+RegionOfInterest roi
+	#
+	uint32 x_offset  #
+	                 # (0 if the ROI includes the left edge of the image)
+	uint32 y_offset  #
+	                 # (0 if the ROI includes the top edge of the image)
+	uint32 height    #
+	uint32 width     #
+	bool do_rectify
+===== sensor_msgs/msg/CompressedImage
+# This message contains a compressed image.
+
+std_msgs/Header header # Header timestamp should be acquisition time of image
+	builtin_interfaces/Time stamp
+		int32 sec
+		uint32 nanosec
+	string frame_id
+                             # Header frame_id should be optical frame of camera
+                             # origin of frame should be optical center of cameara
+                             # +x should point to the right in the image
+                             # +y should point down in the image
+                             # +z should point into to plane of the image
+
+string format                # Specifies the format of the data
+                             #   Acceptable values:
+                             #     jpeg, png, tiff
+
+uint8[] data                 # Compressed image buffer
+===== sensor_msgs/msg/Image
+# This message contains an uncompressed image
+# (0, 0) is at top-left corner of image
+
+std_msgs/Header header # Header timestamp should be acquisition time of image
+	builtin_interfaces/Time stamp
+		int32 sec
+		uint32 nanosec
+	string frame_id
+                             # Header frame_id should be optical frame of camera
+                             # origin of frame should be optical center of cameara
+                             # +x should point to the right in the image
+                             # +y should point down in the image
+                             # +z should point into to plane of the image
+                             # If the frame_id here and the frame_id of the CameraInfo
+                             # message associated with the image conflict
+                             # the behavior is undefined
+
+uint32 height                # image height, that is, number of rows
+uint32 width                 # image width, that is, number of columns
+
+# The legal values for encoding are in file src/image_encodings.cpp
+# If you want to standardize a new string format, join
+# ros-users@lists.ros.org and send an email proposing a new encoding.
+
+string encoding       # Encoding of pixels -- channel meaning, ordering, size
+                      # taken from the list of strings in include/sensor_msgs/image_encodings.hpp
+
+uint8 is_bigendian    # is this data bigendian?
+uint32 step           # Full row length in bytes
+uint8[] data          # actual matrix data, size is (step * rows)
+===== sensor_msgs/msg/Imu
+# This is a message to hold data from an IMU (Inertial Measurement Unit)
+#
+# Accelerations should be in m/s^2 (not in g's), and rotational velocity should be in rad/sec
+#
+# If the covariance of the measurement is known, it should be filled in (if all you know is the
+# variance of each measurement, e.g. from the datasheet, just put those along the diagonal)
+# A covariance matrix of all zeros will be interpreted as "covariance unknown", and to use the
+# data a covariance will have to be assumed or gotten from some other source
+#
+# If you have no estimate for one of the data elements (e.g. your IMU doesn't produce an
+# orientation estimate), please set element 0 of the associated covariance matrix to -1
+# If you are interpreting this message, please check for a value of -1 in the first element of each
+# covariance matrix, and disregard the associated estimate.
+
+std_msgs/Header header
+	builtin_interfaces/Time stamp
+		int32 sec
+		uint32 nanosec
+	string frame_id
+
+geometry_msgs/Quaternion orientation
+	float64 x 0
+	float64 y 0
+	float64 z 0
+	float64 w 1
+float64[9] orientation_covariance # Row major about x, y, z axes
+
+geometry_msgs/Vector3 angular_velocity
+	float64 x
+	float64 y
+	float64 z
+float64[9] angular_velocity_covariance # Row major about x, y, z axes
+
+geometry_msgs/Vector3 linear_acceleration
+	float64 x
+	float64 y
+	float64 z
+float64[9] linear_acceleration_covariance # Row major x, y z
+===== sensor_msgs/msg/JointState
+# This is a message that holds data to describe the state of a set of torque controlled joints.
+#
+# The state of each joint (revolute or prismatic) is defined by:
+#  * the position of the joint (rad or m),
+#  * the velocity of the joint (rad/s or m/s) and
+#  * the effort that is applied in the joint (Nm or N).
+#
+# Each joint is uniquely identified by its name
+# The header specifies the time at which the joint states were recorded. All the joint states
+# in one message have to be recorded at the same time.
+#
+# This message consists of a multiple arrays, one for each part of the joint state.
+# The goal is to make each of the fields optional. When e.g. your joints have no
+# effort associated with them, you can leave the effort array empty.
+#
+# All arrays in this message should have the same size, or be empty.
+# This is the only way to uniquely associate the joint name with the correct
+# states.
+
+std_msgs/Header header
+	builtin_interfaces/Time stamp
+		int32 sec
+		uint32 nanosec
+	string frame_id
+
+string[] name
+float64[] position
+float64[] velocity
+float64[] effort
+===== sensor_msgs/msg/Joy
+# Reports the state of a joystick's axes and buttons.
+
+# The timestamp is the time at which data is received from the joystick.
+std_msgs/Header header
+	builtin_interfaces/Time stamp
+		int32 sec
+		uint32 nanosec
+	string frame_id
+
+# The axes measurements from a joystick.
+float32[] axes
+
+# The buttons measurements from a joystick.
+int32[] buttons
+===== sensor_msgs/msg/LaserScan
+# Single scan from a planar laser range-finder
+#
+# If you have another ranging device with different behavior (e.g. a sonar
+# array), please find or create a different message, since applications
+# will make fairly laser-specific assumptions about this data
+
+std_msgs/Header header # timestamp in the header is the acquisition time of
+	builtin_interfaces/Time stamp
+		int32 sec
+		uint32 nanosec
+	string frame_id
+                             # the first ray in the scan.
+                             #
+                             # in frame frame_id, angles are measured around
+                             # the positive Z axis (counterclockwise, if Z is up)
+                             # with zero angle being forward along the x axis
+
+float32 angle_min            # start angle of the scan [rad]
+float32 angle_max            # end angle of the scan [rad]
+float32 angle_increment      # angular distance between measurements [rad]
+
+float32 time_increment       # time between measurements [seconds] - if your scanner
+                             # is moving, this will be used in interpolating position
+                             # of 3d points
+float32 scan_time            # time between scans [seconds]
+
+float32 range_min            # minimum range value [m]
+float32 range_max            # maximum range value [m]
+
+float32[] ranges             # range data [m]
+                             # (Note: values < range_min or > range_max should be discarded)
+float32[] intensities        # intensity data [device-specific units].  If your
+                             # device does not provide intensities, please leave
+                             # the array empty.
+===== sensor_msgs/msg/PointCloud2
+# This message holds a collection of N-dimensional points, which may
+# contain additional information such as normals, intensity, etc. The
+# point data is stored as a binary blob, its layout described by the
+# contents of the "fields" array.
+#
+# The point cloud data may be organized 2d (image-like) or 1d (unordered).
+# Point clouds organized as 2d images may be produced by camera depth sensors
+# such as stereo or time-of-flight.
+
+# Time of sensor data acquisition, and the coordinate frame ID (for 3d points).
+std_msgs/Header header
+	builtin_interfaces/Time stamp
+		int32 sec
+		uint32 nanosec
+	string frame_id
+
+# 2D structure of the point cloud. If the cloud is unordered, height is
+# 1 and width is the length of the point cloud.
+uint32 height
+uint32 width
+
+# Describes the channels and their layout in the binary data blob.
+PointField[] fields
+	uint8 INT8    = 1
+	uint8 UINT8   = 2
+	uint8 INT16   = 3
+	uint8 UINT16  = 4
+	uint8 INT32   = 5
+	uint8 UINT32  = 6
+	uint8 FLOAT32 = 7
+	uint8 FLOAT64 = 8
+	string name      #
+	uint32 offset    #
+	uint8  datatype  #
+	uint32 count     #
+
+bool    is_bigendian # Is this data bigendian?
+uint32  point_step   # Length of a point in bytes
+uint32  row_step     # Length of a row in bytes
+uint8[] data         # Actual point data, size is (row_step*height)
+
+bool is_dense        # True if there are no invalid points
+===== servo_controller_msgs/msg/ServosPosition
+float64 duration
+string position_unit
+servo_controller_msgs/ServoPosition[] position
+	uint16 id
+	float32 position
+===== servo_controller_msgs/msg/ServoStateList
+std_msgs/Header header
+	builtin_interfaces/Time stamp
+		int32 sec
+		uint32 nanosec
+	string frame_id
+servo_controller_msgs/ServoState[] servo_state
+	int32 id            #
+	int32 goal          #
+	int32 position      #
+	int32 error         #
+	int32 voltage       #
+===== std_msgs/msg/Bool
+# This was originally provided as an example message.
+# It is deprecated as of Foxy
+# It is recommended to create your own semantically meaningful message.
+# However if you would like to continue using this please use the equivalent in example_msgs.
+
+bool data
+===== std_msgs/msg/Int32
+# This was originally provided as an example message.
+# It is deprecated as of Foxy
+# It is recommended to create your own semantically meaningful message.
+# However if you would like to continue using this please use the equivalent in example_msgs.
+
+int32 data
+===== std_msgs/msg/String
+# This was originally provided as an example message.
+# It is deprecated as of Foxy
+# It is recommended to create your own semantically meaningful message.
+# However if you would like to continue using this please use the equivalent in example_msgs.
+
+string data
+===== std_msgs/msg/UInt16
+# This was originally provided as an example message.
+# It is deprecated as of Foxy
+# It is recommended to create your own semantically meaningful message.
+# However if you would like to continue using this please use the equivalent in example_msgs.
+
+uint16 data
+===== std_srvs/srv/Empty
+---
+===== std_srvs/srv/SetBool
+bool data # e.g. for hardware enabling / disabling
+---
+bool success   # indicate successful run of triggered service
+string message # informational, e.g. for error messages
+===== std_srvs/srv/Trigger
+---
+bool success   # indicate successful run of triggered service
+string message # informational, e.g. for error messages
+===== tf2_msgs/msg/TFMessage
+geometry_msgs/TransformStamped[] transforms
+	#
+	#
+	std_msgs/Header header
+		builtin_interfaces/Time stamp
+			int32 sec
+			uint32 nanosec
+		string frame_id
+	string child_frame_id
+	Transform transform
+		Vector3 translation
+			float64 x
+			float64 y
+			float64 z
+		Quaternion rotation
+			float64 x 0
+			float64 y 0
+			float64 z 0
+			float64 w 1
+===== theora_image_transport/msg/Packet
+# ROS message adaptation of the ogg_packet struct from libogg,
+# see http://www.xiph.org/ogg/doc/libogg/ogg_packet.html.
+
+std_msgs/Header header # Original sensor_msgs/Image header
+	builtin_interfaces/Time stamp
+		int32 sec
+		uint32 nanosec
+	string frame_id
+uint8[] data      # Raw Theora packet data (combines packet and bytes fields from ogg_packet)
+int32 b_o_s       # Flag indicating whether this packet begins a logical bitstream
+int32 e_o_s       # Flag indicating whether this packet ends a bitstream
+int64 granulepos  # A number indicating the position of this packet in the decoded data
+int64 packetno    # Sequential number of this packet in the ogg bitstream

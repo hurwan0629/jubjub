@@ -1,0 +1,7 @@
+string command               # patrol_start | patrol_stop
+int64 patrol_id
+geometry_msgs/Point home     # x, y in the global frame (z ignored)
+geometry_msgs/Point[] points # visit order = array order (server seq 0..n-1)
+---
+bool accepted
+string reason                # already_working | error_state | not_working | invalid

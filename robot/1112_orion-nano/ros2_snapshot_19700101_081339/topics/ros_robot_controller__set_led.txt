@@ -1,0 +1,34 @@
+# /ros_robot_controller/set_led    [ros_robot_controller_msgs/msg/LedState]
+
+## info -v  (pub/sub 노드, QoS: reliability/durability)
+Type: ros_robot_controller_msgs/msg/LedState
+
+Publisher count: 0
+
+Subscription count: 1
+
+Node name: ros_robot_controller
+Node namespace: /
+Topic type: ros_robot_controller_msgs/msg/LedState
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.64.5b.b0.07.d0.e1.00.00.00.00.00.00.16.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+
+## 메시지 구조 (ros2 interface show)
+uint8 id
+float32 on_time
+float32 off_time
+uint16 repeat
+
+## 주기 (hz, 약 3초)
+WARNING: topic [/ros_robot_controller/set_led] does not appear to be published yet
+
+## 샘플 1개 (배열 생략)

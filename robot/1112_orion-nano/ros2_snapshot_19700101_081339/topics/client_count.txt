@@ -1,0 +1,51 @@
+# /client_count    [std_msgs/msg/Int32]
+
+## info -v  (pub/sub 노드, QoS: reliability/durability)
+Type: std_msgs/msg/Int32
+
+Publisher count: 2
+
+Node name: rosbridge_websocket
+Node namespace: /
+Topic type: std_msgs/msg/Int32
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.ec.0a.36.d5.00.00.00.00.00.00.11.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: rosbridge_websocket
+Node namespace: /
+Topic type: std_msgs/msg/Int32
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.ec.0a.36.d5.00.00.00.00.00.00.13.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 0
+
+
+## 메시지 구조 (ros2 interface show)
+# This was originally provided as an example message.
+# It is deprecated as of Foxy
+# It is recommended to create your own semantically meaningful message.
+# However if you would like to continue using this please use the equivalent in example_msgs.
+
+int32 data
+
+## 주기 (hz, 약 4초)
+
+## 샘플 1개 (배열 생략)
+data: 0
+---

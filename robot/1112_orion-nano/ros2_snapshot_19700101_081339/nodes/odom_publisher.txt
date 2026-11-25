@@ -1,0 +1,42 @@
+# /odom_publisher
+## node info
+/odom_publisher
+  Subscribers:
+    /cmd_vel: geometry_msgs/msg/Twist
+    /controller/cmd_vel: geometry_msgs/msg/Twist
+    /set_odom: geometry_msgs/msg/Pose2D
+  Publishers:
+    /odom_raw: nav_msgs/msg/Odometry
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /ros_robot_controller/bus_servo/set_state: ros_robot_controller_msgs/msg/SetBusServoState
+    /ros_robot_controller/set_motor: ros_robot_controller_msgs/msg/MotorsState
+    /rosout: rcl_interfaces/msg/Log
+    /set_pose: geometry_msgs/msg/PoseWithCovarianceStamped
+  Service Servers:
+    /controller/load_calibrate_param: std_srvs/srv/Trigger
+    /odom_publisher/describe_parameters: rcl_interfaces/srv/DescribeParameters
+    /odom_publisher/get_parameter_types: rcl_interfaces/srv/GetParameterTypes
+    /odom_publisher/get_parameters: rcl_interfaces/srv/GetParameters
+    /odom_publisher/init_finish: std_srvs/srv/Trigger
+    /odom_publisher/list_parameters: rcl_interfaces/srv/ListParameters
+    /odom_publisher/set_parameters: rcl_interfaces/srv/SetParameters
+    /odom_publisher/set_parameters_atomically: rcl_interfaces/srv/SetParametersAtomically
+  Service Clients:
+
+  Action Servers:
+
+  Action Clients:
+
+
+## param dump
+/odom_publisher:
+  ros__parameters:
+    angular_correction_factor: 1.0
+    base_frame_id: base_footprint
+    linear_correction_factor: 1.0
+    linear_correction_factor_tank: 0.52
+    machine_type: JetRover_Mecanum
+    odom_frame_id: odom
+    pub_odom_topic: true
+    use_sim_time: false
+

@@ -1,0 +1,477 @@
+# /rosout    [rcl_interfaces/msg/Log]
+
+## info -v  (pub/sub 노드, QoS: reliability/durability)
+Type: rcl_interfaces/msg/Log
+
+Publisher count: 29
+
+Node name: web_video_server
+Node namespace: /
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.1e.08.47.2a.00.00.00.00.00.00.03.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: lidar_app
+Node namespace: /
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.30.08.d8.f4.00.00.00.00.00.00.03.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: line_following
+Node namespace: /
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.35.08.17.2f.00.00.00.00.00.00.03.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: object_tracking
+Node namespace: /
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.44.08.fc.a5.00.00.00.00.00.00.03.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: ar_app
+Node namespace: /
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.4e.08.8a.90.00.00.00.00.00.00.03.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: hand_trajectory
+Node namespace: /
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.58.08.fc.35.00.00.00.00.00.00.03.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: hand_gesture
+Node namespace: /
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.5f.08.d7.05.00.00.00.00.00.00.03.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: joystick_control
+Node namespace: /
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.6a.08.44.45.00.00.00.00.00.00.03.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: init_pose
+Node namespace: /
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.6f.08.40.27.00.00.00.00.00.00.03.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: _ros2cli_daemon_0_5bab9637a79d44229fdcd0c934116a2f
+Node namespace: /
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.9e.11.ef.c1.00.00.00.00.00.00.03.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: joint_state_publisher
+Node namespace: /
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.aa.07.85.4b.00.00.00.00.00.00.03.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: ros_robot_controller
+Node namespace: /
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.b0.07.d0.e1.00.00.00.00.00.00.03.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: odom_publisher
+Node namespace: /
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.b6.07.58.b5.00.00.00.00.00.00.03.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: controller_manager
+Node namespace: /
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.c8.07.c7.9a.00.00.00.00.00.00.03.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: servo_manager
+Node namespace: /
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.c8.07.c7.9a.00.00.00.00.00.00.11.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: arm_controller
+Node namespace: /
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.c8.07.c7.9a.00.00.00.00.00.00.22.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: gripper_controller
+Node namespace: /
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.c8.07.c7.9a.00.00.00.00.00.00.38.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: rosbridge_websocket
+Node namespace: /
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.f4.0a.fc.df.00.00.00.00.00.00.03.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: rosapi
+Node namespace: /
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.f8.0a.72.68.00.00.00.00.00.00.03.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: rosapi_params
+Node namespace: /
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.f8.0a.72.68.00.00.00.00.00.00.11.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: imu_calib
+Node namespace: /
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.7f.01.98.07.54.70.00.00.00.00.00.00.03.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: launch_ros_672
+Node namespace: /
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.7f.01.a0.02.0f.ef.00.00.00.00.00.00.03.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: imu_filter
+Node namespace: /
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.7f.01.a3.07.7a.f8.00.00.00.00.00.00.03.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: robot_state_publisher
+Node namespace: /
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.7f.01.ad.07.91.e2.00.00.00.00.00.00.03.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: ekf_filter_node
+Node namespace: /
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.7f.01.c0.07.b2.85.00.00.00.00.00.00.03.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: transform_listener_impl_aaaab9382fb0
+Node namespace: /
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.7f.01.c0.07.b2.85.00.00.00.00.00.00.12.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: camera_container
+Node namespace: /depth_cam
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.7f.01.d3.07.5a.38.00.00.00.00.00.00.03.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: depth_cam
+Node namespace: /depth_cam
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.7f.01.d3.07.5a.38.00.00.00.00.00.00.0b.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: scan_to_scan_filter_chain
+Node namespace: /
+Topic type: rcl_interfaces/msg/Log
+Endpoint type: PUBLISHER
+GID: 01.0f.7f.01.f2.07.86.c6.00.00.00.00.00.00.03.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: 10000000000 nanoseconds
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 0
+
+
+## 메시지 구조 (ros2 interface show)
+##
+## Severity level constants
+##
+## These logging levels follow the Python Standard
+## https://docs.python.org/3/library/logging.html#logging-levels
+## And are implemented in rcutils as well
+## https://github.com/ros2/rcutils/blob/35f29850064e0c33a4063cbc947ebbfeada11dba/include/rcutils/logging.h#L164-L172
+## This leaves space for other standard logging levels to be inserted in the middle in the future,
+## as well as custom user defined levels.
+## Since there are several other logging enumeration standard for different implementations,
+## other logging implementations may need to provide level mappings to match their internal implementations.
+##
+
+# Debug is for pedantic information, which is useful when debugging issues.
+byte DEBUG=10
+
+# Info is the standard informational level and is used to report expected
+# information.
+byte INFO=20
+
+# Warning is for information that may potentially cause issues or possibly unexpected
+# behavior.
+byte WARN=30
+
+# Error is for information that this node cannot resolve.
+byte ERROR=40
+
+# Information about a impending node shutdown.
+byte FATAL=50
+
+##
+## Fields
+##
+
+# Timestamp when this message was generated by the node.
+builtin_interfaces/Time stamp
+	int32 sec
+	uint32 nanosec
+
+# Corresponding log level, see above definitions.
+uint8 level
+
+# The name representing the logger this message came from.
+string name
+
+# The full log message.
+string msg
+
+# The file the message came from.
+string file
+
+# The function the message came from.
+string function
+
+# The line in the file the message came from.
+uint32 line
+
+## 주기 (hz, 약 3초)
+
+## 샘플 1개 (배열 생략)

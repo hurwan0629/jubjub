@@ -13,7 +13,7 @@ JetHexa 6족 로봇으로 공원에 떨어진 쓰레기를 **카메라로 인식
 | 이희승 | [members/lee-heeseung](members/lee-heeseung) | @heeseung0517, @kjalh | TBD |
 | 권민이 | [members/kwon-minyi](members/kwon-minyi) | @KwonMinee | TBD |
 | 배성욱 | [members/bae-seonguk](members/bae-seonguk) | @BaeSungUk | TBD |
-| 허완 | [members/hur-wan](members/hur-wan) | @hurwan0629 | TBD |
+| 허완 | [members/hur-wan](members/hur-wan) | @hurwan0629 | ros2 jubjub 패키지 기획 & 객체탐지 |
 
 ## 폴더 구조
 

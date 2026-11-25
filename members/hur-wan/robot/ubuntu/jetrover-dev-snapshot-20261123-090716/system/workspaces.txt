@@ -1,0 +1,36 @@
+===== /home/ubuntu/ros2_ws
+/home/ubuntu/ros2_ws/src/calibration/package.xml
+/home/ubuntu/ros2_ws/src/large_models/large_models_msgs/package.xml
+/home/ubuntu/ros2_ws/src/large_models/large_models/package.xml
+/home/ubuntu/ros2_ws/src/simulations/jetrover_description/package.xml
+/home/ubuntu/ros2_ws/src/example/package.xml
+/home/ubuntu/ros2_ws/src/slam/package.xml
+/home/ubuntu/ros2_ws/src/xf_mic_asr_offline_msgs/package.xml
+/home/ubuntu/ros2_ws/src/peripherals/package.xml
+/home/ubuntu/ros2_ws/src/xf_mic_asr_offline/package.xml
+/home/ubuntu/ros2_ws/src/driver/ros_robot_controller_msgs/package.xml
+/home/ubuntu/ros2_ws/src/driver/controller/package.xml
+/home/ubuntu/ros2_ws/src/driver/ros_robot_controller/package.xml
+/home/ubuntu/ros2_ws/src/driver/kinematics_msgs/package.xml
+/home/ubuntu/ros2_ws/src/driver/servo_controller_msgs/package.xml
+/home/ubuntu/ros2_ws/src/driver/sdk/package.xml
+/home/ubuntu/ros2_ws/src/driver/servo_controller/package.xml
+/home/ubuntu/ros2_ws/src/driver/kinematics/package.xml
+/home/ubuntu/ros2_ws/src/interfaces/package.xml
+/home/ubuntu/ros2_ws/src/navigation/package.xml
+/home/ubuntu/ros2_ws/src/large_models_examples/package.xml
+/home/ubuntu/ros2_ws/src/bringup/package.xml
+/home/ubuntu/ros2_ws/src/app/package.xml
+## main
+?? src/large_models_examples/large_models_examples/resources/models/FastSAM-x.pt
+===== /home/ubuntu/third_party
+===== /home/ubuntu/hurwan_ws
+/home/ubuntu/hurwan_ws/src/hurwan_robot/package.xml
+===== /home/ubuntu/jubjub_ws
+/home/ubuntu/jubjub_ws/src/jubjub_robot/package.xml
+
+MODELS
+best.pt 5458778 bytes
+compose_v1_best.engine 7967217 bytes
+compose_v1_best.pt 5488794 bytes
+compose_v1_best.onnx 10666302 bytes

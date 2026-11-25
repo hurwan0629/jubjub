@@ -1,0 +1,64 @@
+# Parameters for the sandboxed JUBJUB pipeline. Nothing here enables actuation.
+claude_trash_detector:
+  ros__parameters:
+    model_path: /home/ubuntu/hurwan_ws/models/best.pt   # classes: general/plastic/can/glass
+    confidence: 0.4
+    max_hz: 2.0
+    depth_unit_m: 0.001
+    roi_ratio: 0.4
+    min_valid_ratio: 0.15
+
+claude_trash_tracker:
+  ros__parameters:
+    global_frame: odom
+    match_distance_m: 0.25
+    track_timeout_s: 5.0
+    min_hits: 3
+
+claude_nav_adapter:
+  ros__parameters:
+    backend: plan_mock          # plan_mock = real Nav2 planning + virtual driving
+    global_frame: odom
+    base_frame: base_footprint
+    speed_mps: 0.3
+    time_scale: 2.0             # simulated drive runs 2x faster than real time
+
+claude_jubjub_manager:
+  ros__parameters:
+    global_frame: odom
+    retry_wait_s: 2.0
+    max_consecutive_skips: 2
+    max_consecutive_pick_failures: 3
+    pick_enabled: true
+    max_target_distance_m: 2.5
+    approach_standoff_m: 0.20
+    min_pick_confidence: 0.5
+    sandbox_virtual_base: true
+    device_timeout_s: 5.0
+    watch_devices: [camera, lidar]
+    low_battery_v: 0.0
+
+claude_arm_ik:
+  ros__parameters:
+    root_frame: base_footprint
+    tip_frame: end_effector_link
+    pregrasp_height_m: 0.08
+    grasp_height_m: 0.02
+    simulated_step_s: 0.3
+
+claude_geo_localizer:
+  ros__parameters:
+    global_frame: odom
+    # [lat0, lng0, slam_x0, slam_y0, lat1, lng1, slam_x1, slam_y1]  (example; use parks.anchor_points)
+    anchors: [37.5283, 126.9330, 0.0, 0.0, 37.5286, 126.9334, 40.0, 0.0]
+
+claude_fake_gps:
+  ros__parameters:
+    anchors: [37.5283, 126.9330, 0.0, 0.0, 37.5286, 126.9334, 40.0, 0.0]
+    noise_m: 1.5
+
+claude_server_bridge:
+  ros__parameters:
+    status_period_s: 3.0
+    ack_timeout_s: 10.0
+    outbox_path: ~/.jubjub_claude/outbox.json

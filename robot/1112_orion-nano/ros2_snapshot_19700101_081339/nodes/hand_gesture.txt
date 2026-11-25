@@ -1,0 +1,38 @@
+# /hand_gesture
+## node info
+/hand_gesture
+  Subscribers:
+
+  Publishers:
+    /controller/cmd_vel: geometry_msgs/msg/Twist
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /ros_robot_controller/set_motor: ros_robot_controller_msgs/msg/MotorsState
+    /rosout: rcl_interfaces/msg/Log
+    /servo_controller: servo_controller_msgs/msg/ServosPosition
+  Service Servers:
+    /hand_gesture/describe_parameters: rcl_interfaces/srv/DescribeParameters
+    /hand_gesture/enter: std_srvs/srv/Trigger
+    /hand_gesture/exit: std_srvs/srv/Trigger
+    /hand_gesture/get_parameter_types: rcl_interfaces/srv/GetParameterTypes
+    /hand_gesture/get_parameters: rcl_interfaces/srv/GetParameters
+    /hand_gesture/heartbeat: std_srvs/srv/SetBool
+    /hand_gesture/init_finish: std_srvs/srv/Trigger
+    /hand_gesture/list_parameters: rcl_interfaces/srv/ListParameters
+    /hand_gesture/set_parameters: rcl_interfaces/srv/SetParameters
+    /hand_gesture/set_parameters_atomically: rcl_interfaces/srv/SetParametersAtomically
+    /hand_gesture/set_running: std_srvs/srv/SetBool
+  Service Clients:
+    /hand_trajectory/enter: std_srvs/srv/Trigger
+    /hand_trajectory/exit: std_srvs/srv/Trigger
+    /hand_trajectory/start: std_srvs/srv/Trigger
+    /hand_trajectory/stop: std_srvs/srv/Trigger
+  Action Servers:
+
+  Action Clients:
+
+
+## param dump
+/hand_gesture:
+  ros__parameters:
+    use_sim_time: false
+

@@ -1,0 +1,37 @@
+# /connected_clients    [rosbridge_msgs/msg/ConnectedClients]
+
+## info -v  (pub/sub 노드, QoS: reliability/durability)
+Type: rosbridge_msgs/msg/ConnectedClients
+
+Publisher count: 1
+
+Node name: rosbridge_websocket
+Node namespace: /
+Topic type: rosbridge_msgs/msg/ConnectedClients
+Endpoint type: PUBLISHER
+GID: 01.0f.64.5b.ec.0a.36.d5.00.00.00.00.00.00.12.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: TRANSIENT_LOCAL
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 0
+
+
+## 메시지 구조 (ros2 interface show)
+ConnectedClient[] clients
+	string ip_address
+	builtin_interfaces/Time connection_time
+		int32 sec
+		uint32 nanosec
+
+## 주기 (hz, 약 4초)
+WARNING: topic [/connected_clients] does not appear to be published yet
+
+## 샘플 1개 (배열 생략)
+clients: '<sequence type: rosbridge_msgs/msg/ConnectedClient, length: 0>'
+---
