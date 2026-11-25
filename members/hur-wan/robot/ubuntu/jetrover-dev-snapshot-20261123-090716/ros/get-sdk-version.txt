@@ -1,0 +1,7 @@
+2026-11-23T09:16:13+09:00
+waiting for service to become available...
+requester: making request: orbbec_camera_msgs.srv.GetString_Request()
+
+response:
+orbbec_camera_msgs.srv.GetString_Response(data='{\n  "firmware_version": "RD2460",\n  "ob_sdk_version": "1.10.22",\n  "ros_sdk_version": "1.5.12",\n  "supported_min_sdk_version": ""\n}', success=True, message='')
+

@@ -1,0 +1,8 @@
+geometry_msgs/PoseStamped goal
+---
+bool success
+string reason                # planner_failed | timeout | canceled | nav2_failed
+float64 path_length_m
+---
+float64 distance_remaining_m
+geometry_msgs/Pose2D current

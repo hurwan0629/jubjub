@@ -1,0 +1,6 @@
+# Test override used on 2026-11-24: the lidar driver was alive but published 0 Hz, so the
+# manager's device watchdog would (correctly) stop every patrol with device_failure.
+# Watch only the camera so the rest of the flow can be exercised. Do NOT use in real runs.
+claude_jubjub_manager:
+  ros__parameters:
+    watch_devices: [camera]

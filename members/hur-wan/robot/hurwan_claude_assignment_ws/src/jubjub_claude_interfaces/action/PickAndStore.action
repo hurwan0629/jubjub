@@ -1,0 +1,9 @@
+geometry_msgs/PointStamped target
+string material              # which bin slot to drop into
+---
+bool success
+string reason                # unreachable | ik_failed | grasp_failed | canceled
+int32 attempts
+trajectory_msgs/JointTrajectory plan
+---
+string stage

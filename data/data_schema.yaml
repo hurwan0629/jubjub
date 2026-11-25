@@ -1,0 +1,9 @@
+path: dataset/root
+train: images/train
+val: images/val
+test: images/test # optional
+names:
+  0: general
+  1: plastic
+  2: can
+  3: glass

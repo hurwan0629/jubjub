@@ -1,0 +1,251 @@
+/depth_cam/depth_cam:
+  ros__parameters:
+    ? ''
+    : color:
+        image_raw:
+          format: jpeg
+          jpeg_quality: 95
+          png_level: 3
+          tiff:
+            res_unit: inch
+            xdpi: -1
+            ydpi: -1
+      depth:
+        image_raw:
+          format: jpeg
+          jpeg_quality: 95
+          png_level: 3
+          tiff:
+            res_unit: inch
+            xdpi: -1
+            ydpi: -1
+      ir:
+        image_raw:
+          format: jpeg
+          jpeg_quality: 95
+          png_level: 3
+          tiff:
+            res_unit: inch
+            xdpi: -1
+            ydpi: -1
+    accel_optical_frame_id: depth_cam_accel_optical_frame
+    accel_qos: default
+    accel_range: ''
+    accel_rate: ''
+    align_mode: HW
+    align_target_stream: COLOR
+    angular_vel_cov: 0.02
+    camera_name: depth_cam
+    cloud_frame_id: ''
+    color:
+      image_raw:
+        enable_pub_plugins:
+        - image_transport/compressedDepth
+        - image_transport/compressed
+        - image_transport/raw
+        - image_transport/theora
+    color_ae_max_exposure: -1
+    color_ae_roi_bottom: -1
+    color_ae_roi_left: -1
+    color_ae_roi_right: -1
+    color_ae_roi_top: -1
+    color_brightness: -1
+    color_camera_info_qos: default
+    color_contrast: -1
+    color_delay_us: 0
+    color_exposure: -1
+    color_format: MJPG
+    color_fps: 30
+    color_gain: -1
+    color_gamma: -1
+    color_height: 360
+    color_hue: -1
+    color_info_url: ''
+    color_optical_frame_id: depth_cam_color_optical_frame
+    color_qos: default
+    color_rotation: -1
+    color_saturation: -1
+    color_sharpness: -1
+    color_white_balance: -1
+    color_width: 640
+    connection_delay: 100
+    decimation_filter_scale: -1
+    depth:
+      image_raw:
+        enable_pub_plugins:
+        - image_transport/compressedDepth
+        - image_transport/compressed
+        - image_transport/raw
+        - image_transport/theora
+    depth_ae_roi_bottom: -1
+    depth_ae_roi_left: -1
+    depth_ae_roi_right: -1
+    depth_ae_roi_top: -1
+    depth_cam_accel_frame_id: depth_cam_accel_frame
+    depth_cam_color_frame_id: depth_cam_color_frame
+    depth_cam_depth_frame_id: depth_cam_depth_frame
+    depth_cam_gyro_frame_id: depth_cam_gyro_frame
+    depth_cam_ir_frame_id: depth_cam_ir_frame
+    depth_cam_left_ir_frame_id: depth_cam_left_ir_frame
+    depth_cam_right_ir_frame_id: depth_cam_right_ir_frame
+    depth_camera_info_qos: default
+    depth_delay_us: 0
+    depth_filter_config: ''
+    depth_format: Y11
+    depth_fps: 30
+    depth_height: 360
+    depth_optical_frame_id: depth_cam_depth_optical_frame
+    depth_precision: ''
+    depth_qos: default
+    depth_registration: true
+    depth_rotation: -1
+    depth_width: 640
+    depth_work_mode: ''
+    device_num: 1
+    device_preset: ''
+    diagnostic_period: 1.0
+    diagnostic_updater:
+      period: 1.0
+      use_fqn: false
+    enable_3d_reconstruction_mode: false
+    enable_accel: false
+    enable_color: true
+    enable_color_auto_exposure: true
+    enable_color_auto_white_balance: true
+    enable_color_undistortion: false
+    enable_colored_point_cloud: false
+    enable_d2c_viewer: false
+    enable_decimation_filter: false
+    enable_depth: true
+    enable_depth_scale: true
+    enable_frame_sync: false
+    enable_gyro: false
+    enable_hardware_d2d: true
+    enable_hardware_reset: false
+    enable_hdr_merge: false
+    enable_heartbeat: false
+    enable_hole_filling_filter: false
+    enable_ir: true
+    enable_ir_auto_exposure: true
+    enable_ir_long_exposure: true
+    enable_laser: true
+    enable_ldp: true
+    enable_left_ir: false
+    enable_noise_removal_filter: true
+    enable_point_cloud: true
+    enable_right_ir: false
+    enable_sequence_id_filter: false
+    enable_soft_filter: true
+    enable_spatial_filter: false
+    enable_sync_host_time: true
+    enable_sync_output_accel_gyro: false
+    enable_temporal_filter: false
+    enable_threshold_filter: false
+    enumerate_net_device: false
+    flip_color: false
+    flip_depth: false
+    flip_ir: false
+    flip_left_ir: false
+    flip_right_ir: false
+    frame_aggregate_mode: ANY
+    frames_per_trigger: 2
+    gyro_optical_frame_id: depth_cam_gyro_optical_frame
+    gyro_qos: default
+    gyro_range: ''
+    gyro_rate: ''
+    hdr_merge_exposure_1: -1
+    hdr_merge_exposure_2: -1
+    hdr_merge_gain_1: -1
+    hdr_merge_gain_2: -1
+    hole_filling_filter_mode: ''
+    industry_mode: ''
+    ir:
+      image_raw:
+        enable_pub_plugins:
+        - image_transport/compressedDepth
+        - image_transport/compressed
+        - image_transport/raw
+        - image_transport/theora
+    ir_ae_max_exposure: -1
+    ir_brightness: -1
+    ir_camera_info_qos: default
+    ir_exposure: -1
+    ir_format: Y10
+    ir_fps: 30
+    ir_gain: -1
+    ir_height: 480
+    ir_info_url: ''
+    ir_optical_frame_id: depth_cam_ir_optical_frame
+    ir_qos: default
+    ir_width: 640
+    laser_energy_level: -1
+    laser_on_off_mode: 0
+    left_ir_camera_info_qos: default
+    left_ir_format: Y16
+    left_ir_fps: 0
+    left_ir_height: 0
+    left_ir_optical_frame_id: depth_cam_left_ir_optical_frame
+    left_ir_qos: default
+    left_ir_rotation: -1
+    left_ir_width: 0
+    linear_accel_cov: 0.0003
+    log_level: none
+    max_depth_limit: 0
+    max_save_images_count: 10
+    min_depth_limit: 0
+    net_device_ip: ''
+    net_device_port: 0
+    noise_removal_filter_max_size: 80
+    noise_removal_filter_min_diff: 256
+    ordered_pc: false
+    point_cloud_qos: default
+    publish_tf: true
+    qos_overrides:
+      /parameter_events:
+        publisher:
+          depth: 1000
+          durability: volatile
+          history: keep_last
+          reliability: reliable
+      /tf:
+        publisher:
+          depth: 100
+          durability: volatile
+          history: keep_last
+          reliability: reliable
+      /tf_static:
+        publisher:
+          depth: 1
+          history: keep_last
+          reliability: reliable
+    retry_on_usb3_detection_failure: false
+    right_ir_camera_info_qos: default
+    right_ir_format: Y16
+    right_ir_fps: 0
+    right_ir_height: 0
+    right_ir_optical_frame_id: depth_cam_right_ir_optical_frame
+    right_ir_qos: default
+    right_ir_rotation: -1
+    right_ir_width: 0
+    sequence_id_filter_id: -1
+    serial_number: ''
+    soft_filter_max_diff: 8
+    soft_filter_speckle_size: 100
+    software_trigger_period: 33
+    spatial_filter_alpha: -1.0
+    spatial_filter_diff_threshold: -1
+    spatial_filter_magnitude: -1
+    spatial_filter_radius: -1
+    sync_mode: ''
+    temporal_filter_diff_threshold: -1.0
+    temporal_filter_weight: -1.0
+    tf_publish_rate: 10.0
+    threshold_filter_max: -1
+    threshold_filter_min: -1
+    time_domain: device
+    trigger2image_delay_us: 0
+    trigger_out_delay_us: 0
+    trigger_out_enabled: false
+    usb_port: ''
+    use_sim_time: false
+

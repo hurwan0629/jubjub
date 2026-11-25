@@ -1,0 +1,8 @@
+﻿dataset,train_images,val_images,test_images,images,boxes,boxes_per_image,empty_images
+aihub_living,102271,12784,0,115055,134448,1.169,8966
+taco,1200,150,150,1500,3942,2.628,71
+drinking_waste,3848,482,481,4811,5058,1.051,0
+plastopol,988,399,500,1887,3924,2.079,0
+click,875,109,110,1094,2142,1.958,4
+tod,2180,208,335,2723,10680,3.922,0
+howa,5642,784,495,6921,6921,1.0,0

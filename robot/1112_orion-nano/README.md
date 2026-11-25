@@ -2,6 +2,21 @@
 ![alt text](./assets/robot_image_01.png)
 ![alt text](./assets/robot_image_02.png)
 
+# 맥주소 및 네트워크 인터페이스
+```bash
+> ip -br addr
+lo               UNKNOWN        127.0.0.1/8 ::1/128
+wlan0            UP             192.168.0.234/24 fe80::3d27:fbed:9c0c:4ea4/64
+can0             DOWN
+eth0             DOWN
+l4tbr0           DOWN           192.168.55.1/24 fe80::1/128
+usb0             DOWN
+usb1             DOWN
+docker0          DOWN           172.17.0.1/16
+> ip link show wlan0 | grep ether
+    link/ether dc:4a:9e:f2:56:15 brd ff:ff:ff:ff:ff:ff
+```
+
 # 실행 시 나오는 화면
 ```bash
 ----------------------------------------------

@@ -1,0 +1,40 @@
+2026-11-23T09:59:27+09:00
+    PID    PPID USER       RSS    VSZ COMMAND
+   1927     650 ubuntu   204356 3454040 hand_trajectory
+   1874     650 ubuntu   184800 2853312 lidar_controlle
+   1883     650 ubuntu   116592 2830464 object_tracking
+   1908     650 ubuntu   110512 3128276 ar_app
+   1954     650 ubuntu   109040 2821016 joystick_contro
+   1934     650 ubuntu   108172 2965820 hand_gesture
+   1881     650 ubuntu   103564 2830464 line_following
+   1817     650 ubuntu   79736 2285724 component_conta
+   2362    1840 ubuntu   61740 935364 python3
+   2365    1840 ubuntu   58020 928572 python3
+   1795     650 ubuntu   54800 1074308 ros_robot_contr
+   1814     650 ubuntu   53704 1009784 servo_controlle
+    975       1 nx       51152 2368920 nxserver.bin
+   1799     650 ubuntu   50760 999616 odom_publisher
+   1777     650 ubuntu   49320 924244 joint_state_pub
+    650       1 ubuntu   42728 2448584 ros2
+   1973     650 ubuntu   41272 925672 init_pose
+   1868     650 ubuntu   40912 1237808 web_video_serve
+   2962       1 ubuntu   37540 922432 python3
+   1122       1 root     32032 2122892 dockerd
+    875       1 root     24596 2009328 containerd
+   1810     650 ubuntu   22960 715792 ekf_node
+   1775     650 ubuntu   22372 638184 imu_filter_madg
+   1840     650 ubuntu   21840 206060 ros2
+   1821     650 ubuntu   21136 781980 sllidar_node
+   1771     650 ubuntu   20800 634460 apply_calib
+   1782     650 ubuntu   20184 638048 robot_state_pub
+   1830     650 ubuntu   19040 639912 scan_to_scan_fi
+   2683    2676 ubuntu   18856 590820 pulseaudio
+PSS_KiB 1927 159944
+PSS_KiB 1874 140433
+PSS_KiB 1908 66445
+PSS_KiB 1881 59108
+PSS_KiB 1954 62845
+PSS_KiB 1883 72125
+PSS_KiB 1934 64081
+PSS_KiB 1817 65259
+PSS_KiB 1814 32116

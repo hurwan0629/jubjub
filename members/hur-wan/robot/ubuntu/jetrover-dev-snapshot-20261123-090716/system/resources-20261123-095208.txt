@@ -1,0 +1,33 @@
+2026-11-23T09:52:08+09:00
+               total        used        free      shared  buff/cache   available
+Mem:      3776815104  2280747008   366411776    31911936  1129656320  1241161728
+Swap:    10478325760   176947200 10301378560
+Filesystem       1B-blocks        Used  Available Use% Mounted on
+/dev/nvme0n1p1 69868863488 62086103040 4800925696  93% /
+Filesystem      Type  Size  Used Avail Use% Mounted on
+/dev/nvme0n1p1  ext4   66G   58G  4.5G  93% /
+/dev/nvme0n1p10 vfat   63M  110K   63M   1% /boot/efi
+NAME           SIZE FSTYPE MOUNTPOINTS
+loop0           16M        
+zram0        300.2M        [SWAP]
+zram1        300.2M        [SWAP]
+zram2        300.2M        [SWAP]
+zram3        300.2M        [SWAP]
+zram4        300.2M        [SWAP]
+zram5        300.2M        [SWAP]
+nvme0n1      119.2G        
+├─nvme0n1p1   66.7G ext4   /
+├─nvme0n1p2    128M        
+├─nvme0n1p3    768K        
+├─nvme0n1p4   31.6M        
+├─nvme0n1p5    128M        
+├─nvme0n1p6    768K        
+├─nvme0n1p7   31.6M        
+├─nvme0n1p8     80M        
+├─nvme0n1p9    512K        
+├─nvme0n1p10    64M vfat   /boot/efi
+├─nvme0n1p11    80M        
+├─nvme0n1p12   512K        
+├─nvme0n1p13    64M        
+├─nvme0n1p14   400M        
+└─nvme0n1p15 479.5M        

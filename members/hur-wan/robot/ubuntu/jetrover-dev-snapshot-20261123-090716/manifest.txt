@@ -1,0 +1,4 @@
+captured_at=2026-11-23T09:10:02+09:00
+host=ubuntu
+file_count=239
+supplemented_at=2026-11-23T10:08:45+09:00

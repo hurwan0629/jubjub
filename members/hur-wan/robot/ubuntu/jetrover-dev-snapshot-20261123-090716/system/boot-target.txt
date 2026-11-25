@@ -1,0 +1,49 @@
+multi-user.target
+● start_app_node.service - start node
+     Loaded: loaded (/etc/systemd/system/start_app_node.service; enabled; vendor preset: enabled)
+     Active: active (running) since Thu 1970-01-01 09:00:34 KST; 56 years 10 months ago
+   Main PID: 650 (ros2)
+      Tasks: 421 (limit: 3987)
+     Memory: 1.6G
+        CPU: 32min 59.601s
+     CGroup: /system.slice/start_app_node.service
+             ├─ 650 /usr/bin/python3 /opt/ros/humble/bin/ros2 launch bringup bringup.launch.py
+             ├─1771 /home/ubuntu/third_party/third_party_ws/install/imu_calib/lib/imu_calib/apply_calib --ros-args -r __node:=imu_calib --params-file /tmp/launch_params_ovoy_t26 -r raw:=ros_robot_controller/imu_raw -r corrected:=imu_corrected
+             ├─1775 /opt/ros/humble/lib/imu_filter_madgwick/imu_filter_madgwick_node --ros-args -r __node:=imu_filter --params-file /tmp/launch_params_pkczgw5s -r /tf:=tf -r /imu/data_raw:=imu_corrected -r imu/data:=imu
+             ├─1777 /usr/bin/python3 /opt/ros/humble/lib/joint_state_publisher/joint_state_publisher --ros-args -r __node:=joint_state_publisher --params-file /tmp/launch_params_ypc1knkl
+             ├─1782 /opt/ros/humble/lib/robot_state_publisher/robot_state_publisher /home/ubuntu/ros2_ws/src/simulations/jetrover_description/urdf/jetrover.xacro --ros-args -r __node:=robot_state_publisher --params-file /tmp/launch_params_m0oesia0 -r /tf:=tf -r /tf_static:=tf_static
+             ├─1795 /usr/bin/python3 /home/ubuntu/ros2_ws/install/ros_robot_controller/lib/ros_robot_controller/ros_robot_controller --ros-args --params-file /tmp/launch_params_9ygksnpa
+             ├─1799 /usr/bin/python3 /home/ubuntu/ros2_ws/install/controller/lib/controller/odom_publisher --ros-args -r __node:=odom_publisher --params-file /home/ubuntu/ros2_ws/src/driver/controller/config/calibrate_params.yaml --params-file /tmp/launch_params_ujm1dsgc
+             ├─1810 /opt/ros/humble/lib/robot_localization/ekf_node --ros-args -r __node:=ekf_filter_node --params-file /tmp/tmppsewsduq --params-file /tmp/launch_params_q5fb8otl -r /tf:=tf -r /tf_static:=tf_static -r odometry/filtered:=odom -r cmd_vel:=controller/cmd_vel
+             ├─1814 /usr/bin/python3 /home/ubuntu/ros2_ws/install/servo_controller/lib/servo_controller/servo_controller --ros-args --params-file /home/ubuntu/ros2_ws/src/driver/servo_controller/config/servo_controller.yaml --params-file /tmp/launch_params_9adx62tv
+             ├─1817 /opt/ros/humble/lib/rclcpp_components/component_container --ros-args -r __node:=camera_container -r __ns:=/depth_cam
+             ├─1821 /home/ubuntu/third_party/third_party_ws/install/sllidar_ros2/lib/sllidar_ros2/sllidar_node --ros-args -r __node:=sllidar_node --params-file /tmp/launch_params_2pw6llki -r scan:=scan_raw
+             ├─1830 /home/ubuntu/third_party/third_party_ws/install/laser_filters/lib/laser_filters/scan_to_scan_filter_chain --ros-args --params-file /home/ubuntu/ros2_ws/src/peripherals/config/lidar_filters_config_a1.yaml -r scan:=scan_raw -r scan_filtered:=scan
+             ├─1840 /usr/bin/python3 /opt/ros/humble/bin/ros2 launch rosbridge_server rosbridge_websocket_launch.xml
+             ├─1868 /home/ubuntu/third_party/third_party_ws/install/web_video_server/lib/web_video_server/web_video_server --ros-args
+             ├─1874 /usr/bin/python3 /home/ubuntu/ros2_ws/install/app/lib/app/lidar_controller --ros-args
+             ├─1881 /usr/bin/python3 /home/ubuntu/ros2_ws/install/app/lib/app/line_following --ros-args --params-file /tmp/launch_params_7kzswcuo
+             ├─1883 /usr/bin/python3 /home/ubuntu/ros2_ws/install/app/lib/app/object_tracking --ros-args --params-file /tmp/launch_params_ebc_o28x
+             ├─1908 /usr/bin/python3 /home/ubuntu/ros2_ws/install/app/lib/app/ar_app --ros-args --params-file /tmp/launch_params_v0qgg6c9
+             ├─1927 /usr/bin/python3 /home/ubuntu/ros2_ws/install/app/lib/app/hand_trajectory --ros-args --params-file /tmp/launch_params_04iqpsis
+             ├─1934 /usr/bin/python3 /home/ubuntu/ros2_ws/install/app/lib/app/hand_gesture --ros-args
+             ├─1954 /usr/bin/python3 /home/ubuntu/ros2_ws/install/peripherals/lib/peripherals/joystick_control --ros-args -r __node:=joystick_control --params-file /tmp/launch_params_vc1fqi1u -r controller/cmd_vel:=controller/cmd_vel
+             ├─1973 /usr/bin/python3 /home/ubuntu/ros2_ws/install/controller/lib/controller/init_pose --ros-args -r __node:=init_pose --params-file /tmp/tmpem_aem16
+             ├─2362 python3 /opt/ros/humble/lib/rosbridge_server/rosbridge_websocket --ros-args -r __node:=rosbridge_websocket --params-file /tmp/launch_params_5eajz4q0 --params-file /tmp/launch_params_x247wfug --params-file /tmp/launch_params_o9y9qn2h --params-file /tmp/launch_params_fps_4xqe --params-file /tmp/launch_params_cxgap1rc --params-file /tmp/launch_params_xxdwhfh5 --params-file /tmp/launch_params_xol5hsiz --params-file /tmp/launch_params_27ncczm4 --params-file /tmp/launch_params_lcpoqsgk --params-file /tmp/launch_params_vnheuys5 --params-file /tmp/launch_params_h6ay_mx9 --params-file /tmp/launch_params_gyczkaa8 --params-file /tmp/launch_params_zz82bms5 --params-file /tmp/launch_params_ppzi0rbo --params-file /tmp/launch_params_3knbltr5 --params-file /tmp/launch_params_4ohbxzij
+             └─2365 python3 /opt/ros/humble/lib/rosapi/rosapi_node --ros-args -r __node:=rosapi --params-file /tmp/launch_params_0k8i904_ --params-file /tmp/launch_params_c29l1bxf --params-file /tmp/launch_params_rsupyt9g --params-file /tmp/launch_params_lufmvzwh
+
+● wifi.service
+     Loaded: loaded (/etc/systemd/system/wifi.service; enabled; vendor preset: enabled)
+     Active: active (running) since Thu 1970-01-01 09:00:34 KST; 56 years 10 months ago
+   Main PID: 651 (python3)
+      Tasks: 2 (limit: 3987)
+     Memory: 7.9M
+        CPU: 21.957s
+     CGroup: /system.slice/wifi.service
+             └─651 python3 /home/ubuntu/wifi_manager/wifi.py
+Restart=no
+ExecStart={ path=/bin/zsh ; argv[]=/bin/zsh -c source home/ubuntu/.zshrc; ros2 launch bringup bringup.launch.py; ; ignore_errors=no ; start_time=[Thu 1970-01-01 09:00:34 KST] ; stop_time=[n/a] ; pid=650 ; code=(null) ; status=0/0 }
+WantedBy=multi-user.target
+After=NetworkManager.service system.slice sysinit.target basic.target time-sync.target systemd-journald.socket
+FragmentPath=/etc/systemd/system/start_app_node.service
+DropInPaths=
