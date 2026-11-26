@@ -1,4 +1,4 @@
-# 한혜원 (han-hyewon)
+# 한혜원 (han-haewoon)
 
 - 담당: TBD
 - GitHub: @harwoon
